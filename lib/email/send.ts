@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import { biznestPromoUrl, showBizNestBranding } from "@/lib/branding";
 import { logError } from "@/lib/observability/log";
 import { APP_URL } from "@/lib/constants/app-url";
+import { SUPPORT_EMAIL } from "@/lib/constants/support";
 import { readableOn } from "@/lib/storefront/readable-design";
 import { formatNumber } from "@/lib/i18n/locale";
 import {
@@ -183,7 +184,7 @@ function emailShell(opts: {
                 <p style="margin:0 0 10px;font-size:11px;line-height:18px;">
                   <a href="${APP_URL}" style="color:#0f6410;text-decoration:none;">biznest.space</a>
                   <span style="color:#d1d5db;"> · </span>
-                  <a href="mailto:support@biznest.space" style="color:#0f6410;text-decoration:none;">support@biznest.space</a>
+                  <a href="mailto:${SUPPORT_EMAIL}" style="color:#0f6410;text-decoration:none;">${SUPPORT_EMAIL}</a>
                   <span style="color:#d1d5db;"> · </span>
                   <a href="${APP_URL}/privacy" style="color:#0f6410;text-decoration:none;">Privacy Policy</a>
                   <span style="color:#d1d5db;"> · </span>
@@ -1004,6 +1005,7 @@ export async function sendPlatformEmail(params: {
   const result = await send(
     {
       from: FROM,
+      reply_to: SUPPORT_EMAIL,
       to: params.email,
       subject: params.subject,
       html,

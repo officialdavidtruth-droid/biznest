@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SUPPORT_EMAIL } from "@/lib/constants/support";
 import Link from "next/link";
 import { JsonLd } from "@/components/seo/json-ld";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
@@ -657,7 +658,7 @@ export default async function HomePage() {
           <div>
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Support</p>
             <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
-              <li><a href="mailto:support@biznest.space" className="inline-block py-1.5 hover:opacity-80">support@biznest.space</a></li>
+              <li><a href={`mailto:${SUPPORT_EMAIL}`} className="inline-block py-1.5 hover:opacity-80">{SUPPORT_EMAIL}</a></li>
             </ul>
           </div>
         </div>
