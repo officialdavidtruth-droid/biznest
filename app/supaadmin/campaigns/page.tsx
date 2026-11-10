@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { AUDIENCES, audienceWhere } from "@/lib/platform-email/audience";
 import { CampaignComposer, ContinueSendingButton } from "@/components/dashboard/campaign-composer";
 import { TableScroll } from "@/components/ui/table-scroll";
+import { listTemplates } from "@/lib/platform-email/template-store";
 import { formatDate } from "@/lib/i18n/locale";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,8 @@ export const maxDuration = 60;
 
 export default async function CampaignsPage() {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const [counts, campaigns, optedOut, reminders] = await Promise.all([
+  const [templates, counts, campaigns, optedOut, reminders] = await Promise.all([
+    listTemplates(),
     Promise.all(AUDIENCES.map((a) => prisma.user.count({ where: audienceWhere(a.value) }))),
     prisma.platformCampaign.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
     prisma.user.count({ where: { customerScopeStoreId: null, isMarketingOnly: false, platformEmailOptOutAt: { not: null } } }),
@@ -62,7 +64,7 @@ export default async function CampaignsPage() {
         </dl>
       </section>
 
-      <CampaignComposer audiences={audiences} />
+      <CampaignComposer audiences={audiences} templates={templates} />
 
       <section>
         <h2 className="mb-3 text-sm font-semibold">Sent emails</h2>
