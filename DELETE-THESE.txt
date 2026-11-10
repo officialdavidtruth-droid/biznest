@@ -1,3 +1,0 @@
-Delete these two files (dead code, nothing imports them):
-components/dashboard/section-editor.tsx
-lib/actions/sections.ts
