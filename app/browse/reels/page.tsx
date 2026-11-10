@@ -8,6 +8,6 @@ export const metadata: Metadata = { title: "Reels — BizNest Browse", descripti
 
 export default async function ReelsPage() {
   const viewer = await getViewer();
-  const feed = await loadBrowseFeed({ sort: "popular", videoOnly: true, viewerKey: viewer?.key, limit: 8 });
+  const feed = await loadBrowseFeed({ sort: "foryou", videoOnly: true, viewerKey: viewer?.key, limit: 8 });
   return <ReelsFeed initialPosts={feed.posts} initialCursor={feed.nextCursor} signedIn={!!viewer?.userId} />;
 }

@@ -13,7 +13,7 @@ import { BROWSE_COMMENT_MAX, INTERACT_NEEDS_ACCOUNT, isOfficialSlug, isTrustedSe
 import { useDoubleTapLike } from "@/components/browse/double-tap-like";
 import { StoreBadges } from "@/components/browse/store-badges";
 import { formatMoney } from "@/lib/utils/format-money";
-import { trackBrowse, trackImpression } from "@/components/browse/browse-track";
+import { trackBrowse, trackDwell, trackImpression } from "@/components/browse/browse-track";
 import { storeHref } from "@/lib/utils/store-href";
 import { playableVideoUrl } from "@/lib/browse-video";
 
@@ -350,12 +350,18 @@ export function PostCard({ post: initial }: { post: BrowsePostView }) {
   useEffect(() => {
     const el = cardRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
+    let dwell: ReturnType<typeof setTimeout> | null = null;
     const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) { trackImpression(initial.id); io.disconnect(); }
+      const visible = entries.some((e) => e.isIntersecting);
+      if (visible) {
+        trackImpression(initial.id);
+        // Still on screen after 2.5 seconds counts as real interest (it feeds "For you").
+        if (!dwell) dwell = setTimeout(() => trackDwell(initial.id, !!initial.videoUrl), 2500);
+      } else if (dwell) { clearTimeout(dwell); dwell = null; }
     }, { threshold: 0.5 });
     io.observe(el);
-    return () => io.disconnect();
-  }, [initial.id]);
+    return () => { io.disconnect(); if (dwell) clearTimeout(dwell); };
+  }, [initial.id, initial.videoUrl]);
   const long = post.caption.length > 140 || post.caption.split("\n").length > 3;
 
   function like() {

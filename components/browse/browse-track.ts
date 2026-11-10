@@ -4,7 +4,7 @@
  * Fire-and-forget Browse analytics for the seller's Insights page. Post impressions are queued and sent
  * together; each post counts once per page load.
  */
-type Payload = { kind: "PROFILE_VIEW"; slug: string } | { kind: "SHARE"; slug?: string; postId?: string } | { kind: "SHOP_TAP"; postId: string };
+type Payload = { kind: "PROFILE_VIEW"; slug: string } | { kind: "SHARE"; slug?: string; postId?: string } | { kind: "SHOP_TAP"; postId: string } | { kind: "POST_DWELL"; postId: string; video?: boolean };
 
 function send(body: unknown) {
   try {
@@ -21,6 +21,14 @@ function send(body: unknown) {
 
 export function trackBrowse(payload: Payload) {
   send(payload);
+}
+
+const dwelled = new Set<string>();
+/** The viewer stayed on a post for a few seconds. Counted once per post per page load; feeds "For you". */
+export function trackDwell(postId: string, video = false) {
+  if (dwelled.has(postId)) return;
+  dwelled.add(postId);
+  send({ kind: "POST_DWELL", postId, video });
 }
 
 const seen = new Set<string>();

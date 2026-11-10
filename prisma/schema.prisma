@@ -5948,3 +5948,18 @@ model VendorReferralWithdrawal {
   @@index([status])
   @@index([userId, createdAt])
 }
+
+/// What a viewer (signed-in account or this device) tends to watch, like and search. Powers the "For you" feed.
+/// kind is STORE, CATEGORY or TAG; key is the store id, category name or hashtag. weight decays with a 2-week half-life.
+model BrowseInterest {
+  id        String   @id @default(cuid())
+  viewerKey String
+  kind      String
+  key       String
+  weight    Float
+  updatedAt DateTime @default(now())
+
+  @@unique([viewerKey, kind, key])
+  @@index([viewerKey, weight])
+  @@index([updatedAt])
+}

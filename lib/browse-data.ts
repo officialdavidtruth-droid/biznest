@@ -1,5 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { loadInterests } from "@/lib/browse-interest";
+import { forYouScore } from "@/lib/browse-foryou";
 import { extractHashtags, sanitizeStickers, shortPersonName, type Sticker, BROWSE_PAGE_SIZE, decodeCursor, encodeCursor, isMogulStore, orderRings, popularityScore, spreadStores, toBio } from "@/lib/browse";
 
 export type BrowsePostView = {
@@ -24,7 +26,7 @@ export type BrowsePostView = {
 
 export type BrowseCommentView = { id: string; authorName: string; body: string; createdAt: string; mine: boolean; hidden?: boolean; byStore?: boolean; pinned?: boolean };
 
-export type FeedSort = "latest" | "popular";
+export type FeedSort = "foryou" | "latest" | "popular";
 export type FeedQuery = { videoOnly?: boolean; sort?: FeedSort; category?: string | null; cursor?: string | null; viewerKey?: string | null; limit?: number; storeIds?: string[] };
 export type FeedPage = { posts: BrowsePostView[]; nextCursor: string | null };
 
@@ -79,6 +81,28 @@ export async function loadBrowseFeed(q: FeedQuery = {}): Promise<FeedPage> {
   const base = publicPostWhere(q.category);
   const withStores = q.storeIds ? { ...base, storeId: { in: q.storeIds } } : base;
   const where = q.videoOnly ? { ...withStores, videoUrl: { not: null } } : withStores;
+
+  if (q.sort === "foryou") {
+    // Personal ranking: popular and fresh posts, lifted by what this viewer watches, likes, saves and searches.
+    const offset = Math.max(0, Number(q.cursor) || 0);
+    const include = { store: { select: storeSelect }, tags: tagsInclude, _count: { select: { reports: { where: { status: "OPEN" as const } } } } };
+    const [interests, recent] = await Promise.all([
+      loadInterests(q.viewerKey),
+      prisma.browsePost.findMany({ where: { ...where, createdAt: { gte: new Date(Date.now() - 21 * 86_400_000) } }, orderBy: { createdAt: "desc" }, take: 150, include }),
+    ]);
+    // A young platform may have few recent posts; top up with older ones so the feed never runs dry.
+    const pool = recent.length >= 40 ? recent : await prisma.browsePost.findMany({ where, orderBy: { createdAt: "desc" }, take: 150, include });
+    const now = new Date();
+    const scored = pool.map((p) => ({
+      p,
+      score: forYouScore({ id: p.id, storeId: p.storeId, category: p.store.business?.category ?? null, hashtags: extractHashtags(p.caption), createdAt: p.createdAt, likeCount: p.likeCount, commentCount: p.commentCount, saveCount: p.saveCount, shopTapCount: p.shopTapCount, openReports: p._count.reports, verified: !!p.store.business?.verificationBadge }, interests, now),
+    }));
+    const ranked = spreadStores(scored.sort((a, b) => b.score - a.score).map((x) => x.p));
+    const slice = ranked.slice(offset, offset + limit);
+    const ids = slice.map((p) => p.id);
+    const [liked, saved] = await Promise.all([likedSet(ids, q.viewerKey), savedSet(ids, q.viewerKey)]);
+    return { posts: slice.map((p) => toPostView(p as unknown as Row, liked.has(p.id), saved.has(p.id))), nextCursor: offset + limit < ranked.length ? String(offset + limit) : null };
+  }
 
   if (q.sort === "popular") {
     // Rank the last two weeks in memory (bounded), page by offset.

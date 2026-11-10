@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { bumpBrowseStat as bump } from "@/lib/browse-stat";
+import { getViewer } from "@/lib/browse-viewer";
+import { recordPostInterest } from "@/lib/browse-interest";
+import { INTEREST_WEIGHT } from "@/lib/browse-foryou";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -11,7 +14,7 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
 const ID_RE = /^[a-z0-9]{10,40}$/i;
 const MAX_POSTS = 20;
 
-type Body = { kind?: unknown; slug?: unknown; postId?: unknown; postIds?: unknown };
+type Body = { kind?: unknown; slug?: unknown; postId?: unknown; postIds?: unknown; video?: unknown };
 
 /**
  * Counts Browse activity for the seller's Insights page: profile views, post impressions and shares.
@@ -32,6 +35,13 @@ export async function POST(req: Request) {
       ? (await prisma.store.findFirst({ where: { business: { userId: session.user.id } }, select: { id: true } }))?.id ?? null
       : null;
 
+    const interestFor = async (postId: string, strength: number) => {
+      const viewer = await getViewer({ create: true });
+      if (!viewer) return;
+      const p = await prisma.browsePost.findUnique({ where: { id: postId }, select: { storeId: true, caption: true, store: { select: { business: { select: { category: true } } } } } });
+      if (p) await recordPostInterest(viewer.key, { storeId: p.storeId, category: p.store.business?.category, caption: p.caption }, strength);
+    };
+
     if (body.kind === "PROFILE_VIEW" || (body.kind === "SHARE" && typeof body.slug === "string" && !body.postId)) {
       if (typeof body.slug !== "string" || !SLUG_RE.test(body.slug)) return done;
       const store = await prisma.store.findUnique({ where: { slug: body.slug }, select: { id: true, status: true } });
@@ -51,6 +61,15 @@ export async function POST(req: Request) {
       const post = await prisma.browsePost.findUnique({ where: { id: body.postId }, select: { id: true, storeId: true, status: true, productId: true } });
       if (!post || post.status !== "PUBLISHED" || !post.productId || post.storeId === ownStoreId) return done;
       await Promise.all([bump(post.storeId, "SHOP_TAP", post.id, 1), prisma.browsePost.update({ where: { id: post.id }, data: { shopTapCount: { increment: 1 } } })]);
+      await interestFor(post.id, INTEREST_WEIGHT.SHOP_TAP);
+      return done;
+    }
+
+    // The viewer stayed on a post for a few seconds (or watched its video): a quiet "I like this kind of thing".
+    if (body.kind === "POST_DWELL" && typeof body.postId === "string" && ID_RE.test(body.postId)) {
+      const post = await prisma.browsePost.findUnique({ where: { id: body.postId }, select: { storeId: true, status: true } });
+      if (!post || post.status !== "PUBLISHED" || post.storeId === ownStoreId) return done;
+      await interestFor(body.postId, body.video === true ? INTEREST_WEIGHT.VIDEO_VIEW : INTEREST_WEIGHT.VIEW);
       return done;
     }
 

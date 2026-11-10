@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { recordTagInterest } from "@/lib/browse-interest";
+import { INTEREST_WEIGHT } from "@/lib/browse-foryou";
 import { getViewer } from "@/lib/browse-viewer";
 import { loadHashtagPosts, loadTrendingTags } from "@/lib/browse-data";
 import { TagSearch } from "@/components/browse/tag-search";
@@ -32,6 +34,7 @@ export default async function HashtagPage({ params }: { params: Promise<{ tag: s
   const t = clean(tag);
   const viewer = await getViewer();
   const [posts, trending] = await Promise.all([loadHashtagPosts(t, viewer?.key), loadTrendingTags(12).catch(() => [])]);
+  if (viewer && posts.length > 0) void recordTagInterest(viewer.key, t, INTEREST_WEIGHT.TAG_SEARCH);
   return (
     <BrowseShell back={{ href: "/browse", label: "Browse" }}>
       <JsonLd data={{

@@ -12,7 +12,7 @@ import { playableVideoUrl } from "@/lib/browse-video";
 import { storeHref } from "@/lib/utils/store-href";
 import { useDoubleTapLike } from "@/components/browse/double-tap-like";
 import { StoreBadges } from "@/components/browse/store-badges";
-import { trackBrowse, trackImpression } from "@/components/browse/browse-track";
+import { trackBrowse, trackDwell, trackImpression } from "@/components/browse/browse-track";
 
 const rail = "flex h-12 w-12 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5B82E]";
 
@@ -29,14 +29,17 @@ function Reel({ initial, muted, onMute }: { initial: BrowsePostView; muted: bool
   useEffect(() => {
     const el = box.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
+    let dwell: ReturnType<typeof setTimeout> | null = null;
     const io = new IntersectionObserver(([e]) => {
       const v = vid.current;
       if (v) v.muted = muted;
-      if (e.isIntersecting && e.intersectionRatio >= 0.6) { setPaused(false); void v?.play().catch(() => {}); trackImpression(initial.id); }
-      else { v?.pause(); if (v) v.currentTime = 0; }
+      if (e.isIntersecting && e.intersectionRatio >= 0.6) {
+        setPaused(false); void v?.play().catch(() => {}); trackImpression(initial.id);
+        if (!dwell) dwell = setTimeout(() => trackDwell(initial.id, true), 3000); // watched 3 seconds: a signal for "For you"
+      } else { v?.pause(); if (v) v.currentTime = 0; if (dwell) { clearTimeout(dwell); dwell = null; } }
     }, { threshold: [0, 0.6] });
     io.observe(el);
-    return () => io.disconnect();
+    return () => { io.disconnect(); if (dwell) clearTimeout(dwell); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial.id]);
 
@@ -114,7 +117,7 @@ export function ReelsFeed({ initialPosts, initialCursor }: { initialPosts: Brows
     if (busy.current || !cursor) return;
     busy.current = true;
     try {
-      const r = await loadMoreBrowse({ sort: "popular", cursor, videoOnly: true });
+      const r = await loadMoreBrowse({ sort: "foryou", cursor, videoOnly: true });
       if (r.success) {
         setPosts((cur) => { const seen = new Set(cur.map((p) => p.id)); return [...cur, ...r.data.posts.filter((p) => !seen.has(p.id))]; });
         setCursor(r.data.nextCursor);

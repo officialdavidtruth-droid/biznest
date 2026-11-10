@@ -1,5 +1,7 @@
 "use server";
 
+import { recordPostInterest, recordStoreInterest } from "@/lib/browse-interest";
+import { INTEREST_WEIGHT } from "@/lib/browse-foryou";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
@@ -34,7 +36,7 @@ async function notifyOwnerOnce(n: { ownerId?: string | null; actorId?: string | 
 async function livePost(postId: string) {
   return prisma.browsePost.findFirst({
     where: { id: postId, status: "PUBLISHED", store: { status: "ACTIVE" } },
-    select: { id: true, caption: true, store: { select: { id: true, slug: true, name: true, business: { select: { user: { select: { id: true } } } } } } },
+    select: { id: true, caption: true, store: { select: { id: true, slug: true, name: true, business: { select: { category: true, user: { select: { id: true } } } } } } },
   });
 }
 
@@ -66,6 +68,7 @@ export async function toggleBrowseLike(postId: string): Promise<ActionResult<{ l
     return { liked: true, likeCount: p.likeCount };
   });
   if (result.liked) {
+    void recordPostInterest(viewer.key, { storeId: likedPost.store.id, category: likedPost.store.business?.category, caption: likedPost.caption }, INTEREST_WEIGHT.LIKE);
     await notifyOwnerOnce({
       ownerId: likedPost.store.business?.user?.id, actorId: viewer.userId, type: "BROWSE_LIKE",
       title: `${viewer.name || "Someone"} liked your Browse post`,
@@ -108,6 +111,7 @@ export async function toggleFollowStore(slug: string): Promise<ActionResult<{ fo
     return { following: true, followerCount: s.followerCount };
   });
   if (result.following) {
+    void recordStoreInterest(viewer.key, store.id, INTEREST_WEIGHT.FOLLOW);
     await notifyOwnerOnce({
       ownerId: store.business?.user?.id, actorId: viewer.userId, type: "BROWSE_FOLLOW",
       title: `${viewer.name || "Someone"} started following ${store.name}`,
@@ -146,6 +150,7 @@ export async function toggleBrowseSave(postId: string): Promise<ActionResult<{ s
     const p = await tx.browsePost.update({ where: { id: postId }, data: { saveCount: { increment: 1 } }, select: { saveCount: true } });
     return { saved: true, saveCount: p.saveCount };
   });
+  if (result.saved) void recordPostInterest(viewer.key, { storeId: post.store.id, category: post.store.business?.category, caption: post.caption }, INTEREST_WEIGHT.SAVE);
   if (result.saved && post.store.business?.user?.id !== viewer.userId) await bumpBrowseStat(post.store.id, "SAVE", postId, 1).catch(() => undefined);
   return { success: true, data: result };
 }
@@ -197,6 +202,7 @@ export async function addBrowseComment(postId: string, input: { body: string }):
     prisma.browsePost.update({ where: { id: postId }, data: { commentCount: { increment: 1 } }, select: { commentCount: true } }),
   ]);
 
+  if (!byStore) void recordPostInterest(viewer.key, { storeId: post.store.id, category: post.store.business?.category, caption: post.caption }, INTEREST_WEIGHT.COMMENT);
   const ownerId = post.store.business?.user?.id;
   if (ownerId && ownerId !== viewer.userId) {
     await notifyUser({
@@ -310,7 +316,7 @@ export async function loadMoreStorePosts(slug: string, cursor: string | null): P
 }
 
 export async function loadMoreBrowse(input: { sort?: FeedSort; category?: string | null; cursor?: string | null; following?: boolean; saved?: boolean; videoOnly?: boolean }): Promise<ActionResult<FeedPage>> {
-  const sort: FeedSort = input.sort === "popular" ? "popular" : "latest";
+  const sort: FeedSort = input.sort === "popular" ? "popular" : input.sort === "latest" ? "latest" : "foryou";
   const viewer = await getViewer();
   if (input.saved) {
     if (!viewer?.userId) return { success: false, error: "Sign in to see your saved posts." };

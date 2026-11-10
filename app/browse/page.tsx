@@ -1,4 +1,6 @@
 import { BrowseTabs } from "@/components/browse/browse-tabs";
+import { recordCategoryInterest } from "@/lib/browse-interest";
+import { INTEREST_WEIGHT } from "@/lib/browse-foryou";
 import { TagSearch } from "@/components/browse/tag-search";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -25,9 +27,10 @@ const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outli
 
 export default async function BrowsePage({ searchParams }: { searchParams: Promise<{ sort?: string; category?: string }> }) {
   const sp = await searchParams;
-  const sort: FeedSort = sp.sort === "popular" ? "popular" : "latest";
+  const sort: FeedSort = sp.sort === "popular" ? "popular" : sp.sort === "latest" ? "latest" : "foryou";
   const category = sp.category?.trim().slice(0, 80) || null;
   const viewer = await getViewer();
+  if (category && viewer) void recordCategoryInterest(viewer.key, category, INTEREST_WEIGHT.CATEGORY);
   const [feed, categories, organicRings, feedAds, storyAds, shops, trending] = await Promise.all([
     loadBrowseFeed({ sort, category, viewerKey: viewer?.key }), loadBrowseCategories(), loadStoryRings(viewer?.key),
     loadLiveAds("FEED", viewer?.key, 2), loadLiveAds("STORY", viewer?.key, 2), loadDiscoverShops(6), loadTrendingTags(12).catch(() => []),
@@ -36,7 +39,7 @@ export default async function BrowsePage({ searchParams }: { searchParams: Promi
   const href = (next: { sort?: FeedSort; category?: string | null }) => {
     const q = new URLSearchParams();
     const s = next.sort ?? sort; const c = next.category === undefined ? category : next.category;
-    if (s === "popular") q.set("sort", "popular");
+    if (s === "popular" || s === "latest") q.set("sort", s);
     if (c) q.set("category", c);
     const qs = q.toString();
     return qs ? `/browse?${qs}` : "/browse";
@@ -58,6 +61,7 @@ export default async function BrowsePage({ searchParams }: { searchParams: Promi
 
           <div className="sticky top-14 z-20 -mx-4 mb-3 flex flex-wrap items-center gap-2 bg-gradient-to-b from-[#0A2012] via-[#0A2012]/95 to-transparent px-4 pb-3 pt-2">
             <div className="inline-flex rounded-full bg-black/25 p-1 ring-1 ring-white/10" role="tablist" aria-label="Sort posts">
+              <Link role="tab" aria-selected={sort === "foryou"} href={href({ sort: "foryou" })} className={seg(sort === "foryou")}>For you</Link>
               <Link role="tab" aria-selected={sort === "latest"} href={href({ sort: "latest" })} className={seg(sort === "latest")}>Latest</Link>
               <Link role="tab" aria-selected={sort === "popular"} href={href({ sort: "popular" })} className={seg(sort === "popular")}>Popular</Link>
             </div>
