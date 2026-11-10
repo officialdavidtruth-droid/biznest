@@ -118,18 +118,21 @@ export function CampaignComposer({ audiences, templates }: { audiences: Audience
     const r = await sendCampaign(input);
     setBusy(null);
     if (!r.success) return toast.error(r.error);
-    toast.success(
+    if (r.data.failures > 0) {
+      toast.error(`${r.data.failures} email${r.data.failures === 1 ? "" : "s"} failed${r.data.error ? `: ${r.data.error}` : ""}. ${r.data.sent} went out. Use "Send next batch" to retry.`);
+    } else toast.success(
       r.data.remaining > 0
         ? `Sent ${r.data.sent}. ${r.data.remaining} more are queued and will go out with the next batch or tomorrow's daily run.`
         : `Sent to ${r.data.sent}.`
     );
+    router.refresh();
+    if (r.data.failures > 0) return; // keep the email on screen so nothing is lost
     setSubject("");
     setBody("");
     setCtaLabel("");
     setCtaUrl("");
     setLoadedId(null);
     setPickerOpen(true);
-    router.refresh();
   }
 
   return (
@@ -250,7 +253,8 @@ export function ContinueSendingButton({ campaignId, remaining }: { campaignId: s
     const r = await sendNextCampaignBatch(campaignId);
     setBusy(false);
     if (!r.success) return toast.error(r.error);
-    toast.success(r.data.remaining > 0 ? `Sent ${r.data.sent}. ${r.data.remaining} left.` : `Sent ${r.data.sent}. Done.`);
+    if (r.data.failures > 0) toast.error(`${r.data.failures} failed${r.data.error ? `: ${r.data.error}` : ""}. ${r.data.sent} went out.`);
+    else toast.success(r.data.remaining > 0 ? `Sent ${r.data.sent}. ${r.data.remaining} left.` : `Sent ${r.data.sent}. Done.`);
     router.refresh();
   }
   return (

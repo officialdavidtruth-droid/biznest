@@ -109,7 +109,7 @@ const CAMPAIGN_BATCH = 60;
  */
 export async function processCampaign(campaignId: string, limit = CAMPAIGN_BATCH) {
   const campaign = await prisma.platformCampaign.findUnique({ where: { id: campaignId } });
-  if (!campaign || campaign.status === "DRAFT" || !isAudience(campaign.audience)) return { sent: 0, remaining: 0, failures: 0 };
+  if (!campaign || campaign.status === "DRAFT" || !isAudience(campaign.audience)) return { sent: 0, remaining: 0, failures: 0, error: null as string | null };
   const kind = `CAMPAIGN:${campaign.id}`;
   const where = { ...audienceWhere(campaign.audience), platformEmailLogs: { none: { kind } } };
 
@@ -122,29 +122,42 @@ export async function processCampaign(campaignId: string, limit = CAMPAIGN_BATCH
 
   let sent = 0;
   let failures = 0;
+  let error: string | null = null;
+  const started = Date.now();
   for (const u of users) {
+    // Stay inside the function time limit; the next batch picks up the rest.
+    if (Date.now() - started > 45_000) break;
     try {
       await prisma.platformEmailLog.create({ data: { userId: u.id, kind } });
     } catch {
       continue;
     }
+    const payload = {
+      userId: u.id,
+      email: u.email,
+      subject: campaign.subject.replace(/\{name\}/gi, firstNameOf(u.name, u.email)),
+      bodyHtml: campaignBodyHtml(campaign, firstNameOf(u.name, u.email)),
+      kind: "platform-campaign",
+    };
     try {
-      const res = await sendPlatformEmail({
-        userId: u.id,
-        email: u.email,
-        subject: campaign.subject.replace(/\{name\}/gi, firstNameOf(u.name, u.email)),
-        bodyHtml: campaignBodyHtml(campaign, firstNameOf(u.name, u.email)),
-        kind: "platform-campaign",
-      });
+      // Resend allows about 2 emails a second, so go one at a time and retry once if it says slow down.
+      let res = await sendPlatformEmail(payload);
+      if (!res.success && /rate|too many|429/i.test(res.error)) {
+        await new Promise((r) => setTimeout(r, 1500));
+        res = await sendPlatformEmail(payload);
+      }
       if (res.success) sent++;
       else {
         failures++;
+        error = res.error;
         await prisma.platformEmailLog.deleteMany({ where: { userId: u.id, kind } });
       }
-    } catch {
+    } catch (e) {
       failures++;
+      error = e instanceof Error ? e.message : String(e);
       await prisma.platformEmailLog.deleteMany({ where: { userId: u.id, kind } });
     }
+    await new Promise((r) => setTimeout(r, 600));
   }
 
   const remaining = await prisma.user.count({ where });
@@ -156,7 +169,7 @@ export async function processCampaign(campaignId: string, limit = CAMPAIGN_BATCH
       ...(remaining === 0 ? { status: "SENT", sentAt: new Date() } : {}),
     },
   });
-  return { sent, remaining, failures };
+  return { sent, remaining, failures, error };
 }
 
 /** Continues every campaign that is still mid-send (used by the daily job). */

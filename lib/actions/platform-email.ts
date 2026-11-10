@@ -54,7 +54,7 @@ export async function sendCampaignTest(input: CampaignInput, to: string): Promis
   return { success: true, data: undefined };
 }
 
-export async function sendCampaign(input: CampaignInput): Promise<ActionResult<{ id: string; sent: number; remaining: number }>> {
+export async function sendCampaign(input: CampaignInput): Promise<ActionResult<{ id: string; sent: number; remaining: number; failures: number; error: string | null }>> {
   if (!(await requireAdmin())) return { success: false, error: "Admin session expired. Sign in again." };
   const problem = validate(input);
   if (problem) return { success: false, error: problem };
@@ -75,14 +75,14 @@ export async function sendCampaign(input: CampaignInput): Promise<ActionResult<{
   });
   const r = await processCampaign(campaign.id);
   revalidatePath("/supaadmin/campaigns");
-  return { success: true, data: { id: campaign.id, sent: r.sent, remaining: r.remaining } };
+  return { success: true, data: { id: campaign.id, sent: r.sent, remaining: r.remaining, failures: r.failures, error: r.error } };
 }
 
-export async function sendNextCampaignBatch(campaignId: string): Promise<ActionResult<{ sent: number; remaining: number }>> {
+export async function sendNextCampaignBatch(campaignId: string): Promise<ActionResult<{ sent: number; remaining: number; failures: number; error: string | null }>> {
   if (!(await requireAdmin())) return { success: false, error: "Admin session expired. Sign in again." };
   const r = await processCampaign(campaignId);
   revalidatePath("/supaadmin/campaigns");
-  return { success: true, data: { sent: r.sent, remaining: r.remaining } };
+  return { success: true, data: { sent: r.sent, remaining: r.remaining, failures: r.failures, error: r.error } };
 }
 
 // ---------- Ready-made templates ----------
