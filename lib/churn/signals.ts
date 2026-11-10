@@ -7,7 +7,7 @@ export type ChurnKind = "NO_LOGIN" | "NO_ORDERS" | "PAYMENT_FAILED" | "UNUSED_PL
 
 export const CHURN_THRESHOLDS = {
   noLoginDays: 7,
-  noOrderDays: 14,
+  noOrderDays: 10,
   unusedPluginDays: 14,
 } as const;
 

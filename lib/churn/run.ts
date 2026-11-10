@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { notifyUser } from "@/lib/notifications/notify";
 import { sendOrderNotificationEmail } from "@/lib/email/send";
 import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
 import { logError, errorMeta } from "@/lib/observability/log";
 import { APP_URL } from "@/lib/constants/app-url";
 import { CHURN_COPY } from "@/lib/churn/copy";
+import { nudgeOwner, REPEATING_KINDS, RENUDGE_DAYS } from "@/lib/churn/nudge";
+import type { ChurnKind } from "@/lib/churn/signals";
 import { detectChurnSignals, signalKey, type DetectedSignal } from "@/lib/churn/signals";
 
 const BATCH = 200;
@@ -19,7 +20,7 @@ function escapeHtml(v: string) {
  * refresh it while it persists, and resolve it when it clears.
  */
 export async function runChurnWatch(now = new Date()) {
-  let scanned = 0, opened = 0, resolved = 0, nudged = 0, failures = 0;
+  let scanned = 0, opened = 0, resolved = 0, nudged = 0, reminded = 0, failures = 0;
   let cursor: string | undefined;
 
   for (;;) {
@@ -67,8 +68,15 @@ export async function runChurnWatch(now = new Date()) {
 
         for (const row of mine) {
           const d = detectedMap.get(signalKey(row.kind, row.subject));
-          if (d) await prisma.churnSignal.update({ where: { id: row.id }, data: { lastDetectedAt: now, detail: d.detail } });
-          else { await prisma.churnSignal.update({ where: { id: row.id }, data: { resolvedAt: now } }); resolved++; }
+          if (d) {
+            await prisma.churnSignal.update({ where: { id: row.id }, data: { lastDetectedAt: now, detail: d.detail } });
+            // Still no orders / still not logging in: remind again every 10 days (bell, phone and dashboard pop-up).
+            const due = !row.notifiedAt || now.getTime() - row.notifiedAt.getTime() >= RENUDGE_DAYS * 86_400_000;
+            if (due && REPEATING_KINDS.includes(row.kind as ChurnKind)) {
+              await nudgeOwner({ userId: store.business.userId, storeId: store.id, slug: store.slug, kind: row.kind as ChurnKind, now });
+              reminded++;
+            }
+          } else { await prisma.churnSignal.update({ where: { id: row.id }, data: { resolvedAt: now } }); resolved++; }
         }
 
         for (const d of detected) {
@@ -82,7 +90,7 @@ export async function runChurnWatch(now = new Date()) {
           }
           opened++;
           const copy = CHURN_COPY[d.kind];
-          await notifyUser({ userId: store.business.userId, type: "CHURN_TIP", title: copy.title, body: copy.body, url: copy.href(store.slug) });
+          await nudgeOwner({ userId: store.business.userId, storeId: store.id, slug: store.slug, kind: d.kind, now });
           const email = store.business.user.email;
           if (email) {
             // Email matters most for NO_LOGIN: they aren't opening the bell.
@@ -92,7 +100,6 @@ export async function runChurnWatch(now = new Date()) {
               `<p>${escapeHtml(copy.body)}</p><p><a href="${APP_URL}${copy.href(store.slug)}">${escapeHtml(copy.cta)}</a></p>`
             ).catch((err) => void logError("EMAIL", "churn nudge email failed", errorMeta(err, { storeId: store.id })));
           }
-          await prisma.churnSignal.updateMany({ where: { storeId: store.id, kind: d.kind, subject: d.subject, resolvedAt: null }, data: { notifiedAt: now } });
           nudged++;
         }
       } catch (err) {
@@ -102,5 +109,5 @@ export async function runChurnWatch(now = new Date()) {
     }
     if (stores.length < BATCH) break;
   }
-  return { scanned, opened, resolved, nudged, failures };
+  return { scanned, opened, resolved, nudged, reminded, failures };
 }

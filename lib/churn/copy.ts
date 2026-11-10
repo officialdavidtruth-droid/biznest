@@ -12,7 +12,7 @@ export const CHURN_COPY: Record<ChurnKind, ChurnCopy> = {
   },
   NO_ORDERS: {
     title: "Let's get orders moving",
-    body: "No orders in the last two weeks. Share your store link on WhatsApp or your status and add a first-time-buyer coupon. Those are the quickest wins.",
+    body: "No orders in the last 10 days. Share your store link on WhatsApp or your status and add a first-time-buyer coupon. Those are the quickest wins.",
     href: (s) => `/store/${s}/admin/coupons`,
     cta: "Create a coupon",
   },

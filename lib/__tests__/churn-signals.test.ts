@@ -27,13 +27,13 @@ describe("detectChurnSignals", () => {
     expect(kinds({ ownerLastLoginAt: null, storeCreatedAt: ago(3), lastOrderAt: null })).toEqual([]);
   });
 
-  it("NO_ORDERS fires at 14 days, and for a store old enough that never sold", () => {
-    expect(kinds({ lastOrderAt: ago(13) })).toEqual([]);
-    expect(kinds({ lastOrderAt: ago(14) })).toEqual(["NO_ORDERS"]);
+  it("NO_ORDERS fires at 10 days, and for a store old enough that never sold", () => {
+    expect(kinds({ lastOrderAt: ago(9) })).toEqual([]);
+    expect(kinds({ lastOrderAt: ago(10) })).toEqual(["NO_ORDERS"]);
     expect(kinds({ lastOrderAt: null })).toEqual(["NO_ORDERS"]);
   });
 
-  it("does not flag NO_ORDERS for a store younger than 14 days", () => {
+  it("does not flag NO_ORDERS for a store younger than 10 days", () => {
     expect(kinds({ storeCreatedAt: ago(5), lastOrderAt: null })).toEqual([]);
   });
 
