@@ -211,30 +211,6 @@ export async function updateFreeTrialSetting(value: FreeTrialValue): Promise<Act
   return { success: true, data: undefined };
 }
 
-export async function updateMarketingFreeTrialSetting(value: FreeTrialValue): Promise<ActionResult> {
-  const access = await assertPlatformAdmin();
-  if (!access.success) return { success: false, error: access.error };
-
-  if (value.enabled) {
-    if (!value.planId) return { success: false, error: "Choose which plan the trial applies to." };
-    if (!Number.isInteger(value.days) || value.days < 1 || value.days > 365) {
-      return { success: false, error: "Trial length must be between 1 and 365 days." };
-    }
-    const plan = await prisma.subscription.findUnique({ where: { id: value.planId } });
-    if (!plan) return { success: false, error: "That plan no longer exists." };
-    if (!plan.isMarketingPlan) return { success: false, error: "Choose a BizNest Marketing plan." };
-    if (Number(plan.price) === 0) return { success: false, error: "The free plan doesn't need a trial." };
-  }
-
-  await setSetting(SETTING_KEYS.MARKETING_FREE_TRIAL, value);
-  await prisma.auditLog.create({
-    data: { userId: access.userId, action: "MARKETING_FREE_TRIAL_SETTING_UPDATED", entity: "PlatformSetting", entityId: SETTING_KEYS.MARKETING_FREE_TRIAL, metadata: value },
-  });
-
-  revalidatePath("/supaadmin/settings");
-  return { success: true, data: undefined };
-}
-
 export async function setActiveGateway(gateway: ActiveGateway): Promise<ActionResult> {
   const access = await assertPlatformAdmin();
   if (!access.success) return { success: false, error: access.error };
