@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { nativeShare } from "@/lib/native";
 import { Bookmark, Flag, Heart, MessageCircle, Pin, Play, Share2, Star, ShoppingBag, Store, Volume2, VolumeX, X } from "lucide-react";
@@ -9,6 +10,7 @@ import { toast } from "sonner";
 import { addBrowseComment, deleteMyBrowseComment, loadPostComments, loadPostReviewSummary, pinBrowseComment, reportBrowse, toggleBrowseLike, toggleBrowseSave } from "@/lib/actions/browse";
 import type { BrowseCommentView, BrowsePostView, PostReviews } from "@/lib/browse-data";
 import { BROWSE_COMMENT_MAX, INTERACT_NEEDS_ACCOUNT, isOfficialSlug, isTrustedSeller, REPORT_REASONS, REPORT_REASON_LABEL, splitHashtags, compactCount, postPath, storeBrowsePath, timeAgo, type ReportReason, type Sticker } from "@/lib/browse";
+import { useDoubleTapLike } from "@/components/browse/double-tap-like";
 import { StoreBadges } from "@/components/browse/store-badges";
 import { formatMoney } from "@/lib/utils/format-money";
 import { trackBrowse, trackImpression } from "@/components/browse/browse-track";
@@ -78,8 +80,9 @@ function PostMeta({ post }: { post: BrowsePostView }) {
   );
 }
 
-function FeedVideo({ post }: { post: BrowsePostView }) {
+function FeedVideo({ post, onDoubleLike }: { post: BrowsePostView; onDoubleLike?: () => void }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const dt = useDoubleTapLike(onDoubleLike ?? (() => {}));
   const [muted, setMuted] = useState(true);
   const [paused, setPaused] = useState(true);
   const [started, setStarted] = useState(false); // stickers are already in the poster; show them live once it plays
@@ -107,10 +110,11 @@ function FeedVideo({ post }: { post: BrowsePostView }) {
     <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-black">
       <video
         ref={ref} src={playableVideoUrl(post.videoUrl!)} poster={post.images[0]} muted={muted} loop playsInline preload="metadata"
-        onPlay={() => { setPaused(false); setStarted(true); }} onPause={() => setPaused(true)} onClick={toggle}
+        onPlay={() => { setPaused(false); setStarted(true); }} onPause={() => setPaused(true)} onClick={(e) => (onDoubleLike ? dt.tap(e, toggle) : toggle())}
         className="h-full w-full cursor-pointer object-contain" aria-label={`Video from ${post.store.name}. Tap to ${paused ? "play" : "pause"}.`}
       />
       {started && <StickerLayer stickers={post.stickers} />}
+      {dt.heart}
       {paused && (
         <button type="button" onClick={toggle} aria-label="Play video" className="absolute inset-0 m-auto flex h-14 w-14 items-center justify-center rounded-full bg-black/55 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
           <Play className="h-6 w-6 fill-white" aria-hidden />
@@ -123,16 +127,18 @@ function FeedVideo({ post }: { post: BrowsePostView }) {
   );
 }
 
-function Images({ post, wrapClass }: { post: BrowsePostView; wrapClass?: string }) {
+function Images({ post, wrapClass, onDoubleLike }: { post: BrowsePostView; wrapClass?: string; onDoubleLike?: () => void }) {
   const [idx, setIdx] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const dt = useDoubleTapLike(onDoubleLike ?? (() => {}));
   if (post.images.length === 0 && !post.videoUrl) return null;
   const storeUrl = storeHref(post.store.slug);
   const dest = post.product ? storeHref(post.store.slug, `/${post.product.kind === "SERVICE" ? "service" : "product"}/${post.product.id}`) : storeUrl;
   return (
     <div className={wrapClass ?? "relative px-2.5 lg:mx-auto lg:w-[min(100%,max(340px,calc((100svh-250px)*0.8+1.25rem)))]"}>
       {post.videoUrl ? (
-        <FeedVideo post={post} />
+        <FeedVideo post={post} onDoubleLike={onDoubleLike} />
       ) : (
       <div
         ref={ref}
@@ -140,7 +146,7 @@ function Images({ post, wrapClass }: { post: BrowsePostView; wrapClass?: string 
         onScroll={(e) => { const el = e.currentTarget; setIdx(Math.round(el.scrollLeft / Math.max(1, el.clientWidth))); }}
       >
         {post.images.map((src, i) => (
-          <Link key={src + i} href={dest} className="relative aspect-[4/5] w-full shrink-0 snap-center bg-[#14301A]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5B82E]" aria-label={`Open ${post.store.name}`}>
+          <Link key={src + i} href={dest} className="relative aspect-[4/5] w-full shrink-0 snap-center bg-[#14301A]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5B82E]" aria-label={`Open ${post.store.name}`} onClick={onDoubleLike ? (e) => dt.tap(e, () => router.push(dest)) : undefined}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={src} alt={i === 0 ? `${post.store.name}: ${post.caption.slice(0, 80)}` : ""} loading={i === 0 ? "eager" : "lazy"} className="h-full w-full object-cover" />
             {i === 0 && <StickerLayer stickers={post.stickers} />}
@@ -148,6 +154,7 @@ function Images({ post, wrapClass }: { post: BrowsePostView; wrapClass?: string 
         ))}
       </div>
       )}
+      {!post.videoUrl && dt.heart}
       {post.product && (
         <Link href={dest} onClick={() => trackBrowse({ kind: "SHOP_TAP", postId: post.id })} className={`absolute ${post.videoUrl ? "top-3" : "bottom-4"} left-6 flex max-w-[78%] items-center gap-2 rounded-full bg-[#F5B82E] py-2 pl-3 pr-4 text-[#14301A] shadow-lg ring-1 ring-black/10 hover:bg-[#ffc94d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}>
           <ShoppingBag className="h-4 w-4 shrink-0" aria-hidden />
@@ -239,7 +246,7 @@ function PostModal({ post, onClose, onCount, onLike, onSave, onShare, liking }: 
       <div className={`flex h-[88svh] w-full flex-col overflow-hidden rounded-t-3xl bg-[#FBF6E9] text-[#14301A] lg:h-[min(86svh,760px)] lg:rounded-3xl ${hasMedia ? "lg:max-w-[1000px] lg:flex-row" : "lg:max-w-[460px]"}`}>
         {hasMedia && (
           <div className="hidden min-w-0 flex-1 items-center justify-center bg-black lg:flex">
-            <div className="w-full"><Images post={post} wrapClass="relative mx-auto w-[min(100%,calc(min(86svh,760px)*0.8))] px-0" /></div>
+            <div className="w-full"><Images post={post} onDoubleLike={() => { if (!post.liked) onLike(); }} wrapClass="relative mx-auto w-[min(100%,calc(min(86svh,760px)*0.8))] px-0" /></div>
           </div>
         )}
         <div className="flex min-h-0 w-full flex-col lg:w-[380px] lg:shrink-0 lg:border-l lg:border-[#14301A]/10">
@@ -397,7 +404,7 @@ export function PostCard({ post: initial }: { post: BrowsePostView }) {
         <ReportMenu postId={post.id} label="Report this post" />
       </header>
 
-      <Images post={post} />
+      <Images post={post} onDoubleLike={() => { if (!post.liked) like(); }} />
 
       <div className="flex items-center gap-0.5 px-2 pt-1.5">
         <button onClick={like} disabled={pending} aria-pressed={post.liked} aria-label={post.liked ? "Unlike" : "Like"} className={iconBtn}>

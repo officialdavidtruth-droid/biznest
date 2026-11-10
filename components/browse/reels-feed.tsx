@@ -10,6 +10,7 @@ import { compactCount, isOfficialSlug, postPath, storeBrowsePath } from "@/lib/b
 import { nativeShare } from "@/lib/native";
 import { playableVideoUrl } from "@/lib/browse-video";
 import { storeHref } from "@/lib/utils/store-href";
+import { useDoubleTapLike } from "@/components/browse/double-tap-like";
 import { StoreBadges } from "@/components/browse/store-badges";
 import { trackBrowse, trackImpression } from "@/components/browse/browse-track";
 
@@ -40,6 +41,7 @@ function Reel({ initial, muted, onMute }: { initial: BrowsePostView; muted: bool
   }, [initial.id]);
 
   function toggle() { const v = vid.current; if (!v) return; if (v.paused) { void v.play().catch(() => {}); setPaused(false); } else { v.pause(); setPaused(true); } }
+  const dt = useDoubleTapLike(() => { if (!post.liked) void like(); });
   async function like() {
     const prev = post;
     setPost({ ...post, liked: !post.liked, likeCount: Math.max(0, post.likeCount + (post.liked ? -1 : 1)) });
@@ -67,8 +69,9 @@ function Reel({ initial, muted, onMute }: { initial: BrowsePostView; muted: bool
     <article ref={box} className="relative h-[100svh] w-full snap-start snap-always overflow-hidden bg-black" aria-label={`Video from ${post.store.name}`}>
       <video
         ref={vid} src={playableVideoUrl(post.videoUrl!)} poster={post.images[0]} muted={muted} loop playsInline preload="metadata"
-        onClick={toggle} className="h-full w-full cursor-pointer object-contain" aria-label={`Video from ${post.store.name}. Tap to ${paused ? "play" : "pause"}.`}
+        onClick={(e) => dt.tap(e, toggle)} className="h-full w-full cursor-pointer object-contain" aria-label={`Video from ${post.store.name}. Tap to ${paused ? "play" : "pause"}.`}
       />
+      {dt.heart}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/80 to-transparent" aria-hidden />
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-white">
         <div className="min-w-0 flex-1 pb-1">
