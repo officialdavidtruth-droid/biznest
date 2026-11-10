@@ -2,6 +2,36 @@
 
 import { useState } from "react";
 
+// Vercel rejects request bodies over ~4.5MB, and phone photos of IDs are often 4-12MB. So photos are
+// shrunk in the browser first (IDs stay perfectly readable at 2200px) and only then sent.
+const SEND_LIMIT = 4 * 1024 * 1024;
+
+async function shrinkImage(file: File): Promise<File> {
+  if (!file.type.startsWith("image/") || file.size <= 1.5 * 1024 * 1024) return file;
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    let best: Blob | null = null;
+    for (const [maxSide, quality] of [[2200, 0.85], [1800, 0.8], [1400, 0.75], [1100, 0.7]] as const) {
+      const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return file;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      best = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", quality));
+      if (best && best.size <= SEND_LIMIT) break;
+    }
+    bitmap.close?.();
+    if (!best || best.size >= file.size) return file;
+    return new File([best], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+  } catch {
+    return file; // e.g. a browser that can't decode it: send as is and let the server decide
+  }
+}
+
 export function FileUploadField({
   label,
   value,
@@ -29,6 +59,10 @@ export function FileUploadField({
     setIsUploading(true);
     setUploadError(null);
     try {
+      file = await shrinkImage(file);
+      if (file.size > SEND_LIMIT) {
+        throw new Error(file.type === "application/pdf" ? "This PDF is too big (4MB max). Take a clear photo of the document instead, or compress the PDF." : "This file is too big. Try a smaller photo.");
+      }
       const formData = new FormData();
       formData.append("file", file);
       if (privateDoc) formData.append("purpose", "kyc");
@@ -36,7 +70,8 @@ export function FileUploadField({
       const body = await res.json().catch(() => null);
 
       if (!res.ok) {
-        throw new Error(body?.error ?? `Upload failed (${res.status})`);
+        if (res.status === 413) throw new Error("That file is too big. Try a smaller photo or a PDF under 4MB.");
+        throw new Error(body?.error ?? `Upload failed (${res.status}). Check your connection and try again.`);
       }
       onChange(body.url);
     } catch (err) {

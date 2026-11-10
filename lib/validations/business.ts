@@ -4,11 +4,11 @@ import { getSubcategoryConfig, isValidSubcategory } from "@/lib/business-subcate
 import { isComingSoonBusinessType } from "@/lib/business-type-status";
 
 export const guarantorSchema = z.object({
-  fullName: z.string().min(2),
-  phone: z.string().min(7),
-  email: z.string().email(),
-  governmentIdUrl: z.string().url("Government ID upload is required"),
-  relationship: z.string().min(2),
+  fullName: z.string().min(2, "Enter the guarantor's full name"),
+  phone: z.string().min(7, "Enter the guarantor's phone number"),
+  email: z.string().email("Enter a valid email address"),
+  governmentIdUrl: z.string().url("Upload the guarantor's government ID"),
+  relationship: z.string().min(2, "Say how you know them (e.g. friend, family)"),
 });
 
 // Base fields shared by both registration paths. Kept as a plain object
