@@ -1,6 +1,7 @@
 "use client";
 
 import { DEFAULT_PAGE_SKIN, LAYOUT_CLASSES, PAD, GAP, BTN_RADIUS, surfaceStyle, summaryStyle } from "@/lib/storefront/page-skin";
+import { PageHeading } from "@/components/storefront/page-heading";
 import { ApproxPrice } from "@/components/storefront/approx-price";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -34,6 +35,10 @@ export function CartClient({
   const panel = surfaceStyle(skin, palette.ink, palette.card, palette.surface, palette.accent);
   const sum = summaryStyle(skin, palette);
   const SUM_FG = sum.fg;
+  const ITEMS_WRAP = skin.items === "cards" ? "grid gap-4 sm:grid-cols-2" : skin.items === "ruled" ? "flex flex-col" : "flex flex-col gap-4";
+  const ITEM_STYLE: React.CSSProperties = skin.items === "ruled" ? { borderBottom: `1px solid ${INK}1f`, background: "transparent" } : panel;
+  const ITEM_CLS = skin.items === "cards" ? "flex flex-col gap-4 p-4" : skin.items === "compact" ? "flex gap-3 p-3" : skin.items === "ruled" ? "flex gap-5 py-5" : "flex gap-4 p-4 transition-shadow hover:shadow-md sm:p-5";
+  const IMG_CLS = skin.items === "cards" ? "h-44 w-full" : skin.items === "compact" ? "h-16 w-16" : skin.items === "ruled" ? "h-28 w-24" : "h-24 w-24 sm:h-32 sm:w-32";
   const BTN_BG = skin.summary === "accent" ? palette.onAccent : ACCENT;
   const BTN_FG = skin.summary === "accent" ? ACCENT : palette.onAccent;
   const { items, storeSlug, setQuantity, removeItem, clear, subtotal } = useCart();
@@ -75,26 +80,7 @@ export function CartClient({
       {topSlot}
 
       <div style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-32 pt-10 lg:pb-14">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 style={{ fontFamily: palette.headlineFont }} className="text-3xl font-extrabold sm:text-4xl">Your Cart</h1>
-            <p style={{ opacity: 0.65 }} className="mt-1 text-sm">{itemCount} item{itemCount !== 1 ? "s" : ""} ready to order</p>
-          </div>
-          <ol className="flex items-center gap-2 text-xs font-semibold" aria-label="Checkout progress">
-            {steps.map((s, i) => (
-              <li key={s.label} className="flex items-center gap-2">
-                <span
-                  style={s.active ? { background: ACCENT, color: palette.onAccent } : { background: `${INK}12`, color: INK, opacity: 0.6 }}
-                  className="flex h-6 w-6 items-center justify-center rounded-full text-[11px]"
-                >
-                  {i + 1}
-                </span>
-                <span style={{ opacity: s.active ? 1 : 0.55 }}>{s.label}</span>
-                {i < steps.length - 1 && <span style={{ background: `${INK}22` }} className="mx-1 h-px w-6" />}
-              </li>
-            ))}
-          </ol>
-        </div>
+        <PageHeading palette={palette} title="Your Cart" current={0} subtitle={`${itemCount} item${itemCount !== 1 ? "s" : ""} ready to order`} />
 
         {cartItems.length === 0 ? (
           <div style={{ background: CARD, borderRadius: "1.25rem", boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="flex flex-col items-center p-14 text-center">
@@ -115,13 +101,14 @@ export function CartClient({
           <div className={`${GRID} ${GAP[skin.density]}`}>
             {/* Items */}
             <div className={`flex flex-col gap-4 ${LIST_COL}`}>
+              <div className={ITEMS_WRAP}>
               {cartItems.map((item) => (
                 <div
                   key={`${item.productId}:${item.variantId ?? "base"}`}
-                  style={panel}
-                  className="flex gap-4 p-4 transition-shadow hover:shadow-md sm:p-5"
+                  style={ITEM_STYLE}
+                  className={ITEM_CLS}
                 >
-                  <div style={{ background: SURFACE, borderRadius: "0.75rem" }} className="h-24 w-24 flex-shrink-0 overflow-hidden sm:h-32 sm:w-32">
+                  <div style={{ background: SURFACE, borderRadius: skin.radius === "sharp" ? 0 : "0.75rem" }} className={`${IMG_CLS} flex-shrink-0 overflow-hidden`}>
                     {item.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
@@ -171,6 +158,7 @@ export function CartClient({
                   </div>
                 </div>
               ))}
+              </div>
 
               <div className="flex items-center justify-between pt-1 text-sm">
                 <Link href={`/store/${slug}`} style={{ color: ACCENT }} className="flex items-center gap-1.5 font-semibold no-underline hover:opacity-80">

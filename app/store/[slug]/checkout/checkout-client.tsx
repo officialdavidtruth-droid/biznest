@@ -11,7 +11,8 @@ import { getCheckoutWalletBalance } from "@/lib/actions/customer-wallet";
 import { DeliveryZoneOptions } from "@/components/checkout/delivery-zone-options";
 import { toast } from "sonner";
 import { openKorapayInline } from "@/lib/checkout/korapay-inline";
-import { DEFAULT_PAGE_SKIN, LAYOUT_CLASSES, PAD, GAP, RADIUS_PX, BTN_RADIUS, surfaceStyle, summaryStyle } from "@/lib/storefront/page-skin";
+import { fieldStyle, DEFAULT_PAGE_SKIN, LAYOUT_CLASSES, PAD, GAP, RADIUS_PX, BTN_RADIUS, surfaceStyle, summaryStyle } from "@/lib/storefront/page-skin";
+import { PageHeading } from "@/components/storefront/page-heading";
 import { ShieldCheck, Lock, Truck, ChevronLeft, CreditCard, Wallet } from "lucide-react";
 import { formatNumber } from "@/lib/i18n/locale";
 import { grossUpForGatewayFee, payoutTransferFee, type FeeConfig } from "@/lib/payments/customer-fee";
@@ -55,7 +56,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
   const BTN_BG = skin.summary === "accent" ? palette.onAccent : ACCENT;
   const BTN_FG = skin.summary === "accent" ? ACCENT : palette.onAccent;
   const PADC = PAD[skin.density];
-  const inputStyle = { color: INK };
+  const inputStyle = fieldStyle(skin, INK, SURFACE, CARD);
   const { items, storeSlug, subtotal } = useCart();
   const cartItems = storeSlug === slug ? items : [];
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -201,24 +202,16 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
   return (
     <div style={{ background: SURFACE, color: INK, minHeight: "100vh", fontFamily: palette.font }} className="storefront-root">
       <div style={{ maxWidth: 1280 }} className="mx-auto px-5 pb-28 pt-10 sm:px-6 lg:py-14">
-        {/* ---------- HEADER + STEP INDICATOR ---------- */}
-        <div className="mb-8">
-          <Link href={`/store/${slug}/cart`} style={{ color: INK, opacity: 0.6 }} className="mb-4 inline-flex items-center gap-1 text-xs font-semibold no-underline hover:opacity-100">
-            <ChevronLeft className="h-3.5 w-3.5" /> Back to cart
-          </Link>
-          <div style={{ borderBottom: `1px solid ${INK}1a` }} className="flex items-baseline justify-between pb-4">
-            <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-3xl font-extrabold sm:text-4xl">Checkout</h1>
-            <ol className="hidden items-center gap-2 text-xs font-semibold sm:flex" aria-label="Checkout steps">
-              {([["Cart", true], ["Details", true], ["Payment", false]] as const).map(([label, done], i) => (
-                <li key={label} className="flex items-center gap-2" style={{ opacity: done ? 1 : 0.55 }}>
-                  <span style={{ background: done ? ACCENT : "transparent", color: done ? palette.onAccent : INK, border: `1.5px solid ${done ? ACCENT : `${INK}55`}` }} className="flex h-5 w-5 items-center justify-center rounded-full text-[10px]">{i + 1}</span>
-                  <span>{label}</span>
-                  {i < 2 && <span style={{ background: `${INK}33` }} className="mx-1 h-px w-6" />}
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
+        <PageHeading
+          palette={palette}
+          title="Checkout"
+          current={1}
+          before={
+            <Link href={`/store/${slug}/cart`} style={{ color: INK, opacity: 0.6 }} className="mb-4 inline-flex items-center gap-1 text-xs font-semibold no-underline hover:opacity-100">
+              <ChevronLeft className="h-3.5 w-3.5" /> Back to cart
+            </Link>
+          }
+        />
 
         <div className={`${GRID} ${GAP[skin.density]}`}>
           {/* ---------- LEFT: FORM ---------- */}

@@ -1,3 +1,4 @@
+import { PageHeading } from "@/components/storefront/page-heading";
 import Link from "next/link";
 import { DEFAULT_PAGE_SKIN, surfaceStyle } from "@/lib/storefront/page-skin";
 import type { StorePalette } from "@/lib/store-palette-defaults";
@@ -13,16 +14,12 @@ export function PayView({ palette, slug, store, label, code, status, reference, 
   const card = surfaceStyle(skin, palette.ink, palette.card, palette.surface, palette.accent);
   const wide = skin.layout === "wide-form" || skin.layout === "summary-left" || skin.layout === "split-bleed";
   const narrow = skin.layout === "narrow-centre" || skin.layout === "single";
-  const centred = skin.layout === "summary-top" || skin.layout === "narrow-centre";
   const padY = skin.density === "compact" ? "py-8" : skin.density === "airy" ? "py-20" : "py-14";
 
   return (
     <div style={{ background: palette.surface, color: palette.ink, minHeight: "100vh", fontFamily: palette.font }} className="storefront-root">
-      <main style={{ maxWidth: wide ? 860 : narrow ? 560 : 720 }} className={`mx-auto px-6 ${padY} ${centred ? "text-center" : ""}`}>
-        <h1 style={{ fontFamily: palette.headlineFont }} className="text-3xl font-extrabold">Complete your payment</h1>
-        <p className="mt-2 mb-8 text-sm" style={{ opacity: 0.7 }}>
-          {label} #{code} · {store.name}
-        </p>
+      <main style={{ maxWidth: wide ? 860 : narrow ? 560 : 720 }} className={`mx-auto px-6 ${padY}`}>
+        <PageHeading palette={palette} title="Complete your payment" current={2} subtitle={`${label} #${code} · ${store.name}`} />
 
         {status === "SUCCESSFUL" ? (
           <div className="p-6 text-sm" style={card}>
