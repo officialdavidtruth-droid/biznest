@@ -153,6 +153,62 @@ const NICHE_SAMPLES: Record<string, Sample[]> = {
     { name: "Chin Chin Dessert Bowl", description: "Crunchy, sweet and shareable.", price: 3500 },
     { name: "Zobo Fresh Drink", description: "Hibiscus, ginger and pineapple.", price: 1800 },
   ],
+  Salon: [
+    { name: "Silk Press & Style", description: "Smooth, shiny finish with heat protection.", price: 25000 },
+    { name: "Box Braids", description: "Neat, lightweight braids, 4-5 hours.", price: 45000 },
+    { name: "Gel Manicure", description: "Long-lasting colour, nail art available.", price: 12000 },
+    { name: "Deep Conditioning Treatment", description: "Restores moisture and shine.", price: 15000 },
+    { name: "Bridal Makeup", description: "Trial and wedding day glam.", price: 85000 },
+    { name: "Relaxing Facial", description: "Cleanse, massage and mask.", price: 22000 },
+  ],
+  Cleaning: [
+    { name: "Home Deep Clean", description: "Every room, top to bottom.", price: 45000 },
+    { name: "Office Cleaning (weekly)", description: "Evening visits, supplies included.", price: 85000 },
+    { name: "Sofa & Carpet Shampoo", description: "Stain removal and freshening.", price: 28000 },
+    { name: "Post-Construction Clean", description: "Dust, paint and debris cleared.", price: 120000 },
+    { name: "Move-In / Move-Out Clean", description: "Leave it spotless.", price: 60000 },
+    { name: "Fumigation", description: "Safe pest control, 3-month cover.", price: 35000 },
+  ],
+  "Professional Services": [
+    { name: "Business Strategy Session", description: "90 minutes with a senior advisor.", price: 75000 },
+    { name: "Company Registration", description: "CAC filing handled end to end.", price: 55000 },
+    { name: "Tax & Accounting Review", description: "Quarterly books, filed on time.", price: 120000 },
+    { name: "Contract Drafting", description: "Clear agreements, two revisions.", price: 90000 },
+    { name: "Brand Identity Package", description: "Logo, colours and guidelines.", price: 150000 },
+    { name: "Monthly Retainer", description: "Ongoing support, priority replies.", price: 250000 },
+  ],
+  "Real Estate": [
+    { name: "3-Bedroom Duplex, Lekki", description: "Gated estate, 24/7 power.", price: 85000000 },
+    { name: "2-Bedroom Apartment, Wuse 2", description: "Serviced, close to shops.", price: 45000000 },
+    { name: "Land, 600sqm, Abuja", description: "Verified documents, ready to build.", price: 28000000 },
+    { name: "Studio Shortlet", description: "Fully furnished, per night.", price: 65000 },
+    { name: "4-Bedroom Detached House", description: "Boys' quarters and garden.", price: 120000000 },
+    { name: "Office Space, Maitama", description: "Open plan, 40 seats.", price: 9500000 },
+  ],
+  "Travel & Tourism": [
+    { name: "Dubai 5-Day Escape", description: "Flights, hotel and city tour.", price: 980000 },
+    { name: "Zanzibar Beach Week", description: "All-inclusive resort stay.", price: 1450000 },
+    { name: "Cape Town Explorer", description: "Table Mountain and wine tour.", price: 1250000 },
+    { name: "Visa Assistance", description: "Documents checked, appointment booked.", price: 85000 },
+    { name: "Obudu Weekend Getaway", description: "Cable car, lodge and meals.", price: 320000 },
+    { name: "Airport Pickup", description: "Meet and greet, private car.", price: 40000 },
+  ],
+  "Health & Fitness": [
+    { name: "Monthly Gym Membership", description: "Open 5am to 10pm.", price: 25000 },
+    { name: "Personal Training (8 sessions)", description: "A plan built around you.", price: 120000 },
+    { name: "HIIT Class Pass", description: "10 high-energy classes.", price: 40000 },
+    { name: "Yoga & Stretch", description: "Slow, restoring group classes.", price: 18000 },
+    { name: "Nutrition Coaching", description: "Meal plan and weekly check-ins.", price: 55000 },
+    { name: "Recovery Massage", description: "60 minutes, deep tissue.", price: 30000 },
+  ],
+  Agency: [
+    { name: "Brand Strategy Sprint", description: "Two weeks to a clear positioning.", price: 450000 },
+    { name: "Website Design & Build", description: "Fast, mobile-first, easy to edit.", price: 650000 },
+    { name: "Social Media Management", description: "Content, posting and reporting.", price: 180000 },
+    { name: "Video Ad Production", description: "Script, shoot and edit.", price: 350000 },
+    { name: "SEO Growth Plan", description: "Audit, fixes and monthly reporting.", price: 220000 },
+    { name: "Launch Campaign", description: "Everything for a product launch.", price: 800000 },
+  ],
   Retail: [
     { name: "Everyday Canvas Tote", description: "Sturdy, washable, fits a laptop.", price: 14500 },
     { name: "Wireless Earbuds", description: "Clear sound, 24-hour case.", price: 32000 },
@@ -163,6 +219,7 @@ const NICHE_SAMPLES: Record<string, Sample[]> = {
   ],
 };
 // Templates whose own name says what they sell preview that niche instead of the broad category they are filed under.
+const SERVICE_NICHES = new Set(["Salon","Cleaning","Professional Services","Agency","Health & Fitness","Beauty"]);
 const PREVIEW_NICHE: Record<string, string> = { "Fresh & Co.": "Food & Groceries", Horizon: "Fashion", "ShopEase General Store": "Retail", "ShopNova Marketplace": "Retail" };
 const SAMPLE_REVIEWS = [
   { id: "r1", rating: 5, comment: "Ordered on Monday, delivered Tuesday. Exactly what the photos showed, and the packaging was lovely.", author: { name: "Amaka O." } },
@@ -170,7 +227,7 @@ const SAMPLE_REVIEWS = [
   { id: "r3", rating: 4, comment: "Great quality for the price. Support replied on WhatsApp within minutes.", author: { name: "Zainab M." } },
 ];
 
-export default async function TemplatePreviewPage({ params }: { params: Promise<{ name:string }> }) {
+export default async function TemplatePreviewPage({ params, searchParams }: { params: Promise<{ name:string }>; searchParams?: Promise<{ niche?: string }> }) {
   let name: string;
   try { name = decodeURIComponent((await params).name); } catch { notFound(); }
   const definition = getTemplateDefinition(name!);
@@ -186,15 +243,17 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
     slug: "__biznest-template-preview",
     name: definition.name.split(" — ")[0],
     bannerUrl: PREVIEW_HERO_PHOTOS[definition.name] ?? nicheSamplePhoto(definition.category, photoOffset, 1800) ?? nicheHeroPhoto(definition.category),
-    business: { description: tpl.sub || store.business.description },
+    business: { description: tpl.sub || store.business.description, category: niche },
   };
-  const niche = PREVIEW_NICHE[definition.name] ?? definition.category;
+  // ?niche=Salon previews the template for another business type (used to check how each template reads in each niche).
+  const requested = (await searchParams)?.niche;
+  const niche = requested && (NICHE_SAMPLES[requested] || PREVIEW_MENU[requested]) ? requested : PREVIEW_NICHE[definition.name] ?? definition.category;
   const isFashion = niche === "Fashion";
   const samples = NICHE_SAMPLES[niche];
   const sampleItems = isFashion ? fashionItems(tpl, photoOffset) : items.map((it, i) => {
     const menu = PREVIEW_MENU[niche] ?? PREVIEW_MENU[definition.category];
     const sample = samples?.[i % samples.length];
-    return { ...it, ...(sample ?? {}), kind: "product" as const, type: "PRODUCT", image: nicheSamplePhoto(niche, i + photoOffset) ?? nicheSamplePhoto(definition.category, i + photoOffset) ?? it.image, ...(menu ? { categoryName: menu[i % menu.length] } : {}) };
+    return { ...it, ...(sample ?? {}), kind: (SERVICE_NICHES.has(niche) && i % 3 !== 2 ? "service" : "product") as "product" | "service", type: SERVICE_NICHES.has(niche) ? "SERVICE" : "PRODUCT", image: nicheSamplePhoto(niche, i + photoOffset) ?? nicheSamplePhoto(definition.category, i + photoOffset) ?? it.image, ...(menu ? { categoryName: menu[i % menu.length] } : {}) };
   });
   const p:any = { store: previewStore, slug:"__biznest-template-preview", catalogItems:sampleItems, items:sampleItems, navCategories:isFashion ? fashionCategories : categories, goodReviews:[], reviews:[], avgRating:null, completedOrders:0, trustScore:null, trustChecklist:null, social:{} };
   if (home.kind === "screenshot") return withPreviewMenu(niche, <SignatureScreenshotHome {...p} mode={home.mode} {...home.palette}/>);
