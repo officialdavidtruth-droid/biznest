@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BellRing, X } from "lucide-react";
-import { subscribeToPush, sendTestPush } from "@/lib/actions/push";
+import { subscribeToPush } from "@/lib/actions/push";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
@@ -62,24 +62,6 @@ export function PushSubscribePrompt() {
   const [visible, setVisible] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [granted, setGranted] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
-
-  async function handleTest() {
-    setTesting(true);
-    setTestResult(null);
-    try {
-      // Re-sync this device first so a stale or missing subscription is fixed before testing.
-      await subscribeAndSave();
-      const res = await sendTestPush();
-      setTestResult(res.success ? { ok: true, text: res.data.message } : { ok: false, text: res.error });
-    } catch (err) {
-      setTestResult({ ok: false, text: err instanceof Error ? err.message : "Could not send the test." });
-    } finally {
-      setTesting(false);
-    }
-  }
 
   useEffect(() => {
     if (!VAPID_PUBLIC_KEY) return;
@@ -90,7 +72,6 @@ export function PushSubscribePrompt() {
     // Already allowed on this device: make sure it is really subscribed and saved against this
     // account (covers a new login, cleared data, or an earlier save that failed). No prompt needed.
     if (Notification.permission === "granted") {
-      setGranted(true);
       if (!sessionStorage.getItem("bn-push-synced")) {
         sessionStorage.setItem("bn-push-synced", "1");
         subscribeAndSave().catch(() => sessionStorage.removeItem("bn-push-synced"));
@@ -121,7 +102,6 @@ export function PushSubscribePrompt() {
       // subscribeAndSave times out instead of hanging if the service worker never becomes ready,
       // so the button always recovers and can be pressed again.
       await subscribeAndSave();
-      setGranted(true);
     } catch {
       // Swallow and just let finally reset the button -- there's no
       // separate error UI here yet, but "stuck forever" is worse than
@@ -135,26 +115,6 @@ export function PushSubscribePrompt() {
   function handleDismiss() {
     sessionStorage.setItem("bn-push-prompt-dismissed", "1");
     setVisible(false);
-  }
-
-  if (!visible && granted) {
-    return (
-      <div className="mx-3 mt-3 rounded-xl border p-3 sm:mx-0 sm:mt-0 sm:mb-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">Notifications are allowed on this device.</p>
-          <button
-            onClick={handleTest}
-            disabled={testing}
-            className="shrink-0 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
-          >
-            {testing ? "Sending…" : "Send test"}
-          </button>
-        </div>
-        {testResult && (
-          <p className={`mt-2 text-xs ${testResult.ok ? "text-green-600" : "text-destructive"}`}>{testResult.text}</p>
-        )}
-      </div>
-    );
   }
 
   if (!visible) return null;
