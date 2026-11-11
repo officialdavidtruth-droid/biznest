@@ -22,7 +22,7 @@ export default async function TemplatesPage() {
 
   return (
     <div
-      className={`${display.variable} ${body.variable} min-h-screen`}
+      className={`bn-light ${display.variable} ${body.variable} min-h-screen`}
       style={{ background: "var(--bn-hero-gradient)", color: "var(--bn-ivory)", fontFamily: "var(--font-body)" }}
     >
       <header className="flex items-center justify-between px-6 py-5 sm:px-10">
@@ -34,7 +34,7 @@ export default async function TemplatesPage() {
           <Link
             href="/register"
             className="rounded-full px-4 py-2 text-sm font-medium transition hover:brightness-110"
-            style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
+            style={{ background: "var(--bn-accent-gradient)", color: "#ffffff" }}
           >
             Open your store
           </Link>
@@ -72,7 +72,7 @@ export default async function TemplatesPage() {
                   <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700 }} className="text-lg">
                     {templateDisplayName(t.name)}
                   </h2>
-                  <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}>
+                  <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: "var(--bn-accent-gradient)", color: "#ffffff" }}>
                     {TIER_LABEL[t.tierRank] ?? "Free"}
                   </span>
                 </div>
@@ -83,7 +83,7 @@ export default async function TemplatesPage() {
                     href={`/template-preview/${encodeURIComponent(t.name)}`}
                     target="_blank"
                     className="flex-1 rounded-full px-4 py-2.5 text-center text-sm font-semibold transition hover:brightness-110"
-                    style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
+                    style={{ background: "var(--bn-accent-gradient)", color: "#ffffff" }}
                   >
                     View live demo →
                   </Link>

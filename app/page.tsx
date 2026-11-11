@@ -30,9 +30,9 @@ const FOCUS =
 
 // Filled CTA: light-green fill + dark text. The old dark-green gradient was 1.6-2.2:1 against
 // the page background, so the primary button barely separated from the hero.
-const CTA_FILL = { background: "var(--bn-accent-text)", color: "var(--bn-ink)" } as const;
+const CTA_FILL = { background: "var(--bn-accent-text)", color: "#ffffff" } as const;
 // Outlined CTA: the old --bn-ink-line border was 1.96:1 (WCAG 1.4.11 wants 3:1).
-const CTA_OUTLINE = { border: "1px solid rgba(255,255,255,0.45)", color: "var(--bn-ivory)" } as const;
+const CTA_OUTLINE = { border: "1px solid var(--bn-ink-line)", background: "var(--bn-ink-raised)", color: "var(--bn-ivory)" } as const;
 
 /** Splits a headline into words that rise in one after another (see landing-motion.css). */
 function Words({ text, from = 0, accent = false }: { text: string; from?: number; accent?: boolean }) {
@@ -204,7 +204,7 @@ export default async function HomePage() {
 
   return (
     <div
-      className={`${display.variable} ${body.variable} ${mono.variable} min-h-screen overflow-x-clip`}
+      className={`bn-light ${display.variable} ${body.variable} ${mono.variable} min-h-screen overflow-x-clip`}
       style={{ background: "var(--bn-hero-gradient)", color: "var(--bn-ivory)", fontFamily: "var(--font-body)" }}
     >
       <JsonLd
@@ -247,7 +247,7 @@ export default async function HomePage() {
       {/* Nav */}
       <header
         className="sticky top-0 z-30 flex items-center justify-between gap-4 px-6 py-4 backdrop-blur-md sm:px-10"
-        style={{ background: "rgba(10, 36, 11, 0.8)", borderBottom: "1px solid var(--bn-ink-line)" }}
+        style={{ background: "rgba(245, 250, 246, 0.85)", borderBottom: "1px solid var(--bn-ink-line)" }}
       >
         <Link
           href="/"
@@ -271,7 +271,7 @@ export default async function HomePage() {
           <details className="relative sm:hidden">
             <summary
               aria-label="Menu"
-              className={`flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-white/30 [&::-webkit-details-marker]:hidden ${FOCUS}`}
+              className={`flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-[color:var(--bn-ink-line)] [&::-webkit-details-marker]:hidden ${FOCUS}`}
             >
               <span aria-hidden className="text-base leading-none">☰</span>
             </summary>
@@ -279,15 +279,15 @@ export default async function HomePage() {
               className="absolute right-0 top-11 flex w-44 flex-col gap-1 rounded-2xl p-2 text-sm shadow-xl"
               style={{ background: "var(--bn-ink-raised)", border: "1px solid var(--bn-ink-line)" }}
             >
-              <Link href="/browse" className={`rounded-lg px-3 py-2 hover:bg-white/10 ${FOCUS}`}>Browse</Link>
-              <a href="#pricing" className={`rounded-lg px-3 py-2 hover:bg-white/10 ${FOCUS}`}>Pricing</a>
-              <Link href="/download" className={`rounded-lg px-3 py-2 hover:bg-white/10 ${FOCUS}`}>Get the app</Link>
+              <Link href="/browse" className={`rounded-lg px-3 py-2 hover:bg-black/5 ${FOCUS}`}>Browse</Link>
+              <a href="#pricing" className={`rounded-lg px-3 py-2 hover:bg-black/5 ${FOCUS}`}>Pricing</a>
+              <Link href="/download" className={`rounded-lg px-3 py-2 hover:bg-black/5 ${FOCUS}`}>Get the app</Link>
             </div>
           </details>
           {session?.user ? (
             <>
               <SignOutButton
-                className={`rounded-full border border-white/40 px-4 py-2 text-sm font-medium opacity-90 transition hover:opacity-100 ${FOCUS}`}
+                className={`rounded-full border border-[color:var(--bn-ink-line)] px-4 py-2 text-sm font-medium opacity-90 transition hover:opacity-100 ${FOCUS}`}
               />
               <Link
                 href={dashboardHref}
@@ -319,19 +319,19 @@ export default async function HomePage() {
       {/* Hero */}
       <section className="relative grid gap-10 overflow-hidden px-6 pb-16 pt-8 sm:px-10 lg:grid-cols-2 lg:items-center lg:gap-6 lg:pt-16"
         style={{ background: "var(--bn-hero-gradient)" }}>
-        <div className="bn-glow-orb hidden h-72 w-72 sm:block" style={{ background: "rgba(52,211,153,0.22)", top: "-6rem", left: "-6rem" }} />
-        <div className="bn-glow-orb h-64 w-64" style={{ background: "rgba(16,150,122,0.2)", top: "8rem", right: "-4rem" }} />
+        <div className="bn-glow-orb hidden h-72 w-72 sm:block" style={{ background: "rgba(52,211,153,0.35)", top: "-6rem", left: "-6rem" }} />
+        <div className="bn-glow-orb h-64 w-64" style={{ background: "rgba(99,150,240,0.25)", top: "8rem", right: "-4rem" }} />
         <NestGraphic />
 
         <div className="relative z-10">
           <p
-            className="mb-4 text-xs uppercase tracking-[0.2em]"
-            style={{ color: "var(--bn-accent-text)", fontFamily: "var(--font-mono)" }}
+            className="mb-5 inline-block rounded-full px-4 py-1.5 text-sm font-medium"
+            style={{ color: "var(--bn-accent-text)", background: "var(--bn-tint-mint)" }}
           >
-            One marketplace for <RotatingWord words={CATEGORIES.slice(0, 6).map((c) => c.toLowerCase())} />
+            Online stores for <RotatingWord words={CATEGORIES.slice(0, 6).map((c) => c.toLowerCase())} />
           </p>
           <h1
-            className="text-4xl leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl"
+            className="text-4xl leading-[1.05] tracking-tight sm:text-5xl lg:text-7xl"
             style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}
           >
             <span className="block"><Words text="Your business belongs" /></span>
@@ -368,7 +368,7 @@ export default async function HomePage() {
                 </Link>
                 <Link
                   href="/login"
-                  className={`rounded-full px-6 py-3 text-sm font-medium transition hover:bg-white/10 ${FOCUS}`}
+                  className={`rounded-full px-6 py-3 text-sm font-medium transition hover:bg-black/5 ${FOCUS}`}
                   style={CTA_OUTLINE}
                 >
                   I already have a store
@@ -517,7 +517,7 @@ export default async function HomePage() {
                 className="relative rounded-2xl p-6 transition hover:-translate-y-1"
                 style={{
                   background: featured ? "var(--bn-accent-gradient)" : "var(--bn-ink-raised)",
-                  color: "var(--bn-ivory)",
+                  color: featured ? "#ffffff" : "var(--bn-ivory)",
                   border: featured ? "none" : "1px solid var(--bn-ink-line)",
                 }}
               >
@@ -542,8 +542,8 @@ export default async function HomePage() {
                   href={session?.user ? dashboardHref : "/register"}
                   className="mt-6 block rounded-full py-2.5 text-center text-sm font-medium transition hover:brightness-110"
                   style={{
-                    background: featured ? "var(--bn-ink)" : "var(--bn-accent-gradient)",
-                    color: "var(--bn-ivory)",
+                    background: featured ? "#ffffff" : "var(--bn-accent-gradient)",
+                    color: featured ? "var(--bn-accent-text)" : "#ffffff",
                   }}
                 >
                   Get started
@@ -584,7 +584,7 @@ export default async function HomePage() {
 
       {/* Final CTA */}
       <section className="relative overflow-hidden px-6 py-20 text-center sm:px-10 lg:py-28" style={{ background: "var(--bn-hero-gradient)" }}>
-        <div className="bn-glow-orb h-80 w-80" style={{ background: "rgba(52,211,153,0.18)", bottom: "-8rem", left: "50%", transform: "translateX(-50%)" }} />
+        <div className="bn-glow-orb h-80 w-80" style={{ background: "rgba(52,211,153,0.3)", bottom: "-8rem", left: "50%", transform: "translateX(-50%)" }} />
         <div className="relative z-10">
           <h2
             className="mx-auto max-w-xl text-3xl sm:text-4xl"
@@ -599,7 +599,7 @@ export default async function HomePage() {
             <Link
               href="/register"
               className="inline-block rounded-full px-8 py-3.5 text-sm font-medium transition hover:brightness-110"
-              style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
+              style={{ background: "var(--bn-accent-gradient)", color: "#ffffff" }}
             >
               Open your store
             </Link>

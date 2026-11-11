@@ -141,6 +141,29 @@
   --bn-accent-gradient: linear-gradient(135deg, #0f6410 0%, #0b4d0c 100%);
 }
 
+/* Light public theme. Re-points the same --bn-* tokens the marketing pages already use, so the landing page,
+   templates gallery and sign-in screens switch together; dashboards and storefronts never get this class. */
+.bn-light {
+  --bn-ink: #f5faf6;
+  --bn-ink-raised: #ffffff;
+  --bn-ink-line: #cfe0d4;
+  --bn-ivory: #0b2415;
+  --bn-mute: #4f655a;
+  --bn-accent-text: #0f6410;
+  --bn-jade: #0b4d0c;
+  --bn-tint-mint: #e2f5e7;
+  --bn-tint-sky: #e3eefc;
+  --bn-tint-peach: #ffe8da;
+  --bn-tint-lilac: #ebe5fa;
+  --bn-hero-gradient:
+    radial-gradient(70% 60% at 85% 0%, #e3eefc 0%, transparent 60%),
+    radial-gradient(60% 50% at 0% 10%, #e2f5e7 0%, transparent 60%),
+    #f5faf6;
+  --bn-accent-gradient: linear-gradient(135deg, #0f6410 0%, #0b4d0c 100%);
+  color-scheme: light;
+}
+.bn-light .bn-glow-orb { opacity: 0.35; }
+
 @keyframes bn-marquee-left {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
