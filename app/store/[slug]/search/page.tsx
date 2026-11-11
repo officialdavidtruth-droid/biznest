@@ -1,3 +1,4 @@
+import { pageSkinFor } from "@/lib/storefront/page-skin-resolve";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -31,6 +32,6 @@ export default async function SearchPage({ params, searchParams }: { params: Pro
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
 
   const chrome = usesTemplateChromeFor(store.template?.name, store.sectionOverrides, { businessCategory: store.business?.category, storeBusinessType: store.businessType });
-  const page = <CatalogExperience mode="search" externalChrome={chrome} store={catalogStoreInfo(store, slug)} design={catalogDesign(store, theme)} items={items} initialQuery={query} />;
+  const page = <CatalogExperience skin={pageSkinFor(store.template?.name)} mode="search" externalChrome={chrome} store={catalogStoreInfo(store, slug)} design={catalogDesign(store, theme)} items={items} initialQuery={query} />;
   return chrome ? <TemplateShell store={store} slug={slug} theme={theme}>{page}</TemplateShell> : page;
 }

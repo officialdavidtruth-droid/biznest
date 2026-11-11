@@ -15,10 +15,15 @@ export type PageSteps = "dots" | "bar" | "tabs" | "crumbs" | "none";
 export type PageItems = "rows" | "cards" | "compact" | "ruled";
 export type PageFields = "boxed" | "underline" | "filled" | "pill";
 export type PageWeight = "bold" | "light" | "medium";
+export type PageGallery = "left" | "right" | "stacked" | "thumbs-side" | "tall" | "wide";
+export type PageBuybox = "plain" | "card" | "sticky";
+export type PageGrid = "dense" | "regular" | "roomy" | "feature";
+export type PageCards = "plain" | "framed" | "lifted" | "tinted";
 
 export type PageSkin = {
   layout: PageLayout; header: PageHeader; steps: PageSteps; items: PageItems; fields: PageFields;
   surface: PageSurface; radius: PageRadius; density: PageDensity; summary: PageSummary; weight: PageWeight;
+  gallery: PageGallery; buybox: PageBuybox; grid: PageGrid; cards: PageCards;
 };
 
 const LAYOUTS = ["summary-right", "summary-left", "single", "summary-top", "wide-form", "narrow-centre", "split-bleed"] as const;
@@ -31,64 +36,68 @@ const RADII = ["soft", "sharp", "round", "pill"] as const;
 const DENSITIES = ["cozy", "compact", "airy"] as const;
 const SUMMARIES = ["dark", "paper", "accent", "outline"] as const;
 const WEIGHTS = ["bold", "light", "medium"] as const;
-export const SKIN_AXES = { layout: LAYOUTS, header: HEADERS, steps: STEPS, items: ITEMS, fields: FIELDS, surface: SURFACES, radius: RADII, density: DENSITIES, summary: SUMMARIES, weight: WEIGHTS } as const;
+const GALLERIES = ["left", "right", "stacked", "thumbs-side", "tall", "wide"] as const;
+const BUYBOXES = ["plain", "card", "sticky"] as const;
+const GRIDS = ["dense", "regular", "roomy", "feature"] as const;
+const CARDS = ["plain", "framed", "lifted", "tinted"] as const;
+export const SKIN_AXES = { layout: LAYOUTS, header: HEADERS, steps: STEPS, items: ITEMS, fields: FIELDS, surface: SURFACES, radius: RADII, density: DENSITIES, summary: SUMMARIES, weight: WEIGHTS, gallery: GALLERIES, buybox: BUYBOXES, grid: GRIDS, cards: CARDS } as const;
 
 /**
- * One recipe per template, generated so that any two templates differ in at least 6 of these 10 settings
+ * One recipe per template, generated so that any two templates differ in at least 8 of these 14 settings
  * (lib/__tests__/page-skin.test.ts enforces it). The table is frozen: adding a template must not restyle the
  * stores that already use another one, so a new name is appended here, never re-derived.
  */
 export const PAGE_SKIN_TABLE: Record<string, PageSkin> = {
-  "Arcova Architecture": { layout: "single", header: "line", steps: "crumbs", items: "ruled", fields: "filled", surface: "flat", radius: "pill", density: "compact", summary: "dark", weight: "light" },
-  "Aspire Resort": { layout: "narrow-centre", header: "band", steps: "dots", items: "compact", fields: "underline", surface: "tinted", radius: "round", density: "airy", summary: "outline", weight: "medium" },
-  "Atelier — Modern Fashion": { layout: "split-bleed", header: "plain", steps: "bar", items: "cards", fields: "boxed", surface: "shadow", radius: "soft", density: "cozy", summary: "accent", weight: "bold" },
-  "Bloom — Beauty Boutique": { layout: "summary-right", header: "split", steps: "none", items: "rows", fields: "pill", surface: "bordered", radius: "sharp", density: "cozy", summary: "paper", weight: "light" },
-  "Drive — Cars & Rentals": { layout: "summary-left", header: "centre", steps: "tabs", items: "rows", fields: "underline", surface: "outlined-heavy", radius: "pill", density: "compact", summary: "paper", weight: "bold" },
-  "Electra Blue Electronics": { layout: "wide-form", header: "plain", steps: "tabs", items: "ruled", fields: "pill", surface: "outlined-heavy", radius: "sharp", density: "airy", summary: "dark", weight: "medium" },
-  "Electra — Smart Commerce": { layout: "summary-top", header: "line", steps: "dots", items: "cards", fields: "filled", surface: "shadow", radius: "round", density: "airy", summary: "accent", weight: "light" },
-  "Emarket Furniture & Home": { layout: "summary-top", header: "split", steps: "crumbs", items: "compact", fields: "boxed", surface: "tinted", radius: "soft", density: "compact", summary: "outline", weight: "bold" },
-  "Ember — Restaurant": { layout: "single", header: "centre", steps: "bar", items: "ruled", fields: "pill", surface: "bordered", radius: "soft", density: "cozy", summary: "outline", weight: "medium" },
-  "Fabtex": { layout: "split-bleed", header: "band", steps: "none", items: "cards", fields: "underline", surface: "flat", radius: "round", density: "compact", summary: "paper", weight: "light" },
-  "Forge — Construction": { layout: "wide-form", header: "band", steps: "dots", items: "rows", fields: "filled", surface: "outlined-heavy", radius: "pill", density: "cozy", summary: "accent", weight: "medium" },
-  "Frame — Photography Studio": { layout: "narrow-centre", header: "centre", steps: "bar", items: "compact", fields: "boxed", surface: "bordered", radius: "sharp", density: "airy", summary: "dark", weight: "bold" },
-  "Fresh & Co.": { layout: "summary-left", header: "plain", steps: "none", items: "rows", fields: "pill", surface: "shadow", radius: "round", density: "compact", summary: "accent", weight: "medium" },
-  "Gala — Events & Celebrations": { layout: "summary-right", header: "line", steps: "tabs", items: "ruled", fields: "boxed", surface: "tinted", radius: "soft", density: "airy", summary: "paper", weight: "light" },
-  "Grand — Hotel & Hospitality": { layout: "split-bleed", header: "split", steps: "crumbs", items: "cards", fields: "filled", surface: "flat", radius: "sharp", density: "cozy", summary: "outline", weight: "medium" },
-  "Harvest — Grocery Market": { layout: "summary-top", header: "line", steps: "tabs", items: "compact", fields: "pill", surface: "flat", radius: "pill", density: "cozy", summary: "accent", weight: "bold" },
-  "Haven — Home & Furniture": { layout: "single", header: "split", steps: "none", items: "rows", fields: "filled", surface: "outlined-heavy", radius: "soft", density: "airy", summary: "dark", weight: "bold" },
-  "Heenzy Sneaker Co.": { layout: "wide-form", header: "centre", steps: "crumbs", items: "ruled", fields: "underline", surface: "shadow", radius: "round", density: "cozy", summary: "dark", weight: "bold" },
-  "Heenzy — Boutique Rose": { layout: "narrow-centre", header: "plain", steps: "dots", items: "cards", fields: "pill", surface: "tinted", radius: "sharp", density: "compact", summary: "paper", weight: "bold" },
-  "HomeVista": { layout: "summary-left", header: "line", steps: "bar", items: "compact", fields: "boxed", surface: "outlined-heavy", radius: "round", density: "cozy", summary: "outline", weight: "light" },
-  "Horizon": { layout: "summary-right", header: "plain", steps: "crumbs", items: "compact", fields: "underline", surface: "outlined-heavy", radius: "sharp", density: "compact", summary: "accent", weight: "light" },
-  "JuiceLife": { layout: "summary-right", header: "band", steps: "tabs", items: "ruled", fields: "filled", surface: "bordered", radius: "round", density: "compact", summary: "accent", weight: "bold" },
-  "Kinetic — Sneaker Drop": { layout: "summary-top", header: "split", steps: "bar", items: "rows", fields: "underline", surface: "bordered", radius: "pill", density: "airy", summary: "paper", weight: "medium" },
-  "Larita Luxury Hotel": { layout: "wide-form", header: "centre", steps: "none", items: "cards", fields: "filled", surface: "tinted", radius: "pill", density: "airy", summary: "outline", weight: "medium" },
-  "Maison — Hotel & Stay": { layout: "single", header: "band", steps: "none", items: "compact", fields: "boxed", surface: "flat", radius: "soft", density: "cozy", summary: "dark", weight: "light" },
-  "Marketplace Hub": { layout: "summary-left", header: "line", steps: "dots", items: "cards", fields: "underline", surface: "bordered", radius: "soft", density: "compact", summary: "dark", weight: "medium" },
-  "Muse — Salon & Beauty": { layout: "summary-top", header: "band", steps: "crumbs", items: "rows", fields: "pill", surface: "shadow", radius: "sharp", density: "airy", summary: "outline", weight: "light" },
-  "Nestoria Real Estate": { layout: "split-bleed", header: "plain", steps: "crumbs", items: "ruled", fields: "boxed", surface: "tinted", radius: "pill", density: "airy", summary: "accent", weight: "medium" },
-  "North — Creative Agency": { layout: "narrow-centre", header: "split", steps: "bar", items: "ruled", fields: "filled", surface: "flat", radius: "round", density: "cozy", summary: "paper", weight: "bold" },
-  "Nova Studio — Ivory Minimal": { layout: "narrow-centre", header: "centre", steps: "dots", items: "compact", fields: "boxed", surface: "shadow", radius: "pill", density: "compact", summary: "paper", weight: "light" },
-  "Nova Studio — Noir": { layout: "summary-right", header: "plain", steps: "tabs", items: "cards", fields: "pill", surface: "shadow", radius: "soft", density: "compact", summary: "dark", weight: "light" },
-  "Premium Marketplace": { layout: "single", header: "band", steps: "tabs", items: "compact", fields: "underline", surface: "bordered", radius: "sharp", density: "cozy", summary: "outline", weight: "bold" },
-  "Pulse — Fitness & Wellness": { layout: "wide-form", header: "centre", steps: "none", items: "rows", fields: "boxed", surface: "flat", radius: "round", density: "airy", summary: "accent", weight: "bold" },
-  "Pure — Cleaning Services": { layout: "summary-left", header: "split", steps: "bar", items: "ruled", fields: "filled", surface: "outlined-heavy", radius: "soft", density: "compact", summary: "accent", weight: "medium" },
-  "Rivora Fresh": { layout: "split-bleed", header: "line", steps: "bar", items: "rows", fields: "underline", surface: "tinted", radius: "pill", density: "cozy", summary: "dark", weight: "light" },
-  "ShopEase General Store": { layout: "summary-top", header: "band", steps: "dots", items: "ruled", fields: "pill", surface: "shadow", radius: "round", density: "cozy", summary: "paper", weight: "medium" },
-  "ShopNova Marketplace": { layout: "narrow-centre", header: "split", steps: "tabs", items: "cards", fields: "boxed", surface: "outlined-heavy", radius: "pill", density: "airy", summary: "outline", weight: "bold" },
-  "Skyview Hotels & Resorts": { layout: "wide-form", header: "centre", steps: "crumbs", items: "rows", fields: "filled", surface: "bordered", radius: "sharp", density: "compact", summary: "dark", weight: "medium" },
-  "Talent — Recruitment & HR": { layout: "summary-left", header: "plain", steps: "bar", items: "compact", fields: "filled", surface: "flat", radius: "soft", density: "airy", summary: "paper", weight: "light" },
-  "TechNova Mobile Store": { layout: "split-bleed", header: "line", steps: "none", items: "cards", fields: "pill", surface: "outlined-heavy", radius: "soft", density: "compact", summary: "outline", weight: "bold" },
-  "TechVerse Gadgets": { layout: "single", header: "centre", steps: "tabs", items: "cards", fields: "underline", surface: "tinted", radius: "sharp", density: "airy", summary: "accent", weight: "light" },
-  "Transit — Logistics & Delivery": { layout: "narrow-centre", header: "plain", steps: "dots", items: "rows", fields: "underline", surface: "shadow", radius: "sharp", density: "cozy", summary: "dark", weight: "medium" },
-  "Violet": { layout: "summary-right", header: "line", steps: "dots", items: "ruled", fields: "pill", surface: "bordered", radius: "sharp", density: "airy", summary: "outline", weight: "bold" },
-  "Violet — Sunset": { layout: "summary-right", header: "split", steps: "bar", items: "compact", fields: "boxed", surface: "flat", radius: "round", density: "compact", summary: "dark", weight: "medium" },
-  "Vitalis — Clinic & Care": { layout: "summary-left", header: "band", steps: "crumbs", items: "ruled", fields: "underline", surface: "outlined-heavy", radius: "soft", density: "cozy", summary: "paper", weight: "light" },
-  "Wanderly Travel": { layout: "wide-form", header: "split", steps: "tabs", items: "compact", fields: "filled", surface: "tinted", radius: "pill", density: "cozy", summary: "paper", weight: "light" },
-  "rRW Premium Rental": { layout: "single", header: "band", steps: "dots", items: "cards", fields: "pill", surface: "bordered", radius: "pill", density: "compact", summary: "outline", weight: "light" },
+  "Arcova Architecture": { layout: "single", header: "line", steps: "crumbs", items: "ruled", fields: "filled", surface: "flat", radius: "pill", density: "compact", summary: "dark", weight: "light", gallery: "thumbs-side", buybox: "sticky", grid: "feature", cards: "tinted" },
+  "Aspire Resort": { layout: "narrow-centre", header: "band", steps: "dots", items: "compact", fields: "underline", surface: "tinted", radius: "round", density: "airy", summary: "outline", weight: "medium", gallery: "stacked", buybox: "card", grid: "roomy", cards: "lifted" },
+  "Atelier — Modern Fashion": { layout: "split-bleed", header: "plain", steps: "bar", items: "cards", fields: "boxed", surface: "shadow", radius: "soft", density: "cozy", summary: "accent", weight: "bold", gallery: "left", buybox: "plain", grid: "dense", cards: "plain" },
+  "Bloom — Beauty Boutique": { layout: "summary-right", header: "split", steps: "none", items: "rows", fields: "pill", surface: "bordered", radius: "sharp", density: "cozy", summary: "paper", weight: "light", gallery: "wide", buybox: "card", grid: "regular", cards: "framed" },
+  "Drive — Cars & Rentals": { layout: "summary-left", header: "centre", steps: "tabs", items: "rows", fields: "underline", surface: "outlined-heavy", radius: "pill", density: "compact", summary: "paper", weight: "bold", gallery: "right", buybox: "plain", grid: "feature", cards: "framed" },
+  "Electra Blue Electronics": { layout: "wide-form", header: "plain", steps: "tabs", items: "ruled", fields: "pill", surface: "outlined-heavy", radius: "sharp", density: "airy", summary: "dark", weight: "medium", gallery: "tall", buybox: "sticky", grid: "roomy", cards: "plain" },
+  "Electra — Smart Commerce": { layout: "summary-top", header: "line", steps: "dots", items: "cards", fields: "filled", surface: "shadow", radius: "round", density: "airy", summary: "accent", weight: "light", gallery: "thumbs-side", buybox: "plain", grid: "regular", cards: "lifted" },
+  "Emarket Furniture & Home": { layout: "summary-top", header: "split", steps: "crumbs", items: "compact", fields: "boxed", surface: "tinted", radius: "soft", density: "compact", summary: "outline", weight: "bold", gallery: "tall", buybox: "sticky", grid: "regular", cards: "framed" },
+  "Ember — Restaurant": { layout: "single", header: "centre", steps: "bar", items: "ruled", fields: "pill", surface: "bordered", radius: "soft", density: "cozy", summary: "outline", weight: "medium", gallery: "stacked", buybox: "card", grid: "dense", cards: "tinted" },
+  "Fabtex": { layout: "split-bleed", header: "band", steps: "none", items: "cards", fields: "underline", surface: "flat", radius: "round", density: "compact", summary: "paper", weight: "light", gallery: "wide", buybox: "plain", grid: "roomy", cards: "plain" },
+  "Forge — Construction": { layout: "wide-form", header: "band", steps: "dots", items: "rows", fields: "filled", surface: "outlined-heavy", radius: "pill", density: "cozy", summary: "accent", weight: "medium", gallery: "left", buybox: "sticky", grid: "feature", cards: "lifted" },
+  "Frame — Photography Studio": { layout: "narrow-centre", header: "centre", steps: "bar", items: "compact", fields: "boxed", surface: "bordered", radius: "sharp", density: "airy", summary: "dark", weight: "bold", gallery: "right", buybox: "sticky", grid: "feature", cards: "tinted" },
+  "Fresh & Co.": { layout: "summary-left", header: "plain", steps: "none", items: "rows", fields: "pill", surface: "shadow", radius: "round", density: "compact", summary: "accent", weight: "medium", gallery: "tall", buybox: "card", grid: "dense", cards: "lifted" },
+  "Gala — Events & Celebrations": { layout: "summary-right", header: "line", steps: "tabs", items: "ruled", fields: "boxed", surface: "tinted", radius: "soft", density: "airy", summary: "paper", weight: "light", gallery: "right", buybox: "card", grid: "dense", cards: "plain" },
+  "Grand — Hotel & Hospitality": { layout: "split-bleed", header: "split", steps: "crumbs", items: "cards", fields: "filled", surface: "flat", radius: "sharp", density: "cozy", summary: "outline", weight: "medium", gallery: "stacked", buybox: "plain", grid: "feature", cards: "framed" },
+  "Harvest — Grocery Market": { layout: "summary-top", header: "line", steps: "tabs", items: "compact", fields: "pill", surface: "flat", radius: "pill", density: "cozy", summary: "accent", weight: "bold", gallery: "left", buybox: "card", grid: "regular", cards: "tinted" },
+  "Haven — Home & Furniture": { layout: "single", header: "split", steps: "none", items: "rows", fields: "filled", surface: "outlined-heavy", radius: "soft", density: "airy", summary: "dark", weight: "bold", gallery: "wide", buybox: "plain", grid: "roomy", cards: "tinted" },
+  "Heenzy Sneaker Co.": { layout: "wide-form", header: "centre", steps: "crumbs", items: "ruled", fields: "underline", surface: "shadow", radius: "round", density: "cozy", summary: "dark", weight: "bold", gallery: "stacked", buybox: "sticky", grid: "regular", cards: "lifted" },
+  "Heenzy — Boutique Rose": { layout: "narrow-centre", header: "plain", steps: "dots", items: "cards", fields: "pill", surface: "tinted", radius: "sharp", density: "compact", summary: "paper", weight: "bold", gallery: "thumbs-side", buybox: "card", grid: "feature", cards: "plain" },
+  "HomeVista": { layout: "summary-left", header: "line", steps: "bar", items: "compact", fields: "boxed", surface: "outlined-heavy", radius: "round", density: "cozy", summary: "outline", weight: "light", gallery: "thumbs-side", buybox: "sticky", grid: "roomy", cards: "plain" },
+  "Horizon": { layout: "summary-right", header: "plain", steps: "crumbs", items: "compact", fields: "underline", surface: "outlined-heavy", radius: "sharp", density: "compact", summary: "accent", weight: "light", gallery: "stacked", buybox: "plain", grid: "dense", cards: "tinted" },
+  "JuiceLife": { layout: "summary-right", header: "band", steps: "tabs", items: "ruled", fields: "filled", surface: "bordered", radius: "round", density: "compact", summary: "accent", weight: "bold", gallery: "wide", buybox: "sticky", grid: "dense", cards: "framed" },
+  "Kinetic — Sneaker Drop": { layout: "summary-top", header: "split", steps: "bar", items: "rows", fields: "underline", surface: "bordered", radius: "pill", density: "airy", summary: "paper", weight: "medium", gallery: "thumbs-side", buybox: "sticky", grid: "dense", cards: "plain" },
+  "Larita Luxury Hotel": { layout: "wide-form", header: "centre", steps: "none", items: "cards", fields: "filled", surface: "tinted", radius: "pill", density: "airy", summary: "outline", weight: "medium", gallery: "right", buybox: "card", grid: "regular", cards: "framed" },
+  "Maison — Hotel & Stay": { layout: "single", header: "band", steps: "none", items: "compact", fields: "boxed", surface: "flat", radius: "soft", density: "cozy", summary: "dark", weight: "light", gallery: "left", buybox: "plain", grid: "feature", cards: "lifted" },
+  "Marketplace Hub": { layout: "summary-left", header: "line", steps: "dots", items: "cards", fields: "underline", surface: "bordered", radius: "soft", density: "compact", summary: "dark", weight: "medium", gallery: "left", buybox: "sticky", grid: "roomy", cards: "framed" },
+  "Muse — Salon & Beauty": { layout: "summary-top", header: "band", steps: "crumbs", items: "rows", fields: "pill", surface: "shadow", radius: "sharp", density: "airy", summary: "outline", weight: "light", gallery: "tall", buybox: "card", grid: "roomy", cards: "tinted" },
+  "Nestoria Real Estate": { layout: "split-bleed", header: "plain", steps: "crumbs", items: "ruled", fields: "boxed", surface: "tinted", radius: "pill", density: "airy", summary: "accent", weight: "medium", gallery: "tall", buybox: "plain", grid: "regular", cards: "lifted" },
+  "North — Creative Agency": { layout: "narrow-centre", header: "split", steps: "bar", items: "ruled", fields: "filled", surface: "flat", radius: "round", density: "cozy", summary: "paper", weight: "bold", gallery: "right", buybox: "plain", grid: "dense", cards: "lifted" },
+  "Nova Studio — Ivory Minimal": { layout: "narrow-centre", header: "centre", steps: "dots", items: "compact", fields: "boxed", surface: "shadow", radius: "pill", density: "compact", summary: "paper", weight: "light", gallery: "wide", buybox: "card", grid: "roomy", cards: "framed" },
+  "Nova Studio — Noir": { layout: "summary-right", header: "plain", steps: "tabs", items: "cards", fields: "pill", surface: "shadow", radius: "soft", density: "compact", summary: "dark", weight: "light", gallery: "right", buybox: "sticky", grid: "regular", cards: "tinted" },
+  "Premium Marketplace": { layout: "single", header: "band", steps: "tabs", items: "compact", fields: "underline", surface: "bordered", radius: "sharp", density: "cozy", summary: "outline", weight: "bold", gallery: "wide", buybox: "card", grid: "feature", cards: "plain" },
+  "Pulse — Fitness & Wellness": { layout: "wide-form", header: "centre", steps: "none", items: "rows", fields: "boxed", surface: "flat", radius: "round", density: "airy", summary: "accent", weight: "bold", gallery: "tall", buybox: "plain", grid: "feature", cards: "plain" },
+  "Pure — Cleaning Services": { layout: "summary-left", header: "split", steps: "bar", items: "ruled", fields: "filled", surface: "outlined-heavy", radius: "soft", density: "compact", summary: "accent", weight: "medium", gallery: "thumbs-side", buybox: "plain", grid: "regular", cards: "framed" },
+  "Rivora Fresh": { layout: "split-bleed", header: "line", steps: "bar", items: "rows", fields: "underline", surface: "tinted", radius: "pill", density: "cozy", summary: "dark", weight: "light", gallery: "stacked", buybox: "card", grid: "dense", cards: "lifted" },
+  "ShopEase General Store": { layout: "summary-top", header: "band", steps: "dots", items: "ruled", fields: "pill", surface: "shadow", radius: "round", density: "cozy", summary: "paper", weight: "medium", gallery: "left", buybox: "plain", grid: "roomy", cards: "framed" },
+  "ShopNova Marketplace": { layout: "narrow-centre", header: "split", steps: "tabs", items: "cards", fields: "boxed", surface: "outlined-heavy", radius: "pill", density: "airy", summary: "outline", weight: "bold", gallery: "stacked", buybox: "sticky", grid: "dense", cards: "lifted" },
+  "Skyview Hotels & Resorts": { layout: "wide-form", header: "centre", steps: "crumbs", items: "rows", fields: "filled", surface: "bordered", radius: "sharp", density: "compact", summary: "dark", weight: "medium", gallery: "tall", buybox: "plain", grid: "regular", cards: "tinted" },
+  "Talent — Recruitment & HR": { layout: "summary-left", header: "plain", steps: "bar", items: "compact", fields: "filled", surface: "flat", radius: "soft", density: "airy", summary: "paper", weight: "light", gallery: "left", buybox: "card", grid: "roomy", cards: "tinted" },
+  "TechNova Mobile Store": { layout: "split-bleed", header: "line", steps: "none", items: "cards", fields: "pill", surface: "outlined-heavy", radius: "soft", density: "compact", summary: "outline", weight: "bold", gallery: "wide", buybox: "card", grid: "regular", cards: "lifted" },
+  "TechVerse Gadgets": { layout: "single", header: "centre", steps: "tabs", items: "cards", fields: "underline", surface: "tinted", radius: "sharp", density: "airy", summary: "accent", weight: "light", gallery: "thumbs-side", buybox: "sticky", grid: "feature", cards: "framed" },
+  "Transit — Logistics & Delivery": { layout: "narrow-centre", header: "plain", steps: "dots", items: "rows", fields: "underline", surface: "shadow", radius: "sharp", density: "cozy", summary: "dark", weight: "medium", gallery: "wide", buybox: "sticky", grid: "dense", cards: "tinted" },
+  "Violet": { layout: "summary-right", header: "line", steps: "dots", items: "ruled", fields: "pill", surface: "bordered", radius: "sharp", density: "airy", summary: "outline", weight: "bold", gallery: "left", buybox: "plain", grid: "regular", cards: "plain" },
+  "Violet — Sunset": { layout: "summary-right", header: "split", steps: "bar", items: "compact", fields: "boxed", surface: "flat", radius: "round", density: "compact", summary: "dark", weight: "medium", gallery: "stacked", buybox: "card", grid: "feature", cards: "plain" },
+  "Vitalis — Clinic & Care": { layout: "summary-left", header: "band", steps: "crumbs", items: "ruled", fields: "underline", surface: "outlined-heavy", radius: "soft", density: "cozy", summary: "paper", weight: "light", gallery: "tall", buybox: "sticky", grid: "dense", cards: "framed" },
+  "Wanderly Travel": { layout: "wide-form", header: "split", steps: "tabs", items: "compact", fields: "filled", surface: "tinted", radius: "pill", density: "cozy", summary: "paper", weight: "light", gallery: "stacked", buybox: "plain", grid: "roomy", cards: "plain" },
+  "rRW Premium Rental": { layout: "single", header: "band", steps: "dots", items: "cards", fields: "pill", surface: "bordered", radius: "pill", density: "compact", summary: "outline", weight: "light", gallery: "right", buybox: "plain", grid: "dense", cards: "lifted" },
 };
 
-export const DEFAULT_PAGE_SKIN: PageSkin = { layout: "summary-right", header: "line", steps: "dots", items: "rows", fields: "boxed", surface: "shadow", radius: "round", density: "cozy", summary: "dark", weight: "bold" };
+export const DEFAULT_PAGE_SKIN: PageSkin = { layout: "summary-right", header: "line", steps: "dots", items: "rows", fields: "boxed", surface: "shadow", radius: "round", density: "cozy", summary: "dark", weight: "bold", gallery: "left", buybox: "plain", grid: "regular", cards: "plain" };
 
 export const skinTuple = (s: PageSkin) => (Object.keys(SKIN_AXES) as (keyof PageSkin)[]).map((k) => s[k]);
 export const skinKey = (s: PageSkin) => skinTuple(s).join("|");
@@ -143,3 +152,7 @@ export const LAYOUT_CLASSES: Record<PageLayout, [string, string, string]> = {
   "narrow-centre": ["grid mx-auto max-w-3xl lg:grid-cols-5", "lg:col-span-3", "lg:col-span-2"],
   "split-bleed": ["grid lg:grid-cols-2", "", "lg:order-first"],
 };
+
+/** CSS custom properties for a product page / shop grid, written onto the wrapper element. */
+export const GRID_MIN: Record<PageGrid, number> = { dense: 180, regular: 240, roomy: 300, feature: 380 };
+export const GRID_GAP: Record<PageGrid, number> = { dense: 14, regular: 28, roomy: 36, feature: 44 };

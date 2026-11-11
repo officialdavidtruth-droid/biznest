@@ -1,5 +1,6 @@
 "use client";
 
+import { GRID_GAP, GRID_MIN, type PageSkin } from "@/lib/storefront/page-skin";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, ChevronRight, Compass, LayoutGrid, List, MessageCircle, Search, SlidersHorizontal, X } from "lucide-react";
@@ -40,8 +41,10 @@ const SORTS: { value: Sort; label: string }[] = [
  * a price ceiling, sorting, grid or list view and "show more".
  */
 export function CatalogExperience({
-  store, design: d, items, initialCategory, initialQuery, mode = "catalog", heading, topSlot, bottomSlot, externalChrome,
+  store, design: d, items, initialCategory, initialQuery, mode = "catalog", heading, topSlot, bottomSlot, externalChrome, skin,
 }: {
+  /** Per-template page recipe (title band, grid density, card look). */
+  skin?: PageSkin;
   /** The page already sits inside the template's own header and footer (TemplateShell), so skip the Builder's. */
   externalChrome?: boolean;
   /** Owner blocks above and below the product grid (Customize > Pages > Shop page). */
@@ -52,6 +55,19 @@ export function CatalogExperience({
 }) {
   const experience = getBusinessExperience(store.business.category, { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices }, store.business.businessSubcategory);
   const isService = experience.mode === "service";
+  const hdr = skin?.header ?? "line";
+  const centred = hdr === "centre";
+  const solidBand = hdr === "band";
+  const bandFg = solidBand ? readableOn(d.primary) : d.text;
+  const bandMuted = solidBand ? `${readableOn(d.primary)}cc` : d.muted;
+  const titleWeight = skin?.weight === "light" ? 300 : skin?.weight === "medium" ? 600 : 800;
+  const gridMin = GRID_MIN[skin?.grid ?? "regular"];
+  const gridGap = GRID_GAP[skin?.grid ?? "regular"];
+  const cardFx: React.CSSProperties =
+    skin?.cards === "framed" ? { border: `1px solid ${d.text}22`, padding: 10, borderRadius: Math.min(d.radius + 4, 22) }
+    : skin?.cards === "lifted" ? { boxShadow: "0 14px 34px -14px rgba(0,0,0,.28)", padding: 10, borderRadius: Math.min(d.radius + 4, 22), background: d.surface }
+    : skin?.cards === "tinted" ? { background: `${d.primary}12`, padding: 10, borderRadius: Math.min(d.radius + 4, 22) }
+    : {};
   const width = d.containerWidth === "compact" ? 960 : d.containerWidth === "wide" ? 1320 : 1160;
   const base = `/store/${store.slug}`;
 
@@ -151,20 +167,20 @@ export function CatalogExperience({
       {topSlot}
 
       {/* Title band */}
-      <section style={{ position: "relative", overflow: "hidden", background: `linear-gradient(120deg, ${d.primary}1a 0%, ${d.accent}14 55%, ${d.surface} 100%), ${d.surface}`, borderBottom: `1px solid ${line}` }}>
-        <span aria-hidden style={{ position: "absolute", right: -80, top: -120, width: 360, height: 360, borderRadius: "50%", background: `radial-gradient(circle at 30% 30%, ${d.accent}30, transparent 70%)` }} />
-        <span aria-hidden style={{ position: "absolute", right: 140, bottom: -150, width: 260, height: 260, borderRadius: "50%", background: `radial-gradient(circle at 40% 40%, ${d.primary}22, transparent 70%)` }} />
-        <div className="bn-wrap cx-band" style={{ position: "relative", padding: "44px 0 40px" }}>
+      <section style={{ position: "relative", overflow: "hidden", background: solidBand ? d.primary : hdr === "plain" || hdr === "split" ? d.surface : `linear-gradient(120deg, ${d.primary}1a 0%, ${d.accent}14 55%, ${d.surface} 100%), ${d.surface}`, borderBottom: hdr === "split" ? `4px solid ${d.accent}` : `1px solid ${line}`, textAlign: centred ? "center" : undefined }}>
+        {(hdr === "line" || hdr === "centre") && <span aria-hidden style={{ position: "absolute", right: -80, top: -120, width: 360, height: 360, borderRadius: "50%", background: `radial-gradient(circle at 30% 30%, ${d.accent}30, transparent 70%)` }} />}
+        {(hdr === "line" || hdr === "centre") && <span aria-hidden style={{ position: "absolute", right: 140, bottom: -150, width: 260, height: 260, borderRadius: "50%", background: `radial-gradient(circle at 40% 40%, ${d.primary}22, transparent 70%)` }} />}
+        <div className="bn-wrap cx-band" style={{ position: "relative", padding: hdr === "plain" ? "72px 0 56px" : hdr === "split" ? "28px 0 26px" : "44px 0 40px" }}>
           <nav aria-label="Breadcrumb" style={{ fontSize: 13, color: d.muted, marginBottom: 22, display: "inline-flex", alignItems: "center", flexWrap: "wrap", gap: 6, padding: "6px 14px", borderRadius: 999, background: `${d.surface}cc`, border: `1px solid ${line}` }}>
             <Link href={base} style={{ fontWeight: 600 }}>Home</Link><ChevronRight size={14} aria-hidden />
             {mode === "catalog" ? <span style={{ color: d.text, fontWeight: 700 }}>{title}</span> : <><Link href={`${base}/catalog`} style={{ fontWeight: 600 }}>{title}</Link><ChevronRight size={14} aria-hidden /><span style={{ color: d.text, fontWeight: 700 }}>{mode === "search" ? "Search" : heading}</span></>}
           </nav>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, fontWeight: 800, letterSpacing: ".16em", textTransform: "uppercase", color: d.accent, marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: centred ? "center" : undefined, gap: 10, fontSize: 12, fontWeight: 800, letterSpacing: ".16em", textTransform: "uppercase", color: solidBand ? bandFg : d.accent, marginBottom: 12 }}>
             <span aria-hidden style={{ width: 28, height: 2, background: d.accent, borderRadius: 2 }} />
             {mode === "search" ? "Search" : mode === "category" ? "Category" : isService ? "Our services" : "The collection"}
           </div>
-          <h1 style={{ fontFamily: d.headingFont, fontSize: "clamp(34px,5.4vw,60px)", lineHeight: 1.05, letterSpacing: "-.035em", margin: 0, color: d.text, maxWidth: 900 }}>{pageTitle}</h1>
-          <p style={{ margin: "14px 0 0", color: d.muted, fontSize: 17, lineHeight: 1.6, maxWidth: 620 }}>
+          <h1 style={{ fontFamily: d.headingFont, fontSize: "clamp(34px,5.4vw,60px)", lineHeight: 1.05, letterSpacing: titleWeight === 300 ? "0" : "-.035em", fontWeight: titleWeight, margin: centred ? "0 auto" : 0, color: bandFg, maxWidth: 900 }}>{pageTitle}</h1>
+          <p style={{ margin: centred ? "14px auto 0" : "14px 0 0", color: bandMuted, fontSize: 17, lineHeight: 1.6, maxWidth: 620 }}>
             {items.length === 0
               ? mode === "category" ? `No listings in ${heading ?? "this category"} yet.` : "New items are on the way."
               : mode === "search" && q.trim()
@@ -263,9 +279,9 @@ export function CatalogExperience({
             </div>
           </div>
         ) : view === "grid" ? (
-          <div className="bn-grid cx-products" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 28 }}>
+          <div className="bn-grid cx-products" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${gridMin}px, 1fr))`, gap: gridGap }}>
             {results.slice(0, shown).map((item) => (
-              <div key={`${item.kind}-${item.id}`} className="cx-card">
+              <div key={`${item.kind}-${item.id}`} className="cx-card" style={cardFx}>
                 <ItemCard item={item} store={store} d={d} radius={radius} actionLabel={item.kind === "service" ? experience.primaryAction : "View product"} />
                 <QuickAdd item={item} slug={store.slug} base={base} d={d} radius={radius} serviceLabel={experience.primaryAction} />
               </div>

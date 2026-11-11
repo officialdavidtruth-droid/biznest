@@ -1,3 +1,4 @@
+import { pageSkinFor } from "@/lib/storefront/page-skin-resolve";
 import { prisma } from "@/lib/prisma";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { isHotelStore } from "@/lib/storefront-routing";
@@ -73,6 +74,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const chrome = usesTemplateChromeFor(store.template?.name, store.sectionOverrides, { businessCategory: store.business?.category, storeBusinessType: store.businessType });
   const page = (
     <CatalogExperience
+      skin={pageSkinFor(store.template?.name)}
       externalChrome={chrome}
       mode="category"
       heading={category.name}

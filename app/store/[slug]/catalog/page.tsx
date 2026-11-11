@@ -1,3 +1,4 @@
+import { pageSkinFor } from "@/lib/storefront/page-skin-resolve";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { GrandeurMenu } from "@/components/storefront/grandeur-restaurant";
@@ -33,6 +34,7 @@ export default async function CatalogPage({ params, searchParams }: { params: Pr
   const chrome = usesTemplateChromeFor(store.template?.name, store.sectionOverrides, { businessCategory: store.business?.category, storeBusinessType: store.businessType });
   const page = (
     <CatalogExperience
+      skin={pageSkinFor(store.template?.name)}
       externalChrome={chrome}
       topSlot={slots.top}
       bottomSlot={slots.bottom}

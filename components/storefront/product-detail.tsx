@@ -1,5 +1,6 @@
 "use client";
 
+import type { PageSkin } from "@/lib/storefront/page-skin";
 import { ApproxPrice } from "@/components/storefront/approx-price";
 import { RichText } from "@/components/storefront/rich-text";
 import { useMemo, useRef, useState } from "react";
@@ -44,6 +45,7 @@ export function ProductDetail({
   ink,
   radius,
   bg,
+  skin,
 }: {
   storeSlug: string;
   productId: string;
@@ -70,6 +72,8 @@ export function ProductDetail({
   radius: string;
   /** Store page background, used by the mobile bar so it matches dark themes. */
   bg?: string;
+  /** Per-template page recipe: gallery arrangement, buy box, surface, weight. */
+  skin?: PageSkin;
 }) {
   const router = useRouter();
   const { addItem, setQuantity, items: cartItems, storeSlug: cartStoreSlug } = useCart();
@@ -152,7 +156,7 @@ export function ProductDetail({
   const outOfStock = preorderFull || (!preorder && !inStock && tracksStock);
 
   return (
-    <div className="pd-wrap" style={{ ["--pd-accent" as string]: accent, ["--pd-ink" as string]: ink, ["--pd-radius" as string]: radius, ["--pd-bg" as string]: bg ?? "#fff", ["--pd-on-accent" as string]: readableOn(accent) }}>
+    <div className="pd-wrap" data-gallery={skin?.gallery ?? "left"} data-buybox={skin?.buybox ?? "plain"} data-surface={skin?.surface ?? "shadow"} data-weight={skin?.weight ?? "bold"} data-density={skin?.density ?? "cozy"} data-radius={skin?.radius ?? "round"} style={{ ["--pd-accent" as string]: accent, ["--pd-ink" as string]: ink, ["--pd-radius" as string]: radius, ["--pd-bg" as string]: bg ?? "#fff", ["--pd-on-accent" as string]: readableOn(accent) }}>
       <nav className="pd-crumbs" aria-label="Breadcrumb">
         <Link href={base}>Home</Link><ChevronRight size={13} />
         <Link href={`${base}/catalog`}>Shop</Link><ChevronRight size={13} />
@@ -382,4 +386,30 @@ const CSS = `
  .pd-mobilebar button{flex:1;max-width:220px;min-height:48px;border:0;border-radius:var(--pd-radius);background:var(--pd-accent);color:var(--pd-on-accent);font-weight:800;font-size:15px;cursor:pointer}
  .pd-mobilebar button:disabled{opacity:.5}
 }
+
+@media (min-width:821px){
+.pd-wrap[data-gallery="right"] .pd-gallery{order:2}
+.pd-wrap[data-gallery="stacked"] .pd-grid{grid-template-columns:minmax(0,1fr);gap:36px;max-width:860px;margin:0 auto}
+.pd-wrap[data-gallery="stacked"] .pd-gallery{position:static}
+.pd-wrap[data-gallery="stacked"] .pd-stage{aspect-ratio:16/10}
+.pd-wrap[data-gallery="thumbs-side"] .pd-gallery{display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;align-items:start}
+.pd-wrap[data-gallery="thumbs-side"] .pd-thumbs{order:-1;flex-direction:column;margin-top:0}
+.pd-wrap[data-gallery="tall"] .pd-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:72px}
+.pd-wrap[data-gallery="tall"] .pd-stage{aspect-ratio:4/5}
+.pd-wrap[data-gallery="wide"] .pd-grid{grid-template-columns:minmax(0,1.5fr) minmax(0,.9fr);gap:40px}
+.pd-wrap[data-gallery="wide"] .pd-stage{aspect-ratio:5/4}
+.pd-wrap[data-buybox="sticky"] .pd-info{position:sticky;top:24px}
+}
+.pd-wrap[data-buybox="card"] .pd-info{border:1px solid var(--bd);border-radius:calc(var(--pd-radius) + 6px);padding:clamp(20px,3vw,34px);background:color-mix(in srgb,var(--pd-ink) 3%,var(--pd-bg))}
+.pd-wrap[data-weight="light"] .pd-title{font-weight:300;letter-spacing:.01em}
+.pd-wrap[data-weight="medium"] .pd-title{font-weight:600}
+.pd-wrap[data-surface="flat"] .pd-stage{box-shadow:none;border-color:transparent}
+.pd-wrap[data-surface="outlined-heavy"] .pd-stage{border:2px solid var(--pd-ink);box-shadow:none}
+.pd-wrap[data-surface="bordered"] .pd-stage{box-shadow:none}
+.pd-wrap[data-surface="tinted"] .pd-stage{background:color-mix(in srgb,var(--pd-accent) 10%,transparent);border-color:color-mix(in srgb,var(--pd-accent) 30%,transparent);box-shadow:none}
+.pd-wrap[data-radius="sharp"] .pd-stage,.pd-wrap[data-radius="sharp"] .pd-thumbs button{border-radius:0}
+.pd-wrap[data-radius="pill"] .pd-stage{border-radius:44px}
+.pd-wrap[data-density="airy"] .pd-crumbs{margin-bottom:44px}
+.pd-wrap[data-density="compact"] .pd-crumbs{margin-bottom:14px}
+.pd-wrap[data-density="compact"] .pd-grid{gap:32px}
 `;
