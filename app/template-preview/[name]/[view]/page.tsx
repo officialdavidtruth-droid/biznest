@@ -5,7 +5,7 @@ import { feeConfigFor } from "@/lib/payments/customer-fee";
 import { CartClient } from "@/app/store/[slug]/cart/cart-client";
 import { CheckoutClient } from "@/app/store/[slug]/checkout/checkout-client";
 import { PayView } from "@/components/storefront/pay-view";
-import { SeedDemoCart } from "./seed-cart";
+import { DemoCartProvider } from "@/lib/cart-context";
 import { SKIN_VIEW_ITEMS } from "./demo";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export default async function TemplateTransactionPreview({ params }: { params: P
   const palette = resolveStorePalette({ name: "Demo Store", template: { name: t.name, category: t.category } });
   return (
     <>
-      <SeedDemoCart items={SKIN_VIEW_ITEMS} />
+      <DemoCartProvider storeSlug="preview" items={SKIN_VIEW_ITEMS}>
       {view === "cart" && <CartClient slug="preview" storeName="Demo Store" palette={palette} />}
       {view === "checkout" && <CheckoutClient slug="preview" storeName="Demo Store" palette={palette} feeConfig={feeConfigFor("PAYSTACK")} />}
       {view === "pay" && (
@@ -28,6 +28,7 @@ export default async function TemplateTransactionPreview({ params }: { params: P
           info={{ bankName: "Demo Bank", accountName: "Demo Store Ltd", accountNumber: "0123456789", note: "Use the order code as the narration.", whatsapp: "2348000000000", call: "2348000000000" }}
         />
       )}
+      </DemoCartProvider>
     </>
   );
 }

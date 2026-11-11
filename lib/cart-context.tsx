@@ -118,3 +118,18 @@ export function useCart() {
   if (!ctx) throw new Error("useCart must be used within CartProvider");
   return ctx;
 }
+
+/** A fixed, in-memory cart for the template preview pages: never reads or writes the visitor's real cart. */
+export function DemoCartProvider({ storeSlug, items: initial, children }: { storeSlug: string; items: CartItem[]; children: React.ReactNode }) {
+  const [items, setItems] = useState<CartItem[]>(() => initial);
+  const value: CartContextValue = {
+    storeSlug,
+    items,
+    addItem: () => {},
+    removeItem: (id, v) => setItems((p) => p.filter((i) => !(i.productId === id && (i.variantId ?? null) === (v ?? null)))),
+    setQuantity: (id, q, v) => setItems((p) => p.map((i) => (i.productId === id && (i.variantId ?? null) === (v ?? null) ? { ...i, quantity: Math.max(1, q) } : i))),
+    clear: () => setItems([]),
+    subtotal: items.reduce((s, i) => s + i.price * i.quantity, 0),
+  };
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+}
