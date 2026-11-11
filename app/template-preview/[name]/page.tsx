@@ -269,8 +269,32 @@ export default async function TemplatePreviewPage({ params, searchParams }: { pa
     "Real Estate": { chips: [{ title: "Verified listings", body: "Documents checked" }, { title: "Free viewings", body: "Book a time that works" }, { title: "Trusted agents", body: "Licensed and reviewed" }], promo: { eyebrow: "New on the market", heading: "Homes listed this week.", body: "Be the first to see new properties in your area.", cta: "View listings" } },
     retail: { chips: [{ title: "Free delivery", body: "On every order" }, { title: "Secure payment", body: "Pay your way" }, { title: "Easy returns", body: "No stress" }], promo: { eyebrow: "Limited offer", heading: "Amazing deals. This week only.", body: "Selected items at special prices while stock lasts.", cta: "Shop the offer" } },
   };
+  // Section headings per business type, so a fashion template previewed as a restaurant says "Our menu", not a generic service line.
+  const CATALOG_HEAD: Record<string, [eyebrow: string, heading: string, body: string]> = {
+    Restaurant: ["Our menu", "Cooked fresh, served hot", "Rice, grills, soups and sides, made to order."],
+    Beauty: ["Bestsellers", "Skincare and beauty picks", "Products our customers reorder every month."],
+    Salon: ["Services", "Book your next look", "Cuts, colour, braids and treatments with trusted stylists."],
+    Electronics: ["Top tech", "Gadgets worth owning", "Phones, audio and accessories with warranty."],
+    Fashion: ["New arrivals", "Fresh pieces this week", "Tailored, ready-to-wear and accessories."],
+    "Food & Groceries": ["Fresh today", "Groceries picked this morning", "Fruit, vegetables and pantry staples delivered same day."],
+    "Home & Furniture": ["Featured", "Pieces for every room", "Sofas, beds, tables and decor, delivered and set up."],
+    "Real Estate": ["Listings", "Homes and land available now", "Verified properties with free viewings."],
+    Photography: ["Packages", "Shoots for every moment", "Weddings, portraits, events and brand photography."],
+    Cleaning: ["Our services", "Spotless results, booked online", "Home, office and deep cleaning by vetted teams."],
+    Construction: ["What we build", "Projects from plan to handover", "Building, finishing and renovation with clear quotes."],
+    Automotive: ["In stock", "Vehicles and parts", "Inspected, priced clearly, ready to drive."],
+    "Health & Fitness": ["Programs", "Classes and memberships", "Train with coaches who track your progress."],
+    Health: ["Care", "Appointments and services", "See a professional without the waiting room."],
+    "Event Planning": ["Packages", "Events planned end to end", "Weddings, birthdays and corporate events."],
+    Logistics: ["Delivery options", "Move anything, anywhere", "Same-day, interstate and international shipping."],
+    "Travel & Tourism": ["Featured trips", "Trips ready to book", "Group tours and custom itineraries."],
+    Agency: ["Our services", "Work we do for clients", "Strategy, design and campaigns that get results."],
+    "Professional Services": ["Our services", "Advice you can act on", "Fixed-scope packages with clear pricing."],
+    "HR & Recruitment": ["Services", "Hire and get hired", "Vetted candidates and managed recruitment."],
+  };
+  const head = CATALOG_HEAD[niche];
   const copy = NICHE_COPY[niche] ?? (SERVICE_NICHES.has(niche) || ["Professional Services", "Agency", "Cleaning", "Salon"].includes(niche) ? NICHE_COPY.service : NICHE_COPY.retail);
   const sampleChips = copy.chips;
-  const config = { ...baseConfig, sections: baseConfig.sections.map((sec) => sec.type === "hero" && ["spotlight", "voyage", "market", "glow", "showroom"].includes(sec.settings.heroVariant ?? "") ? { ...sec, settings: { ...sec.settings, items: sampleChips } } : sec.type === "promo" ? { ...sec, settings: { ...sec.settings, eyebrow: copy.promo.eyebrow, heading: copy.promo.heading, body: copy.promo.body, ctaLabel: copy.promo.cta } } : sec.type === "features" ? { ...sec, settings: { ...sec.settings, items: sampleChips } } : sec) };
+  const config = { ...baseConfig, sections: baseConfig.sections.map((sec) => sec.type === "hero" && ["spotlight", "voyage", "market", "glow", "showroom"].includes(sec.settings.heroVariant ?? "") ? { ...sec, settings: { ...sec.settings, items: sampleChips } } : sec.type === "promo" ? { ...sec, settings: { ...sec.settings, eyebrow: copy.promo.eyebrow, heading: copy.promo.heading, body: copy.promo.body, ctaLabel: copy.promo.cta } } : sec.type === "features" ? { ...sec, settings: { ...sec.settings, items: sampleChips } } : sec.type === "catalog" && head ? { ...sec, settings: { ...sec.settings, eyebrow: head[0], heading: head[1], body: head[2] } } : sec) };
   return withPreviewMenu(niche, <BuilderStorefront store={previewStore as any} config={config} catalogItems={sampleItems as any} reviews={SAMPLE_REVIEWS} avgRating={4.8} completedOrders={1240}/>);
 }
