@@ -146,10 +146,10 @@ export function summaryStyle(s: PageSkin, p: { ink: string; accent: string; onAc
 export const LAYOUT_CLASSES: Record<PageLayout, [string, string, string]> = {
   "summary-right": ["grid lg:grid-cols-12", "lg:col-span-7", "lg:col-span-5"],
   "summary-left": ["grid lg:grid-cols-12", "lg:col-span-7 lg:order-2", "lg:col-span-5 lg:order-1"],
-  single: ["flex flex-col mx-auto max-w-2xl", "", "order-first"],
-  "summary-top": ["flex flex-col", "", "order-first"],
+  single: ["flex w-full flex-col mx-auto max-w-2xl", "", "order-first"],
+  "summary-top": ["flex w-full flex-col", "", "order-first"],
   "wide-form": ["grid lg:grid-cols-12", "lg:col-span-8", "lg:col-span-4"],
-  "narrow-centre": ["grid mx-auto max-w-3xl lg:grid-cols-5", "lg:col-span-3", "lg:col-span-2"],
+  "narrow-centre": ["grid w-full mx-auto max-w-3xl lg:grid-cols-5", "lg:col-span-3", "lg:col-span-2"],
   "split-bleed": ["grid lg:grid-cols-2", "", "lg:order-first"],
 };
 
