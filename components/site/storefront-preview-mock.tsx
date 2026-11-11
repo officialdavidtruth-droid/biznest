@@ -59,10 +59,10 @@ export function StorefrontPreviewMock() {
               "radial-gradient(120% 140% at 15% 20%, rgba(52,211,153,0.35) 0%, transparent 60%), linear-gradient(135deg, #123024 0%, #0a1c12 100%)",
           }}
         >
-          <p className="text-[10px] uppercase tracking-[0.15em]" style={{ color: "var(--bn-marigold)", fontFamily: "var(--font-mono)" }}>
+          <p className="text-[10px] uppercase tracking-[0.15em]" style={{ color: "#6ee7a8", fontFamily: "var(--font-mono)" }}>
             New season
           </p>
-          <p className="mt-1 text-lg font-semibold sm:text-xl" style={{ color: "var(--bn-ivory)", fontFamily: "var(--font-display)" }}>
+          <p className="mt-1 text-lg font-semibold sm:text-xl" style={{ color: "#ffffff", fontFamily: "var(--font-display)" }}>
             Fabric that tells a story
           </p>
         </div>
