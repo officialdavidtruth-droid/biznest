@@ -292,7 +292,8 @@ export default async function TemplatePreviewPage({ params, searchParams }: { pa
     "Professional Services": ["Our services", "Advice you can act on", "Fixed-scope packages with clear pricing."],
     "HR & Recruitment": ["Services", "Hire and get hired", "Vetted candidates and managed recruitment."],
   };
-  const head = CATALOG_HEAD[niche];
+  // Only when previewing as a different business type: a template shown as its own niche keeps its own wording, so siblings do not all read the same.
+  const head = niche !== definition.category ? CATALOG_HEAD[niche] : undefined;
   const copy = NICHE_COPY[niche] ?? (SERVICE_NICHES.has(niche) || ["Professional Services", "Agency", "Cleaning", "Salon"].includes(niche) ? NICHE_COPY.service : NICHE_COPY.retail);
   const sampleChips = copy.chips;
   const config = { ...baseConfig, sections: baseConfig.sections.map((sec) => sec.type === "hero" && ["spotlight", "voyage", "market", "glow", "showroom"].includes(sec.settings.heroVariant ?? "") ? { ...sec, settings: { ...sec.settings, items: sampleChips } } : sec.type === "promo" ? { ...sec, settings: { ...sec.settings, eyebrow: copy.promo.eyebrow, heading: copy.promo.heading, body: copy.promo.body, ctaLabel: copy.promo.cta } } : sec.type === "features" ? { ...sec, settings: { ...sec.settings, items: sampleChips } } : sec.type === "catalog" && head ? { ...sec, settings: { ...sec.settings, eyebrow: head[0], heading: head[1], body: head[2] } } : sec) };
