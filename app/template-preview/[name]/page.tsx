@@ -238,16 +238,16 @@ export default async function TemplatePreviewPage({ params, searchParams }: { pa
   const tpl = definition.theme as any;
   // Each template starts its sample photos at a different point in the niche set, so previews side by side never show the same picture.
   const photoOffset = [...definition.name].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7) % 6;
+  // ?niche=Salon previews the template for another business type (used to check how each template reads in each niche).
+  const requested = (await searchParams)?.niche;
+  const niche = requested && (NICHE_SAMPLES[requested] || PREVIEW_MENU[requested]) ? requested : PREVIEW_NICHE[definition.name] ?? definition.category;
   const previewStore = {
     ...store,
     slug: "__biznest-template-preview",
     name: definition.name.split(" — ")[0],
-    bannerUrl: PREVIEW_HERO_PHOTOS[definition.name] ?? nicheSamplePhoto(definition.category, photoOffset, 1800) ?? nicheHeroPhoto(definition.category),
+    bannerUrl: PREVIEW_HERO_PHOTOS[definition.name] ?? nicheSamplePhoto(niche, photoOffset, 1800) ?? nicheHeroPhoto(niche) ?? nicheSamplePhoto(definition.category, photoOffset, 1800) ?? nicheHeroPhoto(definition.category),
     business: { description: tpl.sub || store.business.description, category: niche },
   };
-  // ?niche=Salon previews the template for another business type (used to check how each template reads in each niche).
-  const requested = (await searchParams)?.niche;
-  const niche = requested && (NICHE_SAMPLES[requested] || PREVIEW_MENU[requested]) ? requested : PREVIEW_NICHE[definition.name] ?? definition.category;
   const isFashion = niche === "Fashion";
   const samples = NICHE_SAMPLES[niche];
   const sampleItems = isFashion ? fashionItems(tpl, photoOffset) : items.map((it, i) => {
