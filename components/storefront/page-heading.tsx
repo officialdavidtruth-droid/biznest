@@ -13,7 +13,7 @@ export function PageSteps({ palette, current }: { palette: StorePalette; current
   if (skin.steps === "none") return null;
   if (skin.steps === "bar") {
     return (
-      <div className="w-full max-w-xs" aria-label="Checkout steps">
+      <div className="w-64 max-w-full" aria-label="Checkout steps">
         <div style={{ background: `${ink}1a`, borderRadius: 999 }} className="h-1.5 w-full overflow-hidden">
           <div style={{ background: accent, width: `${((current + 1) / 3) * 100}%` }} className="h-full" />
         </div>

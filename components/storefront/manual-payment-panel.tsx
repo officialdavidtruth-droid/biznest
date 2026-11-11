@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CheckCircle2, Copy, ImagePlus, Landmark, MessageCircle, Phone, RefreshCw } from "lucide-react";
+import { DEFAULT_PAGE_SKIN, PAD, BTN_RADIUS, surfaceStyle } from "@/lib/storefront/page-skin";
 import type { StorePalette } from "@/lib/store-palette-defaults";
 import { PROOF_ACCEPT, PROOF_ALLOWED_TYPES, PROOF_MAX_BYTES, isImageProofUrl, formatPhoneDisplay, sameNumber, telLink, whatsappLink } from "@/lib/payments/manual-transfer";
 
@@ -184,11 +185,16 @@ export function ManualPaymentPanel({
     }
   }
 
-  const box = { background: card, border: `1px solid ${ink}14`, borderRadius: "1rem" } as const;
+  const skin = palette.skin ?? DEFAULT_PAGE_SKIN;
+  const box = surfaceStyle(skin, ink, card, surface, accent);
+  const PADC = PAD[skin.density];
+  const pill = { borderRadius: BTN_RADIUS[skin.radius] };
+  const twoCol = skin.layout === "wide-form" || skin.layout === "summary-left" || skin.layout === "split-bleed";
+  const flip = skin.layout === "summary-left";
 
   return (
-    <div className="space-y-5">
-      <section style={box} className="p-6">
+    <div className={twoCol ? "grid items-start gap-5 lg:grid-cols-5" : "space-y-5"}>
+      <section style={box} className={`${PADC} ${twoCol ? `lg:col-span-3 ${flip ? "lg:order-2" : ""}` : ""}`}>
         <div className="mb-4 flex items-center gap-2">
           <Landmark className="h-4 w-4" style={{ color: accent }} />
           <h2 className="text-base font-bold">Pay by bank transfer</h2>
@@ -221,7 +227,8 @@ export function ManualPaymentPanel({
         <p className="mt-4 text-xs" style={{ opacity: 0.6 }}>Use {what} as the transfer narration if your bank allows it.</p>
       </section>
 
-      <section style={box} className="p-6">
+      <div className={twoCol ? `space-y-5 lg:col-span-2 ${flip ? "lg:order-1" : ""}` : "contents"}>
+      <section style={box} className={PADC}>
         <div className="mb-3 flex items-center gap-2">
           {proofUrl ? <CheckCircle2 className="h-4 w-4" style={{ color: accent }} /> : <ImagePlus className="h-4 w-4" style={{ color: accent }} />}
           <h2 className="text-base font-bold">{proofUrl ? "Proof sent. Waiting for confirmation" : "Upload your payment proof"}</h2>
@@ -248,11 +255,11 @@ export function ManualPaymentPanel({
           <img src={preview} alt="Selected proof of payment" className="mb-3 max-h-64 rounded-lg border object-contain" style={{ borderColor: `${ink}22` }} />
         )}
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => fileRef.current?.click()} style={{ border: `1px solid ${ink}33`, color: ink }} className="rounded-full px-5 py-2.5 text-sm font-semibold">
+          <button type="button" onClick={() => fileRef.current?.click()} style={{ ...pill, border: `1px solid ${ink}33`, color: ink }} className="px-5 py-2.5 text-sm font-semibold">
             {file ? "Choose a different file" : proofUrl ? "Replace file" : "Upload image or document"}
           </button>
           {file && (
-            <button type="button" onClick={upload} disabled={busy} style={{ background: accent, color: onAccent }} className="rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-50">
+            <button type="button" onClick={upload} disabled={busy} style={{ ...pill, background: accent, color: onAccent }} className="px-5 py-2.5 text-sm font-semibold disabled:opacity-50">
               {busy ? "Uploading…" : "Send proof"}
             </button>
           )}
@@ -269,7 +276,7 @@ export function ManualPaymentPanel({
         )}
       </section>
 
-      <section style={box} className="p-6">
+      <section style={box} className={PADC}>
         <h2 className="mb-1 text-base font-bold">Taking a while to confirm?</h2>
         <p className="text-sm" style={{ opacity: 0.75 }}>
           {hasContact ? `Message or call ${storeName} directly and they can check their account.` : `Contact ${storeName} to confirm your payment.`}
@@ -283,8 +290,8 @@ export function ManualPaymentPanel({
                   <p className="text-xs font-semibold uppercase tracking-wide" style={{ opacity: 0.55 }}>Call or WhatsApp</p>
                   <p className="mt-0.5 text-sm font-semibold">{formatPhoneDisplay(info.call)}</p>
                 </div>
-                <CallButton href={tel!} ink={ink} />
-                <WhatsAppButton href={wa!} />
+                <CallButton pill={pill} href={tel!} ink={ink} />
+                <WhatsAppButton pill={pill} href={wa!} />
               </li>
             ) : (
               <>
@@ -294,7 +301,7 @@ export function ManualPaymentPanel({
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ opacity: 0.55 }}>WhatsApp</p>
                       <p className="mt-0.5 text-sm font-semibold">{formatPhoneDisplay(info.whatsapp)}</p>
                     </div>
-                    <WhatsAppButton href={wa} />
+                    <WhatsAppButton pill={pill} href={wa} />
                   </li>
                 )}
                 {tel && (
@@ -303,7 +310,7 @@ export function ManualPaymentPanel({
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ opacity: 0.55 }}>Call line</p>
                       <p className="mt-0.5 text-sm font-semibold">{formatPhoneDisplay(info.call)}</p>
                     </div>
-                    <CallButton href={tel} ink={ink} />
+                    <CallButton pill={pill} href={tel} ink={ink} />
                   </li>
                 )}
               </>
@@ -312,7 +319,7 @@ export function ManualPaymentPanel({
         )}
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" onClick={() => router.refresh()} style={{ border: `1px solid ${ink}33`, color: ink }} className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold">
+          <button type="button" onClick={() => router.refresh()} style={{ ...pill, border: `1px solid ${ink}33`, color: ink }} className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold">
             <RefreshCw className="h-4 w-4" /> Check status
           </button>
           <Link href={`/store/${slug}`} style={{ color: ink, opacity: 0.7 }} className="px-3 py-2.5 text-sm font-semibold no-underline">
@@ -320,21 +327,22 @@ export function ManualPaymentPanel({
           </Link>
         </div>
       </section>
+      </div>
     </div>
   );
 }
 
-function WhatsAppButton({ href }: { href: string }) {
+function WhatsAppButton({ href, pill }: { href: string; pill: React.CSSProperties }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" style={{ background: "#25D366", color: "#fff" }} className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold no-underline">
+    <a href={href} target="_blank" rel="noopener noreferrer" style={{ ...pill, background: "#25D366", color: "#fff" }} className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold no-underline">
       <MessageCircle className="h-4 w-4" /> Chat on WhatsApp
     </a>
   );
 }
 
-function CallButton({ href, ink }: { href: string; ink: string }) {
+function CallButton({ href, ink, pill }: { href: string; ink: string; pill: React.CSSProperties }) {
   return (
-    <a href={href} style={{ border: `1px solid ${ink}33`, color: ink }} className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold no-underline">
+    <a href={href} style={{ ...pill, border: `1px solid ${ink}33`, color: ink }} className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold no-underline">
       <Phone className="h-4 w-4" /> Call now
     </a>
   );
