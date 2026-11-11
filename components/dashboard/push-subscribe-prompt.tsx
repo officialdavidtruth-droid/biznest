@@ -34,11 +34,25 @@ async function readyRegistration() {
 async function subscribeAndSave() {
   if (!VAPID_PUBLIC_KEY) return;
   const registration = await readyRegistration();
+  const expectedKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+  let existing = await registration.pushManager.getSubscription();
+  // A subscription made under an older VAPID public key is rejected by the push service
+  // (Apple answers 400 VapidPkHashMismatch), so drop it and subscribe again with the current key.
+  if (existing) {
+    const current = existing.options?.applicationServerKey;
+    const same =
+      !current ||
+      (current.byteLength === expectedKey.length && new Uint8Array(current).every((b, i) => b === expectedKey[i]));
+    if (!same) {
+      await existing.unsubscribe().catch(() => {});
+      existing = null;
+    }
+  }
   const subscription =
-    (await registration.pushManager.getSubscription()) ??
+    existing ??
     (await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      applicationServerKey: expectedKey,
     }));
   const json = subscription.toJSON() as { endpoint: string; keys?: { p256dh: string; auth: string } };
   if (json.keys) await subscribeToPush({ endpoint: json.endpoint, keys: json.keys, userAgent: navigator.userAgent });

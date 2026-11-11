@@ -90,13 +90,14 @@ export async function sendTestPush(): Promise<ActionResult<{ message: string }>>
       sent++;
     } catch (err) {
       const status = (err as { statusCode?: number }).statusCode;
-      if (status === 404 || status === 410) {
+      const body = String((err as { body?: unknown }).body ?? "").slice(0, 200);
+      if (status === 404 || status === 410 || (status === 400 && /VapidPkHashMismatch/i.test(body))) {
         await prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
-        problems.push("A device's subscription had expired and was removed. Tap Enable again on it.");
+        problems.push("This device was subscribed with an old key and was removed. Tap Send test again to re-subscribe.");
       } else if (status === 401 || status === 403) {
         problems.push(`The push service rejected the keys (${status}). The public and private VAPID keys probably don't match.`);
       } else {
-        problems.push(`Send failed${status ? ` (${status})` : ""}: ${err instanceof Error ? err.message : String(err)}`);
+        problems.push(`Send failed${status ? ` (${status})` : ""}: ${body || (err instanceof Error ? err.message : String(err))}`);
       }
     }
   }
