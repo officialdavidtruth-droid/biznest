@@ -396,7 +396,7 @@ const CSS = `
 .pd-wrap[data-gallery="thumbs-side"] .pd-thumbs{order:-1;flex-direction:column;margin-top:0}
 .pd-wrap[data-gallery="tall"] .pd-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:72px}
 .pd-wrap[data-gallery="tall"] .pd-stage{aspect-ratio:4/5}
-.pd-wrap[data-gallery="wide"] .pd-grid{grid-template-columns:minmax(0,1.5fr) minmax(0,.9fr);gap:40px}
+.pd-wrap[data-gallery="wide"] .pd-grid{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:40px}
 .pd-wrap[data-gallery="wide"] .pd-stage{aspect-ratio:5/4}
 .pd-wrap[data-buybox="sticky"] .pd-info{position:sticky;top:24px}
 }
