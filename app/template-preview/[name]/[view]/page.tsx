@@ -11,6 +11,7 @@ import { ProductDetail } from "@/components/storefront/product-detail";
 import { CatalogExperience } from "@/components/storefront/catalog-experience";
 import { catalogDesign, catalogStoreInfo } from "@/lib/storefront/catalog-props";
 import { resolveStoreTheme } from "@/lib/template-themes";
+import { BuilderSubpage, type SubpageKind } from "@/components/storefront/builder-subpages";
 import { nicheSamplePhoto } from "@/lib/niche-imagery";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export const dynamic = "force-dynamic";
 export default async function TemplateTransactionPreview({ params }: { params: Promise<{ name: string; view: string }> }) {
   const { name, view } = await params;
   const t = getTemplateDefinition(decodeURIComponent(name));
-  if (!t || !["cart", "checkout", "pay", "product", "shop"].includes(view)) notFound();
+  if (!t || !["cart", "checkout", "pay", "product", "shop", "about", "contact", "categories"].includes(view)) notFound();
   const palette = resolveStorePalette({ name: "Demo Store", template: { name: t.name, category: t.category } });
   const theme = resolveStoreTheme(t.category, "Demo Store", null, null, t.name);
   const photo = (i: number) => nicheSamplePhoto(t.category, i) ?? null;
@@ -35,6 +36,17 @@ export default async function TemplateTransactionPreview({ params }: { params: P
           accent={theme.accent} ink={theme.ink} radius={theme.radius || "10px"} bg={theme.bg}
         />
       </main>
+    );
+  }
+  if (view === "about" || view === "contact" || view === "categories") {
+    const info = { name: "Demo Store", logoUrl: null, contactEmail: "hello@demo.store", contactPhone: "0800 000 0000", bannerUrl: null, sectionOverrides: null, business: { description: "A family-run business serving customers with care since 2016.", category: t.category, businessSubcategory: null, sellsProducts: true, offersServices: false, email: null, phone: null } };
+    return (
+      <BuilderSubpage
+        skin={palette.skin} kind={view as SubpageKind} store={catalogStoreInfo(info, "preview")} design={catalogDesign(info, theme)} owner={null}
+        data={{ storyImage: photo(1), location: "Abuja, Nigeria", itemCount: 24, completedOrders: 318, avgRating: 4.8,
+          reviews: [{ id: "r1", rating: 5, comment: "Quick delivery and exactly as described. Will order again.", author: "Amaka O." }, { id: "r2", rating: 5, comment: "Friendly team and great quality.", author: "Tunde A." }],
+          categories: ["Featured", "New Arrivals", "Popular", "Gifts"].map((n, i) => ({ id: `c${i}`, name: n, count: 6 + i * 3, children: [] })) }}
+      />
     );
   }
   if (view === "shop") {

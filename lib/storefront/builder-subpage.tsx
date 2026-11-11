@@ -1,3 +1,4 @@
+import { pageSkinFor } from "@/lib/storefront/page-skin-resolve";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
@@ -68,6 +69,7 @@ export async function renderBuilderSubpage(slug: string, kind: SubpageKind, opts
 
   return (
     <BuilderSubpage
+      skin={pageSkinFor(raw.template?.name)}
       kind={kind}
       store={catalogStoreInfo(raw, slug)}
       design={catalogDesign(raw, theme)}
