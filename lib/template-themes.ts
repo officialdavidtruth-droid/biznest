@@ -853,7 +853,7 @@ export const SIGNATURE_CHROME: Record<string, TemplateChrome> = {
  */
 export const HERO_VARIANT_BY_MODE: Readonly<Record<string, HeroVariant>> = {
   electra: "spotlight", atelier: "editorial", kinetic: "poster", haven: "frame", harvest: "market",
-  ember: "menu", muse: "arch", frame: "frame", north: "ledger", pure: "quiet", forge: "poster",
+  ember: "plate", muse: "arch", frame: "frame", north: "ledger", pure: "quiet", forge: "poster",
   // Dedicated-renderer templates (bloom, maison, hotel) never reach the Builder; listed so the map is complete.
   bloom: "arch", maison: "splitcard", hotel: "splitcard",
   vitalis: "quiet", pulse: "tiles", gala: "editorial", transit: "frame", talent: "banner", drive: "showroom",
@@ -873,7 +873,7 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
   "ShopEase General Store": { chrome: C("centered", "columns", "minimal"), heroStyle: "fullbleed", heroVariant: "tiles" },
   "Violet — Sunset": { chrome: C("centered", "minimal", "tall"), heroStyle: "centered", heroVariant: "banner" },
   "Nova Studio — Ivory Minimal": { chrome: C("bar", "columns", "minimal"), heroStyle: "split", heroVariant: "ledger" },
-  "Heenzy — Boutique Rose": { chrome: C("overlay", "columns", "tall"), heroStyle: "fullbleed", heroVariant: "lookbook" },
+  "Heenzy — Boutique Rose": { chrome: C("overlay", "columns", "tall"), heroStyle: "fullbleed", heroVariant: "blob" },
   "Wanderly Travel": { chrome: C("overlay", "cta", "overlay"), heroStyle: "fullbleed", heroVariant: "voyage", categoriesStyle: "photo", featuresStyle: "strip" },
   "Nestoria Real Estate": { chrome: C("stripe", "cta", "tall"), heroStyle: "split", heroVariant: "splitcard" },
   "Fresh & Co.": { chrome: C("classic", "columns", "overlay"), heroStyle: "fullbleed", heroVariant: "tiles" },

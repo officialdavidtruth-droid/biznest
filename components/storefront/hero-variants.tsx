@@ -417,6 +417,73 @@ export function HeroVariantView({ variant, section, d, items, categories, slug }
     }
 
     /* Solid accent band with a tilted product card and a cut bottom edge. Promotions, groceries, deals. */
+    /* Restaurant (Pinterest: dark moody hero, one big plated dish, round category icons). */
+    case "plate": {
+      const withImg = items.filter((i) => i.image);
+      const dish = withImg[0];
+      const ink = "#f6efe6", base = "#15110e";
+      const icons = categories.slice(0, 5).map((c) => ({ c, img: items.find((i) => i.categoryName === c && i.image)?.image ?? null }));
+      return (
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: `radial-gradient(70% 90% at 80% 20%, ${d.accent}33, transparent 60%), ${base}`, color: ink, padding: "56px 0 40px" }}>
+          <div className={wrap} style={{ display: "grid", gridTemplateColumns: "1.05fr .95fr", gap: 40, alignItems: "center" }}>
+            <div>
+              {s.eyebrow && <span style={{ display: "inline-block", border: `1px solid ${d.accent}`, color: d.accent, borderRadius: 999, padding: "6px 14px", fontWeight: 700, fontSize: 13, marginBottom: 20 }}>{s.eyebrow}</span>}
+              <h1 style={{ fontFamily: d.headingFont, fontWeight: 800, fontSize: "clamp(40px,5.6vw,80px)", lineHeight: 1.02, letterSpacing: "-.03em", margin: 0 }}>{heading}</h1>
+              {s.body && <p style={{ opacity: 0.8, lineHeight: 1.7, maxWidth: 470, margin: "20px 0 28px" }}>{s.body}</p>}
+              <Cta s={s} d={d} bg={d.accent} fg={on(d.accent)} />
+            </div>
+            <div style={{ position: "relative", justifySelf: "center", width: "100%", maxWidth: 470 }}>
+              <div aria-hidden style={{ position: "absolute", inset: "-6%", borderRadius: "50%", border: `2px dashed ${d.accent}66` }} />
+              <div style={{ aspectRatio: "1/1", borderRadius: "50%", boxShadow: `0 40px 80px -20px #000, 0 0 0 10px ${base}, 0 0 0 12px ${d.accent}`, ...bgImg(s.image || dish?.image, `radial-gradient(circle, ${d.accent}88, ${d.primary}55)`) }} />
+              {dish && <div style={{ position: "absolute", right: -6, bottom: 20, background: d.accent, color: on(d.accent), borderRadius: 14, padding: "10px 14px", fontWeight: 800, fontSize: 13, boxShadow: "0 14px 30px rgba(0,0,0,.4)", maxWidth: 190 }}><div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{dish.name}</div><div>{money(dish)}</div></div>}
+            </div>
+          </div>
+          {icons.length > 0 && (
+            <div className={wrap} style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 28, marginTop: 44 }}>
+              {icons.map(({ c, img }) => (
+                <div key={c} style={{ textAlign: "center", width: 84 }}>
+                  <div style={{ width: 72, height: 72, margin: "0 auto 8px", borderRadius: "50%", border: `2px solid ${d.accent}`, ...bgImg(img, `${d.accent}33`) }} />
+                  <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.9 }}>{c}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      );
+    }
+
+    /* Fashion (Pinterest: circle-cropped model on a pastel blob, category chips with thumbnails). */
+    case "blob": {
+      const hero = items.find((i) => i.image);
+      const chips = categories.slice(0, 4).map((c) => ({ c, img: items.find((i) => i.categoryName === c && i.image)?.image ?? null }));
+      return (
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: `linear-gradient(160deg, ${d.accent}26, ${d.background} 70%)`, padding: "56px 0 40px" }}>
+          <div className={wrap} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "center" }}>
+            <div>
+              {s.eyebrow && <span style={{ display: "inline-block", background: d.accent, color: on(d.accent), borderRadius: 999, padding: "6px 14px", fontWeight: 700, fontSize: 13, marginBottom: 18 }}>{s.eyebrow}</span>}
+              <h1 style={{ fontFamily: d.headingFont, fontWeight: 800, fontSize: "clamp(38px,5.4vw,72px)", lineHeight: 1.02, letterSpacing: "-.03em", margin: 0 }}>{heading}</h1>
+              {s.body && <p style={{ color: d.muted, lineHeight: 1.7, maxWidth: 460, margin: "18px 0 26px" }}>{s.body}</p>}
+              <Cta s={s} d={d} bg={d.text} fg={d.background} />
+            </div>
+            <div style={{ position: "relative", justifySelf: "center", width: "100%", maxWidth: 440 }}>
+              <div aria-hidden style={{ position: "absolute", inset: "8% -8% -8% 12%", borderRadius: "46% 54% 52% 48% / 52% 46% 54% 48%", background: d.accent, opacity: 0.35 }} />
+              <div style={{ position: "relative", aspectRatio: "1/1", borderRadius: "50%", border: `8px solid ${d.background}`, boxShadow: `0 30px 60px -24px ${d.text}66`, ...bgImg(s.image || hero?.image, `linear-gradient(135deg, ${d.accent}55, ${d.primary}33)`) }} />
+              {hero && <div style={{ position: "absolute", left: -10, bottom: 26, background: d.background, borderRadius: 16, padding: "10px 14px", boxShadow: `0 14px 30px ${d.text}33`, fontSize: 13, fontWeight: 800, maxWidth: 190 }}><div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hero.name}</div><div style={{ color: readableAccentText(d.accent, d.background) }}>{money(hero)}</div></div>}
+            </div>
+          </div>
+          {chips.length > 0 && (
+            <div className={wrap} style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 36 }}>
+              {chips.map(({ c, img }) => (
+                <span key={c} style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "6px 16px 6px 6px", borderRadius: 999, background: d.background, border: `1px solid ${d.text}1f`, fontWeight: 700, fontSize: 14 }}>
+                  <span style={{ width: 34, height: 34, borderRadius: "50%", ...bgImg(img, `${d.accent}33`) }} />{c}
+                </span>
+              ))}
+            </div>
+          )}
+        </section>
+      );
+    }
+
     /* Marketplace hero: a rounded brand panel with a big product photo, two floating product cards and category chips. Retail, grocery, markets. */
     case "banner": {
       const bg = d.accent, fg = on(bg);
