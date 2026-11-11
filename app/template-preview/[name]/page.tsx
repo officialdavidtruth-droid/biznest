@@ -108,6 +108,68 @@ function withPreviewMenu(category: string, node: ReactNode) {
   return <StoreCategoriesProvider categories={names.map((name, i) => ({ id: `pm-${i}`, name, parentId: null, count: 6 }))}>{node}</StoreCategoriesProvider>;
 }
 
+
+// Sample catalogues per niche, so a grocery template previews groceries and an electronics template previews gadgets
+// (the generic "Signature Collection / Premium Selection" names made every template read the same).
+type Sample = { name: string; description: string; price: number };
+const NICHE_SAMPLES: Record<string, Sample[]> = {
+  Electronics: [
+    { name: "Studio Wireless Headphones", description: "Active noise cancelling, 40-hour battery.", price: 89000 },
+    { name: "Smart Watch Series 5", description: "Heart-rate, GPS and a week of battery.", price: 145000 },
+    { name: "UltraSlim Laptop 14\"", description: "16GB RAM, 512GB SSD, all-day battery.", price: 720000 },
+    { name: "Pocket Bluetooth Speaker", description: "Waterproof with deep bass.", price: 36000 },
+    { name: "Fast-Charge Power Bank", description: "20,000mAh, charges three devices.", price: 24500 },
+    { name: "4K Action Camera", description: "Stabilised video, waterproof to 10m.", price: 198000 },
+  ],
+  "Food & Groceries": [
+    { name: "Fresh Farm Vegetable Box", description: "Seasonal vegetables picked this morning.", price: 12500 },
+    { name: "Cold-Pressed Orange Juice", description: "No added sugar, 1 litre.", price: 3800 },
+    { name: "Sourdough Loaf", description: "Baked fresh every day.", price: 2800 },
+    { name: "Free-Range Eggs (30)", description: "From local family farms.", price: 5200 },
+    { name: "Premium Basmati Rice 5kg", description: "Long grain, aged for flavour.", price: 14500 },
+    { name: "Tropical Fruit Basket", description: "Mango, pineapple, pawpaw and more.", price: 9800 },
+  ],
+  "Home & Furniture": [
+    { name: "Velvet Lounge Sofa", description: "Three-seater with solid oak legs.", price: 485000 },
+    { name: "Oak Dining Table", description: "Seats six, easy to assemble.", price: 320000 },
+    { name: "Linen Duvet Set", description: "Soft, breathable, queen size.", price: 58000 },
+    { name: "Arc Floor Lamp", description: "Warm light, brass finish.", price: 74000 },
+    { name: "Woven Storage Baskets", description: "Set of three, handmade.", price: 21000 },
+    { name: "Ceramic Vase Trio", description: "Matte glaze in earthy tones.", price: 18500 },
+  ],
+  Beauty: [
+    { name: "Glow Vitamin C Serum", description: "Brightens and evens skin tone.", price: 18500 },
+    { name: "Hydrating Face Cream", description: "Lightweight, 24-hour moisture.", price: 14200 },
+    { name: "Matte Lipstick Set", description: "Five shades for every day.", price: 16800 },
+    { name: "Argan Hair Oil", description: "Smooths and adds shine.", price: 9500 },
+    { name: "Gel Manicure", description: "Long-lasting colour, book online.", price: 12000 },
+    { name: "Signature Facial", description: "60 minutes, deep cleanse and glow.", price: 25000 },
+  ],
+  Restaurant: [
+    { name: "Smoky Jollof Rice & Chicken", description: "Our signature, with fried plantain.", price: 6500 },
+    { name: "Suya Platter", description: "Spiced grilled beef with onions.", price: 8500 },
+    { name: "Pepper Soup", description: "Catfish or goat meat, hot and fragrant.", price: 7200 },
+    { name: "Grilled Tilapia", description: "Whole fish with yam chips.", price: 11500 },
+    { name: "Chin Chin Dessert Bowl", description: "Crunchy, sweet and shareable.", price: 3500 },
+    { name: "Zobo Fresh Drink", description: "Hibiscus, ginger and pineapple.", price: 1800 },
+  ],
+  Retail: [
+    { name: "Everyday Canvas Tote", description: "Sturdy, washable, fits a laptop.", price: 14500 },
+    { name: "Wireless Earbuds", description: "Clear sound, 24-hour case.", price: 32000 },
+    { name: "Stoneware Mug Set", description: "Four mugs, dishwasher safe.", price: 12500 },
+    { name: "Classic Low Sneakers", description: "Clean silhouette, cushioned sole.", price: 54000 },
+    { name: "Scented Soy Candle", description: "Hand-poured, 40-hour burn.", price: 8500 },
+    { name: "Linen Throw Blanket", description: "Soft, light and warm.", price: 27000 },
+  ],
+};
+// Templates whose own name says what they sell preview that niche instead of the broad category they are filed under.
+const PREVIEW_NICHE: Record<string, string> = { "Fresh & Co.": "Food & Groceries", Horizon: "Fashion", "ShopEase General Store": "Retail", "ShopNova Marketplace": "Retail" };
+const SAMPLE_REVIEWS = [
+  { id: "r1", rating: 5, comment: "Ordered on Monday, delivered Tuesday. Exactly what the photos showed, and the packaging was lovely.", author: { name: "Amaka O." } },
+  { id: "r2", rating: 5, comment: "Easy to browse, paid in seconds and tracking worked. I have already ordered again.", author: { name: "Tunde A." } },
+  { id: "r3", rating: 4, comment: "Great quality for the price. Support replied on WhatsApp within minutes.", author: { name: "Zainab M." } },
+];
+
 export default async function TemplatePreviewPage({ params }: { params: Promise<{ name:string }> }) {
   let name: string;
   try { name = decodeURIComponent((await params).name); } catch { notFound(); }
@@ -126,15 +188,21 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
     bannerUrl: PREVIEW_HERO_PHOTOS[definition.name] ?? nicheSamplePhoto(definition.category, photoOffset, 1800) ?? nicheHeroPhoto(definition.category),
     business: { description: tpl.sub || store.business.description },
   };
-  const isFashion = definition.category === "Fashion";
-  const sampleItems = isFashion ? fashionItems(tpl, photoOffset) : items.map((it, i) => { const menu = PREVIEW_MENU[definition.category]; return { ...it, image: nicheSamplePhoto(definition.category, i + photoOffset) ?? it.image, ...(menu ? { categoryName: menu[i % menu.length] } : {}) }; });
+  const niche = PREVIEW_NICHE[definition.name] ?? definition.category;
+  const isFashion = niche === "Fashion";
+  const samples = NICHE_SAMPLES[niche];
+  const sampleItems = isFashion ? fashionItems(tpl, photoOffset) : items.map((it, i) => {
+    const menu = PREVIEW_MENU[niche] ?? PREVIEW_MENU[definition.category];
+    const sample = samples?.[i % samples.length];
+    return { ...it, ...(sample ?? {}), kind: "product" as const, type: "PRODUCT", image: nicheSamplePhoto(niche, i + photoOffset) ?? nicheSamplePhoto(definition.category, i + photoOffset) ?? it.image, ...(menu ? { categoryName: menu[i % menu.length] } : {}) };
+  });
   const p:any = { store: previewStore, slug:"__biznest-template-preview", catalogItems:sampleItems, items:sampleItems, navCategories:isFashion ? fashionCategories : categories, goodReviews:[], reviews:[], avgRating:null, completedOrders:0, trustScore:null, trustChecklist:null, social:{} };
-  if (home.kind === "screenshot") return withPreviewMenu(definition.category, <SignatureScreenshotHome {...p} mode={home.mode} {...home.palette}/>);
+  if (home.kind === "screenshot") return withPreviewMenu(niche, <SignatureScreenshotHome {...p} mode={home.mode} {...home.palette}/>);
   if (home.kind === "hotel") return <ThelusoHotel store={previewStore as any} slug={p.slug} content={await getHotelContent(p.slug, definition.name)}/>;
   const theme = resolveStoreTheme(definition.category, previewStore.name, null, null, definition.name);
   const baseConfig = templateThemeToBuilderConfig({ ...theme, neutral: true }, previewStore.name, previewStore.business.description, previewStore.bannerUrl, previewStore.business as any);
   // Sample copy for the demo only: a real store shows just what its owner types in the editor.
   const sampleChips = [{ title: "Free delivery", body: "On every order" }, { title: "Secure payment", body: "Pay your way" }, { title: "Easy returns", body: "No stress" }];
   const config = { ...baseConfig, sections: baseConfig.sections.map((sec) => sec.type === "hero" && ["spotlight", "voyage", "market", "glow", "showroom"].includes(sec.settings.heroVariant ?? "") ? { ...sec, settings: { ...sec.settings, items: sampleChips } } : sec.type === "promo" ? { ...sec, settings: { ...sec.settings, eyebrow: "Limited offer", heading: "Amazing deals. This week only.", body: "Selected items at special prices while stock lasts.", ctaLabel: "Shop the offer" } } : sec.type === "features" ? { ...sec, settings: { ...sec.settings, items: sampleChips } } : sec) };
-  return withPreviewMenu(definition.category, <BuilderStorefront store={previewStore as any} config={config} catalogItems={sampleItems as any} reviews={[]} avgRating={null} completedOrders={0}/>);
+  return withPreviewMenu(niche, <BuilderStorefront store={previewStore as any} config={config} catalogItems={sampleItems as any} reviews={SAMPLE_REVIEWS} avgRating={4.8} completedOrders={1240}/>);
 }
