@@ -87,7 +87,7 @@ const PREVIEW_MENU: Record<string, string[]> = {
   Photography: ["Portraits", "Weddings", "Events", "Prints"],
   Agency: ["Services", "Work", "Process", "Pricing"],
   "Professional Services": ["Services", "Packages", "Resources", "Pricing"],
-  Cleaning: ["Home", "Office", "Deep clean", "Packages"],
+  Cleaning: ["Residential", "Office", "Deep clean", "Packages"],
   Construction: ["Residential", "Commercial", "Renovation", "Quotes"],
   Restaurant: ["Starters", "Mains", "Desserts", "Drinks"],
   "Food & Groceries": ["Fresh produce", "Pantry", "Drinks", "Bakery"],
