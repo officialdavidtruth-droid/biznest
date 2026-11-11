@@ -2,6 +2,7 @@
 
 import { templateDisplayName } from "@/lib/template-display-name";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { PREVIEW_NICHES, PREVIEW_VIEWS, previewUrl } from "@/lib/storefront/preview-niches";
 import { Check, Lock, Search, Eye, X, ShoppingBag, CalendarDays } from "lucide-react";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { getBusinessExperience } from "@/lib/business-experience";
@@ -84,7 +85,9 @@ export function TemplateGallery({
   // Show every template by default. Ones that do not suit the store's business type stay visible
   // (so the "of N templates" count and category chips are truthful) but are previewable only.
   const [showAll, setShowAll] = useState(true);
-  const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
+  const [preview, setPreview] = useState<{ name: string; view: string } | null>(null);
+  // Temporary, never saved: previews every template with sample content for another business type, so one store can check every niche.
+  const [previewNiche, setPreviewNiche] = useState<string | null>(null);
   useEffect(() => {
     if (!preview) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPreview(null); };
@@ -168,6 +171,17 @@ export function TemplateGallery({
         ))}
       </div>
 
+      <div className="mb-4 flex flex-col gap-2 rounded-lg border border-dashed border-amber-400/70 bg-amber-50 px-3 py-2 text-xs text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+        <p><strong>Preview as another business type.</strong> Temporary: it only changes the sample photos and products shown in previews. Your store is not changed.</p>
+        <label className="flex shrink-0 items-center gap-2 font-medium">
+          Niche
+          <select value={previewNiche ?? ""} onChange={(e) => setPreviewNiche(e.target.value || null)} className="rounded-md border border-amber-400/70 bg-white px-2 py-1 text-xs">
+            <option value="">Each template's own</option>
+            {PREVIEW_NICHES.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      </div>
+
       {businessCategory && (
         <div className="mb-4 flex flex-col gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between">
           <p className="text-muted-foreground">
@@ -233,12 +247,12 @@ export function TemplateGallery({
                     checked in CI by `npm run thumbnails:check`, so it can't drift). A template with no
                     thumbnail yet falls back to the live render. The Preview button always opens the live one. */}
                 {(() => {
-                  const thumb = getTemplateThumbnail(t.name);
+                  const thumb = previewNiche ? null : getTemplateThumbnail(t.name);
                   return thumb ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={thumb} alt={`${t.name} template front page`} loading="lazy" decoding="async" width={640} height={400} className="absolute inset-0 h-full w-full object-cover object-top" />
                   ) : (
-                    <LazyPreview title={`${t.name} live front page preview`} src={`/template-preview/${encodeURIComponent(t.name)}`} />
+                    <LazyPreview title={`${t.name} live front page preview`} src={previewUrl(t.name, "", previewNiche)} />
                   );
                 })()}
 
@@ -279,7 +293,7 @@ export function TemplateGallery({
 
                 <button
                   type="button"
-                  onClick={() => setPreview({ name: t.name, url: `/template-preview/${encodeURIComponent(t.name)}` })}
+                  onClick={() => setPreview({ name: t.name, view: "" })}
                   className="flex shrink-0 items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:border-primary/50 hover:text-primary"
                 >
                   <Eye className="h-3 w-3" /> Preview
@@ -316,9 +330,15 @@ export function TemplateGallery({
               </div>
               <button type="button" aria-label="Close preview" autoFocus onClick={() => setPreview(null)} className="rounded-md p-2 hover:bg-muted"><X className="h-4 w-4" /></button>
             </div>
+            <div className="flex flex-wrap gap-1 border-b border-border px-3 py-2">
+              {PREVIEW_VIEWS.map(([v, label]) => (
+                <button key={v || "home"} type="button" aria-pressed={preview.view === v} onClick={() => setPreview({ name: preview.name, view: v })} className={`rounded-full border px-3 py-1 text-[11px] font-medium transition ${preview.view === v ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/50"}`}>{label}</button>
+              ))}
+            </div>
             <iframe
+              key={`${preview.name}-${preview.view}-${previewNiche ?? ""}`}
               title={`${preview.name} live front page preview`}
-              src={preview.url}
+              src={previewUrl(preview.name, preview.view, previewNiche)}
               className="min-h-0 flex-1 border-0 bg-white"
             />
           </div>

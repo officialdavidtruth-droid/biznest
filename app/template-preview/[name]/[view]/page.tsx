@@ -13,17 +13,21 @@ import { catalogDesign, catalogStoreInfo } from "@/lib/storefront/catalog-props"
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { BuilderSubpage, type SubpageKind } from "@/components/storefront/builder-subpages";
 import { nicheSamplePhoto } from "@/lib/niche-imagery";
+import { PREVIEW_NICHES } from "@/lib/storefront/preview-niches";
 
 export const dynamic = "force-dynamic";
 
 /** /template-preview/<template>/cart | checkout | pay: the shared transaction pages wearing that template's skin, with demo data. */
-export default async function TemplateTransactionPreview({ params }: { params: Promise<{ name: string; view: string }> }) {
+export default async function TemplateTransactionPreview({ params, searchParams }: { params: Promise<{ name: string; view: string }>; searchParams?: Promise<{ niche?: string }> }) {
   const { name, view } = await params;
   const t = getTemplateDefinition(decodeURIComponent(name));
   if (!t || !["cart", "checkout", "pay", "product", "shop", "about", "contact", "categories"].includes(view)) notFound();
   const palette = resolveStorePalette({ name: "Demo Store", template: { name: t.name, category: t.category } });
   const theme = resolveStoreTheme(t.category, "Demo Store", null, null, t.name);
-  const photo = (i: number) => nicheSamplePhoto(t.category, i) ?? null;
+  // ?niche= (the dashboard's temporary "Preview as" switch) swaps the sample photos and the business type, nothing else.
+  const requested = (await searchParams)?.niche;
+  const niche = requested && (PREVIEW_NICHES as readonly string[]).includes(requested) ? requested : t.category;
+  const photo = (i: number) => nicheSamplePhoto(niche, i) ?? nicheSamplePhoto(t.category, i) ?? null;
   const names = ["Signature Collection", "Premium Selection", "Featured Pick", "Editor's Choice", "Everyday Essential", "Limited Edition", "Best Seller", "New Arrival"];
   if (view === "product") {
     return (
@@ -39,7 +43,7 @@ export default async function TemplateTransactionPreview({ params }: { params: P
     );
   }
   if (view === "about" || view === "contact" || view === "categories") {
-    const info = { name: "Demo Store", logoUrl: null, contactEmail: "hello@demo.store", contactPhone: "0800 000 0000", bannerUrl: null, sectionOverrides: null, business: { description: "A family-run business serving customers with care since 2016.", category: t.category, businessSubcategory: null, sellsProducts: true, offersServices: false, email: null, phone: null } };
+    const info = { name: "Demo Store", logoUrl: null, contactEmail: "hello@demo.store", contactPhone: "0800 000 0000", bannerUrl: null, sectionOverrides: null, business: { description: "A family-run business serving customers with care since 2016.", category: niche, businessSubcategory: null, sellsProducts: true, offersServices: false, email: null, phone: null } };
     return (
       <BuilderSubpage
         skin={palette.skin} kind={view as SubpageKind} store={catalogStoreInfo(info, "preview")} design={catalogDesign(info, theme)} owner={null}
@@ -50,7 +54,7 @@ export default async function TemplateTransactionPreview({ params }: { params: P
     );
   }
   if (view === "shop") {
-    const info = { name: "Demo Store", logoUrl: null, contactEmail: null, contactPhone: null, bannerUrl: null, sectionOverrides: null, business: { description: null, category: t.category, businessSubcategory: null, sellsProducts: true, offersServices: false, email: null, phone: null } };
+    const info = { name: "Demo Store", logoUrl: null, contactEmail: null, contactPhone: null, bannerUrl: null, sectionOverrides: null, business: { description: null, category: niche, businessSubcategory: null, sellsProducts: true, offersServices: false, email: null, phone: null } };
     return (
       <CatalogExperience
         skin={palette.skin} store={catalogStoreInfo(info, "preview")} design={catalogDesign(info, theme)}
