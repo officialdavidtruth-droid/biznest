@@ -1,3 +1,5 @@
+import type { PageSkin } from "@/lib/storefront/page-skin";
+
 /** Client-safe palette type + defaults (no theme imports, so client bundles stay small). */
 export type StorePalette = {
   accent: string;
@@ -10,6 +12,8 @@ export type StorePalette = {
   inverseInk: string;
   font: string;
   headlineFont: string;
+  /** Per-template layout recipe for cart / checkout / pay. */
+  skin?: PageSkin;
 };
 
 /** The original Lumina palette, used when no store theme is available. */

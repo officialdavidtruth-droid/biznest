@@ -1,4 +1,5 @@
 import { resolveStoreTheme } from "@/lib/template-themes";
+import { pageSkinFor } from "@/lib/storefront/page-skin-resolve";
 import { DEFAULT_STORE_PALETTE, type StorePalette } from "@/lib/store-palette-defaults";
 
 export { DEFAULT_STORE_PALETTE, type StorePalette };
@@ -68,6 +69,7 @@ export function resolveStorePalette(store: {
       inverseInk: readableOn(inverse, [pick(t.bg, "#FFFFFF"), pick(t.ink, "#FFFFFF")]),
       font: t.font || d.font,
       headlineFont: t.headlineFont || d.headlineFont,
+      skin: pageSkinFor(store.template?.name),
     };
   } catch {
     return DEFAULT_STORE_PALETTE;

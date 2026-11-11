@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_PAGE_SKIN, LAYOUT_CLASSES, PAD, GAP, BTN_RADIUS, surfaceStyle, summaryStyle } from "@/lib/storefront/page-skin";
 import { ApproxPrice } from "@/components/storefront/approx-price";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -28,6 +29,13 @@ export function CartClient({
   bottomSlot?: ReactNode;
 }) {
   const ACCENT = palette.accent, INK = palette.ink, SURFACE = palette.surface, CARD = palette.card, CARD_ALT = palette.cardAlt, INVERSE = palette.inverse, INVERSE_INK = palette.inverseInk;
+  const skin = palette.skin ?? DEFAULT_PAGE_SKIN;
+  const [GRID, LIST_COL, SUM_COL] = LAYOUT_CLASSES[skin.layout];
+  const panel = surfaceStyle(skin, palette.ink, palette.card, palette.surface, palette.accent);
+  const sum = summaryStyle(skin, palette);
+  const SUM_FG = sum.fg;
+  const BTN_BG = skin.summary === "accent" ? palette.onAccent : ACCENT;
+  const BTN_FG = skin.summary === "accent" ? ACCENT : palette.onAccent;
   const { items, storeSlug, setQuantity, removeItem, clear, subtotal } = useCart();
 
   const cartItems = storeSlug === slug ? items : [];
@@ -104,13 +112,13 @@ export function CartClient({
             </Link>
           </div>
         ) : (
-          <div className="grid gap-8 lg:grid-cols-12">
+          <div className={`${GRID} ${GAP[skin.density]}`}>
             {/* Items */}
-            <div className="flex flex-col gap-4 lg:col-span-8">
+            <div className={`flex flex-col gap-4 ${LIST_COL}`}>
               {cartItems.map((item) => (
                 <div
                   key={`${item.productId}:${item.variantId ?? "base"}`}
-                  style={{ background: CARD_ALT, borderRadius: "1rem", boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }}
+                  style={panel}
                   className="flex gap-4 p-4 transition-shadow hover:shadow-md sm:p-5"
                 >
                   <div style={{ background: SURFACE, borderRadius: "0.75rem" }} className="h-24 w-24 flex-shrink-0 overflow-hidden sm:h-32 sm:w-32">
@@ -175,13 +183,13 @@ export function CartClient({
             </div>
 
             {/* Summary */}
-            <aside className="lg:col-span-4">
+            <aside className={SUM_COL}>
               <div
-                style={{ background: INVERSE, color: INVERSE_INK, borderRadius: "1.25rem", boxShadow: "0 20px 50px rgba(0,0,0,0.15)" }}
+                style={sum.style}
                 className="sticky top-6 flex flex-col gap-5 p-7"
               >
                 <h2 style={{ fontFamily: palette.headlineFont }} className="text-xl font-bold">Order summary</h2>
-                <div style={{ borderTop: `1px solid ${INVERSE_INK}22` }} className="flex flex-col gap-2.5 pt-5 text-sm">
+                <div style={{ borderTop: `1px solid ${SUM_FG}22` }} className="flex flex-col gap-2.5 pt-5 text-sm">
                   <div className="flex items-center justify-between">
                     <span style={{ opacity: 0.8 }}>Subtotal ({itemCount} item{itemCount !== 1 ? "s" : ""})</span>
                     <span className="font-semibold">{total}</span>
@@ -191,20 +199,20 @@ export function CartClient({
                     <span style={{ opacity: 0.8 }}>Calculated at checkout</span>
                   </div>
                 </div>
-                <div style={{ borderTop: `1px solid ${INVERSE_INK}22` }} className="flex items-end justify-between pt-5">
+                <div style={{ borderTop: `1px solid ${SUM_FG}22` }} className="flex items-end justify-between pt-5">
                   <span className="text-base font-semibold">Total</span>
                   <span className="text-2xl font-extrabold leading-none">{total}</span>
                 </div>
                 {currency && <ApproxPrice amount={subtotal} currency={currency} />}
                 <Link
                   href={`/store/${slug}/checkout`}
-                  style={{ background: ACCENT, color: palette.onAccent, boxShadow: `0 8px 20px ${ACCENT}4d` }}
-                  className="flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold no-underline transition-transform hover:-translate-y-0.5"
+                  style={{ background: BTN_BG, color: BTN_FG, borderRadius: BTN_RADIUS[skin.radius] }}
+                  className="flex items-center justify-center gap-2 py-3.5 text-sm font-semibold no-underline transition-transform hover:-translate-y-0.5"
                 >
                   Proceed to Checkout
                   <ArrowRight className="h-4 w-4" />
                 </Link>
-                <ul style={{ borderTop: `1px solid ${INVERSE_INK}22`, opacity: 0.8 }} className="flex flex-col gap-2 pt-5 text-xs">
+                <ul style={{ borderTop: `1px solid ${SUM_FG}22`, opacity: 0.8 }} className="flex flex-col gap-2 pt-5 text-xs">
                   <li className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 shrink-0" /> Secure, encrypted payment</li>
                   <li className="flex items-center gap-2"><Truck className="h-4 w-4 shrink-0" /> Delivery cost shown before you pay</li>
                   <li className="flex items-center gap-2"><Check className="h-4 w-4 shrink-0" /> Review your order before confirming</li>

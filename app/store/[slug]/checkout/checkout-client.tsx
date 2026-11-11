@@ -11,6 +11,7 @@ import { getCheckoutWalletBalance } from "@/lib/actions/customer-wallet";
 import { DeliveryZoneOptions } from "@/components/checkout/delivery-zone-options";
 import { toast } from "sonner";
 import { openKorapayInline } from "@/lib/checkout/korapay-inline";
+import { DEFAULT_PAGE_SKIN, LAYOUT_CLASSES, PAD, GAP, RADIUS_PX, BTN_RADIUS, surfaceStyle, summaryStyle } from "@/lib/storefront/page-skin";
 import { ShieldCheck, Lock, Truck, ChevronLeft, CreditCard, Wallet } from "lucide-react";
 import { formatNumber } from "@/lib/i18n/locale";
 import { grossUpForGatewayFee, payoutTransferFee, type FeeConfig } from "@/lib/payments/customer-fee";
@@ -46,6 +47,14 @@ type Zone = { id: string; name: string; city: string | null; fee: unknown; estim
 
 export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfig, storeName }: { slug: string; palette?: StorePalette; feeConfig?: FeeConfig; storeName?: string }) {
   const ACCENT = palette.accent, INK = palette.ink, SURFACE = palette.surface, CARD = palette.card, CARD_ALT = palette.cardAlt, INVERSE = palette.inverse, INVERSE_INK = palette.inverseInk;
+  const skin = palette.skin ?? DEFAULT_PAGE_SKIN;
+  const [GRID, FORM_COL, SUM_COL] = LAYOUT_CLASSES[skin.layout];
+  const panel = surfaceStyle(skin, palette.ink, palette.card, palette.surface, palette.accent);
+  const sum = summaryStyle(skin, palette);
+  const SUM_FG = sum.fg;
+  const BTN_BG = skin.summary === "accent" ? palette.onAccent : ACCENT;
+  const BTN_FG = skin.summary === "accent" ? ACCENT : palette.onAccent;
+  const PADC = PAD[skin.density];
   const inputStyle = { color: INK };
   const { items, storeSlug, subtotal } = useCart();
   const cartItems = storeSlug === slug ? items : [];
@@ -211,11 +220,11 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
           </div>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-12">
+        <div className={`${GRID} ${GAP[skin.density]}`}>
           {/* ---------- LEFT: FORM ---------- */}
-          <div className="lg:col-span-7">
+          <div className={FORM_COL}>
             {zones.length > 0 && (
-              <div style={{ background: CARD, borderRadius: "1rem", boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="mb-5 p-6">
+              <div style={panel} className={`mb-5 ${PADC}`}>
                 <div className="mb-3 flex items-center gap-2">
                   <Truck className="h-4 w-4" style={{ color: ACCENT }} />
                   <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-base font-bold">Delivery</h2>
@@ -255,7 +264,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
               </div>
             )}
 
-            <div style={{ background: CARD, borderRadius: "1rem", boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="p-6">
+            <div style={panel} className={PADC}>
               <div className="mb-4 flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4" style={{ color: ACCENT }} />
                 <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-base font-bold">Shipping details</h2>
@@ -292,7 +301,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
             </div>
 
             {walletOffered && (
-              <div style={{ background: CARD, borderRadius: "1rem", boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="mt-5 p-6">
+              <div style={panel} className={`mt-5 ${PADC}`}>
                 <div className="mb-4 flex items-center gap-2">
                   <Wallet className="h-4 w-4" style={{ color: ACCENT }} />
                   <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-base font-bold">Payment method</h2>
@@ -340,9 +349,9 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
           </div>
 
           {/* ---------- RIGHT: ORDER SUMMARY (matches cart's sticky summary card) ---------- */}
-          <div className="lg:col-span-5">
+          <div className={SUM_COL}>
             <div
-              style={{ background: INVERSE, color: INVERSE_INK, borderRadius: "1.25rem", boxShadow: "0 20px 50px rgba(0,0,0,0.15)" }}
+              style={sum.style}
               className="sticky top-24 flex flex-col gap-5 p-7"
             >
               <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-xl font-bold">Order summary</h2>
@@ -350,7 +359,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
               <div className="flex flex-col gap-3">
                 {cartItems.map((i) => (
                   <div key={i.productId} className="flex items-center gap-3">
-                    <div style={{ background: `${INVERSE_INK}14`, borderRadius: "0.6rem" }} className="h-12 w-12 flex-shrink-0 overflow-hidden">
+                    <div style={{ background: `${SUM_FG}14`, borderRadius: "0.6rem" }} className="h-12 w-12 flex-shrink-0 overflow-hidden">
                       {i.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={i.image} alt={i.name} className="h-full w-full object-cover" />
@@ -365,7 +374,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
                 ))}
               </div>
 
-              <div style={{ borderTop: `1px solid ${INVERSE_INK}22` }} className="flex flex-col gap-2.5 pt-5 text-sm">
+              <div style={{ borderTop: `1px solid ${SUM_FG}22` }} className="flex flex-col gap-2.5 pt-5 text-sm">
                 <div className="flex items-center justify-between">
                   <span style={{ opacity: 0.8 }}>Subtotal</span>
                   <span className="font-semibold">{currency} {formatNumber(subtotal)}</span>
@@ -376,7 +385,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
                 </div>
               </div>
 
-              <div style={{ borderTop: `1px solid ${INVERSE_INK}22` }} className="flex items-end justify-between pt-5">
+              <div style={{ borderTop: `1px solid ${SUM_FG}22` }} className="flex items-end justify-between pt-5">
                 <span className="text-base font-semibold">Total</span>
                 <span className="text-2xl font-extrabold leading-none">{currency} {formatNumber(total)}</span>
               </div>
@@ -399,8 +408,8 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
                 type="submit"
                 form="checkout-form"
                 disabled={isSubmitting}
-                style={{ background: ACCENT, color: palette.onAccent, boxShadow: `0 8px 20px ${ACCENT}4d` }}
-                className="mt-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
+                style={{ background: BTN_BG, color: BTN_FG, borderRadius: BTN_RADIUS[skin.radius] }}
+                className="mt-1 flex items-center justify-center gap-2 py-3.5 text-sm font-semibold transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
               >
                 {isSubmitting ? (usingWallet ? "Paying from wallet…" : "Opening secure card checkout…") : usingWallet ? `Pay ${currency} ${formatNumber(total)} from wallet` : `Pay ${currency} ${formatNumber(gatewayFee.totalNaira)}`}
               </button>
@@ -423,8 +432,8 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
           type="submit"
           form="checkout-form"
           disabled={isSubmitting}
-          style={{ background: ACCENT, color: palette.onAccent }}
-          className="rounded-xl px-6 py-3 text-sm font-semibold disabled:opacity-50"
+          style={{ background: ACCENT, color: palette.onAccent, borderRadius: BTN_RADIUS[skin.radius] }}
+          className="px-6 py-3 text-sm font-semibold disabled:opacity-50"
         >
           {isSubmitting ? "Please wait…" : usingWallet ? "Pay from wallet" : "Pay now"}
         </button>
