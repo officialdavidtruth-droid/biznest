@@ -192,6 +192,20 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(() => {
     if (app.isPackaged) app.setAsDefaultProtocolClient(PROTOCOL);
     session.defaultSession.setUserAgent(CHROME_UA);
+    // Sign out: make sure the session cookie is really gone from this app (it is scoped to
+    // .biznest.space), then return to the start screen. Otherwise the app can land back on the dashboard.
+    session.defaultSession.webRequest.onCompleted({ urls: ["*://*/api/auth/signout*"] }, async (d) => {
+      if (d.method !== "POST" || d.statusCode >= 500) return;
+      try {
+        const all = await session.defaultSession.cookies.get({});
+        for (const c of all) {
+          if (!/session-token|callback-url|csrf-token/.test(c.name)) continue;
+          const host = c.domain.replace(/^\./, "");
+          await session.defaultSession.cookies.remove(`${c.secure ? "https" : "http"}://${host}${c.path}`, c.name).catch(() => {});
+        }
+      } catch {}
+      setTimeout(() => { if (win && !win.isDestroyed()) win.loadURL(START_URL); }, 150);
+    });
     buildMenu();
     createWindow();
     updater.init(() => win);
