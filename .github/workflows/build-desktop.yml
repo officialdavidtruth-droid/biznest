@@ -22,11 +22,19 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            files: desktop/dist/BizNest-Setup.exe
+            files: |
+              desktop/dist/BizNest-Setup.exe
+              desktop/dist/BizNest-Setup.exe.blockmap
+              desktop/dist/latest.yml
           - os: macos-latest
-            files: desktop/dist/BizNest.dmg
+            files: |
+              desktop/dist/BizNest.dmg
+              desktop/dist/BizNest.zip
+              desktop/dist/latest-mac.yml
           - os: ubuntu-latest
-            files: desktop/dist/BizNest.AppImage
+            files: |
+              desktop/dist/BizNest.AppImage
+              desktop/dist/latest-linux.yml
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     steps:

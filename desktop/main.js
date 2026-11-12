@@ -5,6 +5,7 @@
 //   - device storage (preload.js) used by the register to keep its catalogue and unsent sales.
 const { app, BrowserWindow, Menu, shell, dialog } = require("electron");
 const path = require("path");
+const updater = require("./updater");
 
 const START_URL = process.env.BIZNEST_URL || "https://biznest.space/";
 // Hosts that may open inside the app window (login, the dashboard, payment pages, product images).
@@ -83,6 +84,7 @@ function buildMenu() {
       label: "Help",
       submenu: [
         { label: "BizNest support", click: () => shell.openExternal("mailto:biznestsupport@gmail.com") },
+        { label: "Check for updates…", click: () => updater.checkNow() },
         { label: `About (v${app.getVersion()})`, click: () => dialog.showMessageBox({ message: `BizNest Desktop v${app.getVersion()}`, detail: "Your store, orders, bookings and an offline register." }) },
       ],
     },
@@ -102,6 +104,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(() => {
     buildMenu();
     createWindow();
+    updater.init(() => win);
     app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
   });
   app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
