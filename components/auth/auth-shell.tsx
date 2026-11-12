@@ -114,7 +114,7 @@ export function AuthShell({
   const panelMid = mix(accentColor, "#000000", isDarkColor(accentColor) ? 0.2 : 0.45);
   const onPanel = "#ffffff";
   // Accent used for text/icons on the dark panel: lifted when the store colour is too dark to read there.
-  const highlight = isStoreContext && isDarkColor(accentColor) ? mix(accentColor, "#ffffff", 0.6) : accentColor;
+  const highlight = isStoreContext ? (isDarkColor(accentColor) ? mix(accentColor, "#ffffff", 0.6) : accentColor) : "#6ee7a8";
   const formBg = isStoreContext ? mix(accentColor, "#ffffff", 0.965) : "#ffffff";
   // These tokens are what the shared inputs and buttons already read, so every field on the page follows the store.
   const brandVars = isStoreContext
@@ -126,7 +126,7 @@ export function AuthShell({
         "--primary-foreground": hexToHslTriplet(onAccent === "#ffffff" ? "#ffffff" : "#111111"),
         "--bn-ink": mix(accentColor, "#000000", 0.82),
       } as React.CSSProperties)
-    : undefined;
+    : ({ "--bn-on-accent": "#ffffff", "--bn-accent-gradient": "linear-gradient(135deg, #14802a 0%, #0b5d1a 100%)" } as React.CSSProperties);
 
   // Vendor's own click-to-edit hero subtitle wins; otherwise fall back to a
   // trimmed version of their onboarding business description; otherwise the
@@ -169,7 +169,7 @@ export function AuthShell({
         style={{
           background: isStoreContext
             ? `radial-gradient(120% 90% at 12% -10%, ${mix(accentColor, "#ffffff", 0.18)}55 0%, transparent 55%), linear-gradient(165deg, ${panelMid} 0%, ${panelDeep} 100%)`
-            : "var(--bn-hero-gradient)",
+            : "radial-gradient(90% 60% at 100% 0%, rgba(110,231,168,0.20) 0%, transparent 60%), radial-gradient(80% 60% at 0% 100%, rgba(20,128,42,0.45) 0%, transparent 60%), linear-gradient(160deg, #0c3a14 0%, #06200c 55%, #030f06 100%)",
         }}
       >
         <div className="bn-dot-grid pointer-events-none absolute inset-0 opacity-40" />
@@ -182,26 +182,22 @@ export function AuthShell({
           {isStoreContext ? (
             <StoreMark name={storeName ?? "Store"} logoUrl={storeLogoUrl} size={40} accent={accentColor} onAccent={onAccent} />
           ) : (
-            <span
-              className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-[#05100a]"
-              style={{ background: "var(--bn-accent-gradient)" }}
-            >
-              BN
-            </span>
+            <Image src="/icon-192.png" alt="BizNest" width={44} height={44} priority className="h-11 w-11 rounded-xl shadow-lg ring-1 ring-white/20" />
           )}
-          <span className="text-sm font-semibold tracking-wide" style={{ color: onPanel }}>
+          <span className="text-lg font-semibold tracking-tight" style={{ color: onPanel }}>
             {storeName ?? "BizNest"}
           </span>
         </div>
 
         <div className="relative z-10 max-w-sm bn-fade-up">
           <p
-            className="mb-4 text-xs font-semibold uppercase tracking-[0.2em]"
-            style={{ color: highlight }}
+            className="mb-5 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium"
+            style={{ color: highlight, borderColor: `${highlight}55`, background: `${highlight}14` }}
           >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: highlight }} />
             {eyebrow}
           </p>
-          <h1 className="text-[2.1rem] font-semibold leading-[1.15] text-white">
+          <h1 className="text-[2.4rem] font-semibold leading-[1.12] tracking-tight text-white">
             {isStoreContext ? (
               <>
                 Everything you love from{" "}
@@ -215,12 +211,28 @@ export function AuthShell({
               </>
             )}
           </h1>
-          <p className="mt-4 text-sm leading-relaxed text-[var(--bn-mute)]">
+          <p className="mt-4 text-[15px] leading-relaxed text-white/70">
             {isStoreContext
               ? tagline || `Track orders, save your details for faster checkout on ${modeLabel}, and pick up right where you left off.`
               : "Storefronts, staff, and payments, in one place built for how Nigerian businesses actually sell."}
           </p>
         </div>
+
+        {!isStoreContext && (
+          <div className="relative z-10 max-w-sm rounded-2xl border border-white/15 bg-white/[0.07] p-4 shadow-2xl backdrop-blur-sm" aria-hidden>
+            <div className="flex items-center justify-between text-xs text-white/60">
+              <span>Today</span>
+              <span className="rounded-full bg-[#6ee7a8]/20 px-2 py-0.5 text-[#6ee7a8]">Live</span>
+            </div>
+            <div className="mt-2 flex items-end justify-between">
+              <div>
+                <p className="text-2xl font-semibold text-white">₦248,500</p>
+                <p className="text-xs text-white/60">Sales · 18 orders</p>
+              </div>
+              <svg width="110" height="36" viewBox="0 0 110 36" fill="none"><path d="M2 30 L20 22 L38 26 L56 14 L74 18 L92 6 L108 10" stroke="#6ee7a8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+          </div>
+        )}
 
         <div className="relative z-10 space-y-3">
           {(isStoreContext
@@ -231,7 +243,7 @@ export function AuthShell({
                 { icon: Sparkles, text: "Built for how Nigerian small businesses actually sell" },
               ]
           ).map(({ icon: Icon, text }) => (
-            <div key={text} className="bn-receipt-row text-sm text-white/85">
+            <div key={text} className="bn-receipt-row text-sm text-white/85" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
               <Icon className="h-4 w-4 shrink-0" style={{ color: highlight }} />
               <span>{text}</span>
             </div>
@@ -246,17 +258,12 @@ export function AuthShell({
               panel is hidden entirely. */}
           {!isStoreContext && (
             <Link href="/" className="mb-8 flex items-center gap-2 md:hidden">
-              <span
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold"
-                style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
-              >
-                BN
-              </span>
+              <Image src="/icon-192.png" alt="" width={36} height={36} className="h-9 w-9 rounded-xl" />
               <span className="text-sm font-semibold text-[var(--bn-ink)]">BizNest</span>
             </Link>
           )}
 
-          <h2 className="text-2xl font-semibold tracking-tight text-[var(--bn-ink)]">{title}</h2>
+          <h2 className="text-[1.75rem] font-semibold tracking-tight text-[var(--bn-ink)]">{title}</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>
 
           <div className="mt-8">{children}</div>
