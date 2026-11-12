@@ -12,7 +12,7 @@ const m = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/prisma", () => ({ prisma: m.prisma }));
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), unstable_cache: <T extends (...a: never[]) => unknown>(fn: T) => fn }));
 vi.mock("@/lib/admin-guard", () => ({ isPlatformStaff: m.staff }));
 vi.mock("@/lib/access/assert-store-access", () => ({ assertStorePermission: m.assertStorePermission }));
 

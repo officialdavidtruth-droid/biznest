@@ -34,7 +34,7 @@ vi.mock("@prisma/client", () => {
   return { Prisma: { PrismaClientKnownRequestError } };
 });
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-forwarded-for": "203.0.113.5" }), cookies: async () => ({ get: () => undefined, set: () => undefined }) }));
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), unstable_cache: <T extends (...a: never[]) => unknown>(fn: T) => fn }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: m.checkRateLimit, getClientIp: () => "203.0.113.5" }));
 vi.mock("@/lib/notifications/notify", () => ({ notifyUser: m.notifyUser }));
 vi.mock("@/lib/browse-viewer", () => ({ getViewer: m.getViewer }));

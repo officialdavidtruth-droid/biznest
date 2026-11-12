@@ -34,6 +34,7 @@ export const RESERVED_SLUGS = new Set([
   "icon-maskable-512.png",
   // /download page (app/download) + public/downloads/ (the Android APK)
   "download",
+  "fonts",
   // Public social feed (app/browse)
   "browse",
   "join",

@@ -53,7 +53,9 @@ vi.mock("@/lib/channels/sync", () => ({ findChannelBlockOverlap: m.channelOverla
 
 import { autoLinkRoomsToUnits, createReservation, linkRoomToUnit } from "@/lib/actions/pms";
 
-const input = { guestId: "g1", roomId: "r1", checkIn: "2026-11-10", checkOut: "2026-11-12" };
+// Dates are relative to today: a fixed date silently turns this suite red once it passes ("Check-out must be in the future").
+const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+const input = { guestId: "g1", roomId: "r1", checkIn: day(30), checkOut: day(32) };
 
 beforeEach(() => {
   vi.clearAllMocks();
