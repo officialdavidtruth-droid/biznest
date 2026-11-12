@@ -581,6 +581,100 @@ export function HeroVariantView({ variant, section, d, items, categories, slug }
       );
     }
 
+    /* Fashion runway (Pinterest: tall full-height portrait, oversized outlined season word, slim vertical tag). Atelier. */
+    case "runway": {
+      const thumbs = items.filter((i) => i.image).slice(0, 3);
+      return (
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ padding: 0, background: "#F2EEE8", color: "#171512", overflow: "hidden" }}>
+          <div className={wrap} style={{ display: "grid", gridTemplateColumns: ".9fr 1.1fr", gap: 0, alignItems: "stretch", minHeight: 620 }}>
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", padding: "56px 40px 56px 0", position: "relative", zIndex: 1 }}>
+              {s.eyebrow && <p style={{ margin: "0 0 18px", fontSize: 13, letterSpacing: ".04em", color: "#6F6A60" }}>{s.eyebrow}</p>}
+              <h1 style={{ fontFamily: d.headingFont, fontWeight: 300, fontSize: "clamp(46px,7.6vw,118px)", lineHeight: 0.92, letterSpacing: "-.04em", margin: 0, marginRight: "-18%", WebkitTextStroke: "1.5px #171512", color: "transparent" }}>{heading}</h1>
+              {s.body && <p style={{ lineHeight: 1.8, maxWidth: 380, margin: "28px 0", color: "#4A463E" }}>{s.body}</p>}
+              <Cta s={s} d={d} bg="#171512" fg="#171512" kind="link" />
+              <div style={{ display: "flex", gap: 10, marginTop: 36 }}>
+                {thumbs.map((t) => <div key={t.id} style={{ width: 64, height: 84, ...bgImg(t.image, "#D9D2C5") }} />)}
+              </div>
+            </div>
+            <div style={{ position: "relative", minHeight: 520, ...bgImg(s.image, "linear-gradient(170deg, #CFC6B6, #8F8473)") }}>
+              <span style={{ position: "absolute", top: 24, right: 16, writingMode: "vertical-rl", fontSize: 12, letterSpacing: ".2em", color: "#fff", mixBlendMode: "difference" }}>NEW SEASON</span>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* Fabric (Pinterest: row of round colour swatches beside a draped-cloth photo). Fabtex. */
+    case "swatch": {
+      const sw = ["#C0392B", "#E3A72F", "#2E7D6B", "#2B4A8B", "#7A3E8E", "#1E1E1E"];
+      return (
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ padding: 0, background: "#FBF4EA", color: "#2B1D12", overflow: "hidden" }}>
+          <div className={wrap} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, alignItems: "center", padding: "64px 0" }}>
+            <div>
+              {s.eyebrow && <p style={{ margin: "0 0 14px", fontWeight: 700, fontSize: 14, color: "#A4541B" }}>{s.eyebrow}</p>}
+              <h1 style={{ fontFamily: d.headingFont, fontWeight: 700, fontSize: "clamp(40px,5.8vw,82px)", lineHeight: 1, letterSpacing: "-.03em", margin: 0 }}>{heading}</h1>
+              {s.body && <p style={{ lineHeight: 1.75, maxWidth: 460, margin: "20px 0 24px", color: "#6B5744" }}>{s.body}</p>}
+              <div style={{ display: "flex", gap: 10, margin: "0 0 28px", flexWrap: "wrap" }}>
+                {sw.map((c) => <span key={c} style={{ width: 34, height: 34, borderRadius: "50%", background: c, border: "3px solid #fff", boxShadow: "0 2px 8px rgba(0,0,0,.18)" }} />)}
+              </div>
+              <Cta s={s} d={d} bg="#A4541B" fg="#fff" />
+            </div>
+            <div style={{ position: "relative", maxWidth: 480, width: "100%", marginLeft: "auto" }}>
+              <div style={{ aspectRatio: "4/5", borderRadius: "220px 220px 18px 18px", ...bgImg(s.image, "linear-gradient(160deg, #E3A72F, #A4541B)") }} />
+              <div style={{ position: "absolute", left: -22, bottom: 28, width: 96, height: 96, borderRadius: "50%", border: "6px solid #FBF4EA", ...bgImg(items.find((i) => i.image)?.image, "#C0392B") }} />
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* Sneakers, colour-block (Pinterest: angled vivid panel, oversized tilted shoe, size chips). Heenzy Sneaker. */
+    case "kicks": {
+      const sizes = ["40", "41", "42", "43", "44", "45"];
+      const shoe = items.find((i) => i.image);
+      return (
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ padding: 0, background: "#FF5A36", color: "#fff", overflow: "hidden" }}>
+          <div className={wrap} style={{ display: "grid", gridTemplateColumns: "1fr 1.1fr", gap: 32, alignItems: "center", padding: "56px 0 48px" }}>
+            <div>
+              {s.eyebrow && <p style={{ margin: "0 0 14px", fontWeight: 800, fontSize: 14 }}>{s.eyebrow}</p>}
+              <h1 style={{ fontFamily: d.headingFont, fontWeight: 900, fontSize: "clamp(42px,6.4vw,96px)", lineHeight: 0.94, letterSpacing: "-.04em", margin: 0 }}>{heading}</h1>
+              {s.body && <p style={{ lineHeight: 1.7, maxWidth: 440, margin: "18px 0 24px", opacity: 0.95 }}>{s.body}</p>}
+              <Cta s={s} d={d} bg="#111" fg="#fff" />
+              <div style={{ display: "flex", gap: 8, marginTop: 26, flexWrap: "wrap" }}>
+                {sizes.map((z) => <span key={z} style={{ width: 40, height: 40, borderRadius: "50%", border: "2px solid #fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13 }}>{z}</span>)}
+              </div>
+            </div>
+            <div style={{ position: "relative" }}>
+              <div style={{ aspectRatio: "5/4", borderRadius: r, transform: "rotate(-4deg)", boxShadow: "0 30px 60px rgba(0,0,0,.28)", ...bgImg(s.image || shoe?.image, "linear-gradient(135deg, #FFC2B3, #fff)") }} />
+              {shoe && <div style={{ position: "absolute", right: 8, bottom: -6, background: "#111", color: "#fff", borderRadius: 999, padding: "10px 18px", fontWeight: 800, fontSize: 14, whiteSpace: "nowrap" }}>{money(shoe)}</div>}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* Sneaker drop (Pinterest: near-black, lime accent, giant 'DROP' word behind the shoe, release chips). Kinetic. */
+    case "drop": {
+      const shoe = items.find((i) => i.image);
+      return (
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ padding: 0, background: "#0D0D0D", color: "#fff", overflow: "hidden", position: "relative" }}>
+          <div aria-hidden style={{ position: "absolute", left: 0, right: 0, top: 30, textAlign: "center", fontFamily: d.headingFont, fontWeight: 900, fontSize: "clamp(120px,24vw,360px)", lineHeight: 0.9, letterSpacing: "-.05em", color: "#181818", pointerEvents: "none" }}>DROP</div>
+          <div className={wrap} style={{ position: "relative", display: "grid", gridTemplateColumns: "1fr 1.1fr", gap: 32, alignItems: "center", padding: "72px 0 56px" }}>
+            <div>
+              {s.eyebrow && <p style={{ margin: "0 0 14px", fontWeight: 700, fontSize: 14, color: "#C6FF3D" }}>{s.eyebrow}</p>}
+              <h1 style={{ fontFamily: d.headingFont, fontWeight: 800, fontSize: "clamp(38px,5.6vw,80px)", lineHeight: 0.98, letterSpacing: "-.04em", margin: 0 }}>{heading}</h1>
+              {s.body && <p style={{ lineHeight: 1.7, maxWidth: 440, margin: "18px 0 24px", color: "#B5B5B5" }}>{s.body}</p>}
+              <Cta s={s} d={d} bg="#C6FF3D" fg="#0D0D0D" />
+              <div style={{ display: "flex", gap: 10, marginTop: 26, flexWrap: "wrap" }}>
+                {["Limited run", "Ships in 48h", "Size guide"].map((c) => <span key={c} style={{ border: "1px solid #3A3A3A", borderRadius: 4, padding: "7px 12px", fontSize: 12, fontWeight: 600, color: "#D6D6D6" }}>{c}</span>)}
+              </div>
+            </div>
+            <div style={{ aspectRatio: "1/1", maxWidth: 520, width: "100%", marginLeft: "auto", borderRadius: "50%", background: "radial-gradient(circle, #1F2A0B, #0D0D0D 70%)", ...(s.image || shoe?.image ? { backgroundImage: `url(${cssUrl(s.image || shoe?.image || "")})`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }} />
+          </div>
+        </section>
+      );
+    }
+
     /* Fashion (Pinterest: circle-cropped model on a pastel blob, category chips with thumbnails). */
     case "blob": {
       const hero = items.find((i) => i.image);

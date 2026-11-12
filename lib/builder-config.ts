@@ -38,7 +38,7 @@ export type BuilderSectionSettings = {
 
 export type BuilderSectionItem = { title: string; body?: string };
 
-export const HERO_VARIANTS = ["poster", "editorial", "lookbook", "tiles", "arch", "ledger", "frame", "splitcard", "menu", "banner", "quiet", "spotlight", "voyage", "aurora", "market", "glow", "showroom", "plate", "blob", "sage", "estate", "volt", "orchard"] as const;
+export const HERO_VARIANTS = ["poster", "editorial", "lookbook", "tiles", "arch", "ledger", "frame", "splitcard", "menu", "banner", "quiet", "spotlight", "voyage", "aurora", "market", "glow", "showroom", "plate", "blob", "sage", "estate", "volt", "orchard", "runway", "swatch", "kicks", "drop"] as const;
 export type HeroVariant = (typeof HERO_VARIANTS)[number];
 
 export type BuilderSection = {

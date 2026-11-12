@@ -852,7 +852,7 @@ export const SIGNATURE_CHROME: Record<string, TemplateChrome> = {
  * must be unique across ALL builder templates -- enforced by lib/__tests__/template-uniqueness.test.ts.
  */
 export const HERO_VARIANT_BY_MODE: Readonly<Record<string, HeroVariant>> = {
-  electra: "spotlight", atelier: "editorial", kinetic: "poster", haven: "frame", harvest: "market",
+  electra: "spotlight", atelier: "editorial", kinetic: "drop", haven: "frame", harvest: "market",
   ember: "plate", muse: "arch", frame: "frame", north: "ledger", pure: "quiet", forge: "poster",
   // Dedicated-renderer templates (bloom, maison, hotel) never reach the Builder; listed so the map is complete.
   bloom: "arch", maison: "splitcard", hotel: "splitcard",
@@ -863,7 +863,7 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
   // Signature-collection templates that used to borrow the same header + hero as a hotel template.
   "Transit — Logistics & Delivery": { chrome: C("centered", "cta", "minimal"), heroStyle: "split", heroVariant: "ledger" },
   "Vitalis — Clinic & Care": { chrome: C("centered", "columns", "bordered"), heroStyle: "split", heroVariant: "splitcard" },
-  "Atelier — Modern Fashion": { chrome: C("stripe", "centered", "tall"), heroStyle: "fullbleed", heroVariant: "editorial" },
+  "Atelier — Modern Fashion": { chrome: C("stripe", "centered", "tall"), heroStyle: "split", heroVariant: "runway" },
   "Electra — Smart Commerce": { chrome: C("overlay", "columns", "soft"), heroStyle: "split", heroVariant: "spotlight", categoriesStyle: "tiles", featuresStyle: "strip" },
   "Emarket Furniture & Home": { chrome: C("classic", "columns", "tall"), heroStyle: "split", heroVariant: "splitcard" },
   "ShopNova Marketplace": { chrome: C("bar", "minimal", "bordered"), heroStyle: "centered", heroVariant: "banner" },
@@ -877,7 +877,7 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
   "Wanderly Travel": { chrome: C("overlay", "cta", "overlay"), heroStyle: "fullbleed", heroVariant: "voyage", categoriesStyle: "photo", featuresStyle: "strip" },
   "Nestoria Real Estate": { chrome: C("stripe", "cta", "tall"), heroStyle: "split", heroVariant: "estate" },
   "Fresh & Co.": { chrome: C("classic", "columns", "overlay"), heroStyle: "split", heroVariant: "orchard" },
-  "Heenzy Sneaker Co.": { chrome: C("stripe", "centered", "overlay"), heroStyle: "fullbleed", heroVariant: "lookbook" },
+  "Heenzy Sneaker Co.": { chrome: C("stripe", "centered", "overlay"), heroStyle: "split", heroVariant: "kicks" },
   "Nova Studio — Noir": { chrome: C("bar", "minimal", "minimal"), heroStyle: "split", heroVariant: "editorial" },
   "Violet": { chrome: C("centered", "minimal", "overlay"), heroStyle: "centered", heroVariant: "lookbook" },
   "Premium Marketplace": { chrome: C("bar", "columns", "tall"), heroStyle: "split", heroVariant: "lookbook" },
@@ -887,7 +887,7 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
   "Arcova Architecture": { chrome: C("stripe", "columns", "tall"), heroStyle: "split", heroVariant: "ledger" },
   "Rivora Fresh": { chrome: C("centered", "centered", "bordered"), heroStyle: "split", heroVariant: "frame" },
   "JuiceLife": { chrome: C("overlay", "minimal", "tall"), heroStyle: "centered", heroVariant: "arch" },
-  "Fabtex": { chrome: C("classic", "cta", "overlay"), heroStyle: "fullbleed", heroVariant: "arch" },
+  "Fabtex": { chrome: C("classic", "cta", "overlay"), heroStyle: "split", heroVariant: "swatch" },
   "Horizon": { chrome: C("stripe", "columns", "minimal"), heroStyle: "centered", heroVariant: "banner" },
   "Grandeur — Fine Dining Restaurant": { chrome: C("centered", "cta", "tall"), heroStyle: "fullbleed", heroVariant: "frame" },
   "TasteHouse — Food Delivery": { chrome: C("bar", "cta", "overlay"), heroStyle: "split", heroVariant: "tiles" },
@@ -898,7 +898,7 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
   "Skyview Hotels & Resorts": { chrome: C("bar", "cta", "bordered"), heroStyle: "fullbleed", heroVariant: "tiles" },
   "Maison — Hotel & Stay": { chrome: C("stripe", "minimal", "tall"), heroStyle: "centered", heroVariant: "frame" },
   "Grand — Hotel & Hospitality": { chrome: C("overlay", "cta", "bordered"), heroStyle: "split", heroVariant: "splitcard" },
-  "Bloom — Beauty Boutique": { chrome: C("stripe", "centered", "tall"), heroStyle: "split", heroVariant: "sage", categoriesStyle: "photo", featuresStyle: "strip" },
+  "Bloom — Beauty Boutique": { chrome: C("stripe", "centered", "lifted"), heroStyle: "split", heroVariant: "sage", categoriesStyle: "photo", featuresStyle: "strip" },
   "Harvest — Grocery Market": { chrome: C("bar", "cta", "lifted"), heroStyle: "split", heroVariant: "market", categoriesStyle: "circles", featuresStyle: "strip" },
   "Drive — Cars & Rentals": { chrome: C("stripe", "columns", "lifted"), heroStyle: "fullbleed", heroVariant: "showroom", categoriesStyle: "tiles" },
 };
