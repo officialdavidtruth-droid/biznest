@@ -568,7 +568,7 @@ export function HeroVariantView({ variant, section, d, items, categories, slug }
               <Cta s={s} d={d} bg="#2E7D32" fg="#fff" />
             </div>
             <div style={{ position: "relative", maxWidth: 460, width: "100%", marginLeft: "auto" }}>
-              <div style={{ aspectRatio: "1/1", borderRadius: "50%", border: "10px solid #fff", boxShadow: "0 24px 60px rgba(46,125,50,.25)", ...bgImg(s.image, "radial-gradient(circle at 35% 30%, #A5D66F, #2E7D32)") }} />
+              <div style={{ aspectRatio: "1/1", borderRadius: "50%", border: "10px solid #fff", boxShadow: "0 24px 60px rgba(46,125,50,.25)", ...bgImg(s.image || items.find((i) => i.image)?.image, "radial-gradient(circle at 35% 30%, #A5D66F, #2E7D32)") }} />
               <div style={{ position: "absolute", top: 8, right: 4, width: 96, height: 96, borderRadius: "50%", background: "#E8452C", color: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontWeight: 800, lineHeight: 1.1, transform: "rotate(10deg)" }}>
                 <span style={{ fontSize: 12 }}>Fresh</span><span style={{ fontSize: 20 }}>daily</span>
               </div>
