@@ -3,9 +3,9 @@ import { NextResponse } from "next/server";
 // Sends the visitor to the newest desktop installer.
 //
 // The installers are built by .github/workflows/build-desktop.yml and published as assets of the
-// "desktop-latest" release. The repo is private, so the asset URLs are not public: this route asks
-// GitHub (with a read-only token kept in GITHUB_RELEASE_TOKEN) for a short-lived signed download link
-// and redirects to it. The token never reaches the browser, and the installer is not streamed through
+// "desktop-latest" release. While the repo is public they download straight from the release URL.
+// If the repo is ever made private again, set GITHUB_RELEASE_TOKEN (read-only Contents) and this route
+// asks GitHub for a short-lived signed download link instead and redirects to it. The token never reaches the browser, and the installer is not streamed through
 // this function, so there is no size limit.
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ platfor
   if (!file) return NextResponse.json({ error: "Unknown platform." }, { status: 404 });
 
   const token = process.env.GITHUB_RELEASE_TOKEN;
-  if (!token) return NextResponse.json({ error: "The desktop installer is not published yet." }, { status: 503 });
+  // Public repo: the release asset has a stable public URL, no token needed.
+  if (!token) return NextResponse.redirect(`https://github.com/${REPO}/releases/download/desktop-latest/${file}`, 302);
 
   const gh = (url: string, accept: string, init?: RequestInit) =>
     fetch(url, { ...init, headers: { Authorization: `Bearer ${token}`, Accept: accept, "X-GitHub-Api-Version": "2022-11-28" } });

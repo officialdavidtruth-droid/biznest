@@ -13,9 +13,9 @@ GitHub → Actions → **Build desktop app** → Run workflow. It publishes `Biz
 Mac Gatekeeper warn once; code-signing certificates remove that).
 
 ## Serving the downloads
-The repo is private, so `/download/desktop/<windows|mac|linux>` (app/download/desktop/[platform]/route.ts)
-asks GitHub for a short-lived link. Set **GITHUB_RELEASE_TOKEN** in Vercel: a fine-grained personal access
-token with read-only *Contents* access to this repo. Without it the buttons answer "not published yet".
+`/download/desktop/<windows|mac|linux>` (app/download/desktop/[platform]/route.ts) redirects to the release
+asset. The repo is public, so no token is needed. If it is made private again, set **GITHUB_RELEASE_TOKEN**
+in Vercel (fine-grained token, read-only *Contents*) and the route fetches a signed link instead.
 
 ## Run locally
 `cd desktop && npm install && npm start` (set `BIZNEST_URL=http://localhost:3000/` to point at a dev server).
