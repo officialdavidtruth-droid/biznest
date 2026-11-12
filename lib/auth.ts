@@ -2,6 +2,7 @@ import type { UserRole } from "@prisma/client";
 import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
+import { verifyHandoff } from "@/lib/desktop-handoff";
 import { bizNestAdapter, canSignInWithGoogle } from "@/lib/auth-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
@@ -71,6 +72,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
+    // Desktop app sign-in: redeems the one-time code minted at /desktop-auth/complete after the person
+    // signed in with Google in their normal browser (see lib/desktop-handoff.ts).
+    Credentials({
+      id: "desktop",
+      name: "BizNest desktop",
+      credentials: { code: { type: "text" }, verifier: { type: "text" } },
+      authorize: async (credentials) => {
+        const ipLimit = await checkRateLimit(`desktop-handoff:ip:${getClientIp(await headers())}`, 20, 15 * 60 * 1000);
+        if (!ipLimit.allowed) throw new LoginRateLimitedError();
+        const userId = verifyHandoff(String(credentials?.code ?? ""), String(credentials?.verifier ?? ""));
+        if (!userId) return null;
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, email: true, name: true, role: true, isBanned: true, customerScopeStoreId: true },
+        });
+        // Same rule as Google sign-in: banned accounts and per-store customer accounts never get a platform session.
+        if (!user || user.isBanned || user.customerScopeStoreId) return null;
+        return { id: user.id, email: user.email, name: user.name, role: user.role };
+      },
     }),
     Credentials({
       credentials: {

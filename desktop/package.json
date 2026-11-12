@@ -28,6 +28,7 @@
       "updater.js",
       "offline.html",
       "offline-pos.html",
+      "signing-in.html",
       "package.json"
     ],
     "win": {
@@ -76,6 +77,14 @@
       {
         "provider": "generic",
         "url": "https://github.com/officialdavidtruth-droid/biznest/releases/download/desktop-latest/"
+      }
+    ],
+    "protocols": [
+      {
+        "name": "BizNest sign-in",
+        "schemes": [
+          "biznest"
+        ]
       }
     ]
   },

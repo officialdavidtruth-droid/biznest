@@ -5,13 +5,12 @@
 //   - device storage (preload.js) used by the register to keep its catalogue and unsent sales.
 const { app, BrowserWindow, Menu, shell, dialog, session } = require("electron");
 const path = require("path");
+const crypto = require("crypto");
 const updater = require("./updater");
 
 const START_URL = process.env.BIZNEST_URL || "https://biznest.space/";
 // Hosts that may open inside the app window (login, the dashboard, payment pages, product images).
-// Google sign-in runs inside the app window (a handoff to the system browser breaks the login: the
-// sign-in cookies live in this window, so the callback must come back here).
-const ALLOWED = [/(^|\.)biznest\.space$/, /(^|\.)google\.com$/, /(^|\.)gstatic\.com$/, /(^|\.)googleusercontent\.com$/, /(^|\.)paystack\.(com|co)$/, /(^|\.)flutterwave\.com$/, /(^|\.)korapay\.com$/, /^res\.cloudinary\.com$/];
+const ALLOWED = [/(^|\.)biznest\.space$/, /(^|\.)paystack\.(com|co)$/, /(^|\.)flutterwave\.com$/, /(^|\.)korapay\.com$/, /^res\.cloudinary\.com$/];
 const isAllowed = (url) => {
   try {
     const u = new URL(url);
@@ -22,12 +21,43 @@ const isAllowed = (url) => {
   }
 };
 
-// Google refuses sign-in from browsers that announce themselves as Electron ("This browser or app may
-// not be secure"). The app window is a real Chromium, so present the plain Chrome identity instead.
+// Plain Chrome identity (no "Electron" token) so sites that sniff the user agent treat the window normally.
 const PLATFORM_TOKEN = process.platform === "win32" ? "Windows NT 10.0; Win64; x64" : process.platform === "darwin" ? "Macintosh; Intel Mac OS X 10_15_7" : "X11; Linux x86_64";
 const CHROME_UA = `Mozilla/5.0 (${PLATFORM_TOKEN}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`;
 
 let win;
+
+// ---- Google sign-in -------------------------------------------------------------------------------
+// Google refuses to sign anyone in from inside an embedded app window, however it identifies itself
+// ("This browser or app may not be secure"). So the Google step runs in the person's normal browser and the
+// site hands the login back through biznest://auth?code=... The code only works with the random verifier
+// below, which stays in this process (see lib/desktop-handoff.ts on the site).
+const PROTOCOL = "biznest";
+let pendingVerifier = null;
+
+function isGoogleAuth(url) {
+  try { return new URL(url).hostname === "accounts.google.com"; } catch { return false; }
+}
+
+function startBrowserSignIn() {
+  pendingVerifier = crypto.randomBytes(32).toString("base64url");
+  const challenge = crypto.createHash("sha256").update(pendingVerifier).digest("base64url");
+  shell.openExternal(`${new URL(START_URL).origin}/desktop-auth/start?challenge=${challenge}`);
+  if (win) win.loadFile(path.join(__dirname, "signing-in.html"), { query: { back: START_URL } });
+}
+
+function handleProtocolUrl(raw) {
+  let u;
+  try { u = new URL(raw); } catch { return; }
+  if (u.protocol !== `${PROTOCOL}:` || u.hostname !== "auth") return;
+  const code = u.searchParams.get("code");
+  if (!code || !pendingVerifier || !win) return;
+  const verifier = pendingVerifier;
+  pendingVerifier = null; // one attempt per sign-in
+  if (win.isMinimized()) win.restore();
+  win.focus();
+  win.loadURL(`${new URL(START_URL).origin}/desktop-auth/finish?code=${encodeURIComponent(code)}&verifier=${encodeURIComponent(verifier)}`);
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -49,11 +79,15 @@ function createWindow() {
   win.webContents.setUserAgent(CHROME_UA);
 
   win.webContents.setWindowOpenHandler(({ url }) => {
+    if (isGoogleAuth(url)) { startBrowserSignIn(); return { action: "deny" }; }
     if (isAllowed(url)) return { action: "allow" };
     shell.openExternal(url);
     return { action: "deny" };
   });
+  const interceptGoogle = (e, url) => { if (isGoogleAuth(url)) { e.preventDefault(); startBrowserSignIn(); return true; } return false; };
+  win.webContents.on("will-redirect", (e, url) => { interceptGoogle(e, url); });
   win.webContents.on("will-navigate", (e, url) => {
+    if (interceptGoogle(e, url)) return;
     if (!isAllowed(url)) {
       e.preventDefault();
       shell.openExternal(url);
@@ -101,13 +135,17 @@ function buildMenu() {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on("second-instance", () => {
+  app.on("second-instance", (_e, argv) => {
+    const link = argv.find((a) => a.startsWith(`${PROTOCOL}://`));
+    if (link) handleProtocolUrl(link);
     if (win) {
       if (win.isMinimized()) win.restore();
       win.focus();
     }
   });
+  app.on("open-url", (e, url) => { e.preventDefault(); handleProtocolUrl(url); }); // macOS
   app.whenReady().then(() => {
+    if (app.isPackaged) app.setAsDefaultProtocolClient(PROTOCOL);
     session.defaultSession.setUserAgent(CHROME_UA);
     buildMenu();
     createWindow();
