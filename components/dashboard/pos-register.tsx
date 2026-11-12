@@ -10,6 +10,15 @@ import type { InHouseReservation } from "@/lib/actions/folio";
 import type { PosTabSummary } from "@/lib/actions/pos-tabs";
 import { roundMoney } from "@/lib/utils/pricing";
 import { formatNumber } from "@/lib/i18n/locale";
+import {
+  enqueueSale,
+  isConnectionError,
+  listQueue,
+  removeQueuedSale,
+  saveCatalog,
+  syncQueue,
+  type QueuedSale,
+} from "@/lib/pos-offline";
 
 type CartLine = {
   key: string; // productId, variantId, or serviceId — unique per cart
@@ -66,6 +75,52 @@ export function PosRegister({
   // retries so a lost response cannot create a second POS order.
   const chargeIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
   const [lookingUpBarcode, setLookingUpBarcode] = useState(false);
+  // Sales rung up with no connection, waiting to be recorded. See lib/pos-offline.ts.
+  const [queue, setQueue] = useState<QueuedSale[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [online, setOnline] = useState(true);
+  const syncingRef = useRef(false);
+
+  async function runSync() {
+    if (syncingRef.current) return;
+    if (listQueue(slug).filter((q) => !q.error).length === 0) return setQueue(listQueue(slug));
+    syncingRef.current = true;
+    setSyncing(true);
+    try {
+      const res = await syncQueue(slug, (input) => createPosSale(slug, input));
+      setQueue(listQueue(slug));
+      if (res.synced > 0) {
+        toast.success(`${res.synced} offline ${res.synced === 1 ? "sale" : "sales"} recorded.`);
+        router.refresh();
+      }
+      if (res.failed > 0) toast.error(`${res.failed} offline ${res.failed === 1 ? "sale was" : "sales were"} not accepted. See the list below the register.`);
+    } finally {
+      syncingRef.current = false;
+      setSyncing(false);
+    }
+  }
+
+  // Keep an offline copy of the catalogue, and replay queued sales on load and whenever the connection returns.
+  useEffect(() => {
+    if (catalog.length > 0) saveCatalog(slug, catalog);
+  }, [slug, catalog]);
+
+  useEffect(() => {
+    setQueue(listQueue(slug));
+    setOnline(navigator.onLine);
+    const goOnline = () => { setOnline(true); void runSync(); };
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    if (navigator.onLine) void runSync();
+    const timer = setInterval(() => { if (navigator.onLine) void runSync(); }, 60_000);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+      clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
 
   // The key must identify ONE specific sale. If the cashier changes the cart,
   // tender or customer after a failed attempt, that is a different sale, so it
@@ -252,8 +307,41 @@ export function PosRegister({
       customerProfileId,
       idempotencyKey: chargeIdempotencyKeyRef.current,
     });
-    } catch {
-      // Network drop or server error: keep the cart and the SAME idempotency key so
+    } catch (err) {
+      // Network drop. A plain sale (not a table tab or room charge, which need the server) is saved
+      // on this device with its idempotency key and recorded automatically once back online.
+      if (chargeMode === "NOW" && isConnectionError(err)) {
+        const total = roundMoney(cart.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0));
+        enqueueSale(slug, {
+          key: chargeIdempotencyKeyRef.current,
+          input: {
+            items: cart.map((l) => ({ productId: l.variantId ? undefined : l.productId, variantId: l.variantId, serviceId: l.serviceId, quantity: l.quantity })),
+            tenderType,
+            orderType,
+            tableLabel: tableLabel.trim() || undefined,
+            customerName: customerName.trim() || undefined,
+            customerPhone: customerPhone.trim() || undefined,
+            customerEmail: customerEmail.trim() || undefined,
+            customerProfileId,
+          },
+          total,
+          currency,
+          createdAt: Date.now(),
+        });
+        setQueue(listQueue(slug));
+        toast.success(`Saved offline — ${currency} ${formatNumber(total)}. It will be recorded when you're back online.`);
+        setCart([]);
+        setCustomerName("");
+        setCustomerPhone("");
+        setCustomerEmail("");
+        setCustomerProfileId(undefined);
+        setCustomerMatches([]);
+        setOrderType("DINE_IN");
+        setTableLabel("");
+        chargeIdempotencyKeyRef.current = crypto.randomUUID();
+        return;
+      }
+      // Table or room charge, or a server error: keep the cart and the SAME idempotency key so
       // pressing Charge again cannot create a second order if the first one landed.
       toast.error("Couldn't reach the server. Check your connection and press Charge again — you won't be charged twice.");
       return;
@@ -288,6 +376,38 @@ export function PosRegister({
       className="grid flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-[1fr_360px]"
       onClickCapture={refocusBarcodeUnlessTyping}
     >
+      {(!online || queue.length > 0) && (
+        <div className="lg:col-span-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-semibold">
+              {!online ? "You're offline. Sales are saved on this device." : "Offline sales waiting to be recorded."}
+              {queue.length > 0 && ` ${queue.length} waiting.`}
+            </p>
+            {online && queue.length > 0 && (
+              <button type="button" onClick={() => void runSync()} disabled={syncing} className="rounded-full bg-amber-900 px-3 py-1 text-xs font-semibold text-white disabled:opacity-60">
+                {syncing ? "Recording…" : "Record now"}
+              </button>
+            )}
+          </div>
+          {queue.length > 0 && (
+            <ul className="mt-2 space-y-1 text-xs">
+              {queue.map((q) => (
+                <li key={q.key} className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    {new Date(q.createdAt).toLocaleTimeString()} · {q.currency} {formatNumber(q.total)} · {q.input.tenderType}
+                    {q.error ? ` — not accepted: ${q.error}` : ""}
+                  </span>
+                  {q.error && (
+                    <button type="button" onClick={() => setQueue(removeQueuedSale(slug, q.key))} className="font-semibold underline">
+                      Discard
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {/* Catalog */}
       <div className="flex flex-col overflow-hidden">
         <div className="mb-3 flex gap-2">

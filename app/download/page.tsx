@@ -3,7 +3,7 @@ import { DownloadClient } from "./download-client";
 
 export const metadata: Metadata = {
   title: "Get the BizNest app",
-  description: "Download BizNest for Android, or install it on your phone or computer.",
+  description: "Download BizNest for Android, Windows, Mac or Linux, or install it from your browser.",
   alternates: { canonical: "/download" },
 };
 

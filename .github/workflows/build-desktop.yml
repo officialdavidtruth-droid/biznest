@@ -1,0 +1,56 @@
+name: Build desktop app
+
+# Builds the BizNest desktop app (Windows, Mac, Linux) in the cloud.
+# Run it from GitHub → Actions → "Build desktop app" → Run workflow.
+# Output: release "desktop-latest" with BizNest-Setup.exe, BizNest.dmg and BizNest.AppImage.
+# The /download page serves them through app/download/desktop/[platform]/route.ts
+# (the repo is private, so that route needs the GITHUB_RELEASE_TOKEN env var in Vercel).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["desktop/**", ".github/workflows/build-desktop.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            files: desktop/dist/BizNest-Setup.exe
+          - os: macos-latest
+            files: desktop/dist/BizNest.dmg
+          - os: ubuntu-latest
+            files: desktop/dist/BizNest.AppImage
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+      - name: Version from run number
+        working-directory: desktop
+        shell: bash
+        run: npm version "1.0.${{ github.run_number }}" --no-git-tag-version
+      - name: Build installer
+        working-directory: desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder --publish never
+      - name: Publish to release desktop-latest
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-latest
+          name: BizNest desktop (latest)
+          body: Installers for the BizNest desktop app. Built from the desktop/ folder.
+          files: ${{ matrix.files }}
+          fail_on_unmatched_files: true

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>BizNest — offline register</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}body{margin:0;font:15px/1.4 system-ui,Segoe UI,Roboto,sans-serif;background:#f4f7f4;color:#142014;height:100vh;display:flex;flex-direction:column}
+header{background:#0f6410;color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+header b{font-size:17px}header span{font-size:13px;opacity:.9}
+main{flex:1;display:grid;grid-template-columns:1fr 340px;gap:16px;padding:16px;overflow:hidden}
+.panel{background:#fff;border:1px solid #dfe7df;border-radius:16px;padding:14px;overflow:auto}
+input[type=search]{width:100%;padding:10px 12px;border:1px solid #cdd8cd;border-radius:10px;font:inherit;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.item{border:1px solid #dfe7df;border-radius:12px;padding:10px;background:#fff;text-align:left;cursor:pointer;font:inherit}
+.item:hover{border-color:#0f6410}.item small{display:block;color:#5b6b5b}.item strong{display:block;margin-top:4px}
+.line{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eef2ee}
+.line button{width:28px;height:28px;border-radius:50%;border:1px solid #cdd8cd;background:#fff;cursor:pointer}
+.total{display:flex;justify-content:space-between;font-weight:700;font-size:18px;margin:14px 0}
+select,.charge{width:100%;padding:12px;border-radius:10px;font:inherit}
+.charge{background:#0f6410;color:#fff;border:0;font-weight:700;margin-top:10px;cursor:pointer}.charge:disabled{opacity:.5}
+.note{background:#fff8e1;border:1px solid #f2d98a;border-radius:10px;padding:10px;font-size:13px;margin-bottom:10px}
+.empty{color:#5b6b5b;text-align:center;padding:40px 10px}
+a{color:#fff}
+@media(max-width:800px){main{grid-template-columns:1fr;overflow:auto}}
+</style></head><body>
+<header><div><b>Offline register</b> <span id="meta"></span></div><a href="#" id="back">Back to BizNest</a></header>
+<main>
+<section class="panel"><input type="search" id="q" placeholder="Search products or services…" autofocus><div class="grid" id="items"></div><div class="empty" id="empty" hidden></div></section>
+<aside class="panel">
+<div class="note" id="note"></div>
+<div id="cart"></div>
+<div class="total"><span>Total</span><span id="total">0</span></div>
+<select id="tender"><option>Cash</option><option>Card</option><option>Transfer</option></select>
+<button class="charge" id="charge" disabled>Save sale offline</button>
+</aside>
+</main>
+<script>
+(function(){
+var S=window.bizNestDesktop&&window.bizNestDesktop.storage;
+function get(k){try{return S?S.get(k):localStorage.getItem(k)}catch(e){return null}}
+function set(k,v){try{S?S.set(k,v):localStorage.setItem(k,v)}catch(e){}}
+function uuid(){return crypto.randomUUID?crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c=="x"?r:(r&3|8)).toString(16)})}
+var slug=get("bn.pos.lastSlug");
+var cat=null;try{cat=slug&&JSON.parse(get("bn.pos.catalog."+slug))}catch(e){}
+var items=cat&&cat.items||[];var cart=[];var $=function(id){return document.getElementById(id)};
+function money(n,cur){return (cur||"NGN")+" "+Number(n).toLocaleString()}
+function queue(){try{return JSON.parse(get("bn.pos.queue."+slug)||"[]")}catch(e){return[]}}
+$("back").onclick=function(e){e.preventDefault();location.href="https://biznest.space/"+(slug?slug+"/admin/pos":"")};
+if(!slug||!items.length){$("empty").hidden=false;$("empty").textContent="No catalogue saved on this computer yet. Open the register once while online and it will be saved here.";$("charge").disabled=true}
+$("meta").textContent=cat?"Catalogue saved "+new Date(cat.savedAt).toLocaleString():"";
+function note(){var n=queue().length;$("note").textContent=n?n+" sale"+(n==1?"":"s")+" saved on this computer, waiting to be recorded. They are recorded automatically next time you open the register online.":"Sales you save here are recorded automatically next time you open the register online."}
+function render(){var t=$("q").value.toLowerCase();var h="";
+items.filter(function(i){return !t||i.name.toLowerCase().indexOf(t)>-1||(i.sku||"").toLowerCase().indexOf(t)>-1}).forEach(function(i){
+if(i.hasVariants&&i.variants.length){i.variants.forEach(function(v){h+=btn(i,v)})}else h+=btn(i,null)});
+$("items").innerHTML=h||"";
+Array.prototype.forEach.call($("items").children,function(b){b.onclick=function(){add(b.dataset.k)}})}
+function btn(i,v){var k=v?"v:"+v.id:(i.kind=="service"?"s:":"p:")+i.id;var price=v?v.price:i.price;
+return '<button class="item" data-k="'+k+'"><small>'+(i.kind=="service"?"Service":"Product")+'</small>'+esc(i.name)+(v?"<small>"+esc(v.label)+"</small>":"")+'<strong>'+money(price,i.currency)+'</strong></button>'}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function find(k){var t=k.split(":");for(var a=0;a<items.length;a++){var i=items[a];
+if(t[0]=="v"){var v=(i.variants||[]).filter(function(x){return x.id==t[1]})[0];if(v)return{k:k,variantId:v.id,name:i.name+" — "+v.label,price:v.price,cur:i.currency}}
+else if(i.id==t[1]&&((t[0]=="s")==(i.kind=="service")))return{k:k,productId:t[0]=="p"?i.id:undefined,serviceId:t[0]=="s"?i.id:undefined,name:i.name,price:i.price,cur:i.currency}}}
+function add(k){var l=cart.filter(function(x){return x.k==k})[0];if(l)l.qty++;else{var f=find(k);if(!f)return;f.qty=1;cart.push(f)}draw()}
+function draw(){var tot=0,cur=(items[0]&&items[0].currency)||"NGN";
+$("cart").innerHTML=cart.length?cart.map(function(l,i){tot+=l.price*l.qty;return '<div class="line"><span>'+esc(l.name)+'<br><small>'+money(l.price,l.cur)+'</small></span><span><button data-i="'+i+'" data-d="-1">−</button> '+l.qty+' <button data-i="'+i+'" data-d="1">+</button></span></div>'}).join(""):'<div class="empty">Tap an item to add it.</div>';
+Array.prototype.forEach.call($("cart").querySelectorAll("button"),function(b){b.onclick=function(){var l=cart[+b.dataset.i];l.qty+=+b.dataset.d;if(l.qty<1)cart.splice(+b.dataset.i,1);draw()}});
+$("total").textContent=money(Math.round(tot*100)/100,cur);$("charge").disabled=!cart.length}
+$("charge").onclick=function(){if(!cart.length)return;var tot=cart.reduce(function(s,l){return s+l.price*l.qty},0);
+var q=queue();q.push({key:uuid(),input:{items:cart.map(function(l){return{productId:l.productId,variantId:l.variantId,serviceId:l.serviceId,quantity:l.qty}}),tenderType:$("tender").value,orderType:"DINE_IN"},total:Math.round(tot*100)/100,currency:(items[0]&&items[0].currency)||"NGN",createdAt:Date.now()});
+set("bn.pos.queue."+slug,JSON.stringify(q));cart=[];draw();note();$("charge").textContent="Saved ✓";setTimeout(function(){$("charge").textContent="Save sale offline"},1200)};
+$("q").oninput=render;render();draw();note();
+})();
+</script></body></html>
