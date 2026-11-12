@@ -3,13 +3,15 @@
 //   - its own window, icon and a single running copy;
 //   - an offline page and an offline register (offline-pos.html) when there is no connection;
 //   - device storage (preload.js) used by the register to keep its catalogue and unsent sales.
-const { app, BrowserWindow, Menu, shell, dialog } = require("electron");
+const { app, BrowserWindow, Menu, shell, dialog, session } = require("electron");
 const path = require("path");
 const updater = require("./updater");
 
 const START_URL = process.env.BIZNEST_URL || "https://biznest.space/";
 // Hosts that may open inside the app window (login, the dashboard, payment pages, product images).
-const ALLOWED = [/(^|\.)biznest\.space$/, /(^|\.)paystack\.(com|co)$/, /(^|\.)flutterwave\.com$/, /(^|\.)korapay\.com$/, /^res\.cloudinary\.com$/];
+// Google sign-in runs inside the app window (a handoff to the system browser breaks the login: the
+// sign-in cookies live in this window, so the callback must come back here).
+const ALLOWED = [/(^|\.)biznest\.space$/, /(^|\.)google\.com$/, /(^|\.)gstatic\.com$/, /(^|\.)googleusercontent\.com$/, /(^|\.)paystack\.(com|co)$/, /(^|\.)flutterwave\.com$/, /(^|\.)korapay\.com$/, /^res\.cloudinary\.com$/];
 const isAllowed = (url) => {
   try {
     const u = new URL(url);
@@ -19,6 +21,11 @@ const isAllowed = (url) => {
     return false;
   }
 };
+
+// Google refuses sign-in from browsers that announce themselves as Electron ("This browser or app may
+// not be secure"). The app window is a real Chromium, so present the plain Chrome identity instead.
+const PLATFORM_TOKEN = process.platform === "win32" ? "Windows NT 10.0; Win64; x64" : process.platform === "darwin" ? "Macintosh; Intel Mac OS X 10_15_7" : "X11; Linux x86_64";
+const CHROME_UA = `Mozilla/5.0 (${PLATFORM_TOKEN}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`;
 
 let win;
 
@@ -39,8 +46,7 @@ function createWindow() {
     },
   });
 
-  // Let the site know it runs in the desktop app (same idea as the Android app's user agent).
-  win.webContents.setUserAgent(`${win.webContents.getUserAgent()} BizNestDesktop/${app.getVersion()}`);
+  win.webContents.setUserAgent(CHROME_UA);
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (isAllowed(url)) return { action: "allow" };
@@ -102,6 +108,7 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
   app.whenReady().then(() => {
+    session.defaultSession.setUserAgent(CHROME_UA);
     buildMenu();
     createWindow();
     updater.init(() => win);
