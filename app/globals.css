@@ -1409,6 +1409,15 @@ html[data-app] body { overscroll-behavior: none; -webkit-user-select: none; user
 html[data-app] input, html[data-app] textarea, html[data-app] [contenteditable], html[data-app] .select-text { -webkit-user-select: text; user-select: text; }
 html[data-app] a, html[data-app] button, html[data-app] [role="button"], html[data-app] summary { touch-action: manipulation; transition: transform .12s ease, opacity .12s ease; }
 html[data-app] a:active, html[data-app] button:not(:disabled):active, html[data-app] [role="button"]:active { transform: scale(.96); opacity: .85; }
+/* Desktop app (html[data-desktop]): behave like software, not a web page. */
+html[data-desktop] { cursor: default; }
+html[data-desktop] a, html[data-desktop] button, html[data-desktop] [role="button"], html[data-desktop] summary, html[data-desktop] select { cursor: pointer; }
+html[data-desktop] img, html[data-desktop] a { -webkit-user-drag: none; user-drag: none; }
+html[data-desktop] ::-webkit-scrollbar { width: 10px; height: 10px; }
+html[data-desktop] ::-webkit-scrollbar-track { background: transparent; }
+html[data-desktop] ::-webkit-scrollbar-thumb { background: rgba(120,130,120,.35); border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
+html[data-desktop] ::-webkit-scrollbar-thumb:hover { background: rgba(120,130,120,.6); background-clip: content-box; }
+html[data-desktop] :focus:not(:focus-visible) { outline: none; }
 /* Web-only chrome that makes no sense inside the app */
 html[data-app] .bn-web-only { display: none !important; }
 

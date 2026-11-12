@@ -41,6 +41,7 @@ export function AppShell() {
     if (!inApp()) return;
     setActive(true);
     document.documentElement.setAttribute("data-app", "1");
+    if (navigator.userAgent.includes("BizNestDesktop")) document.documentElement.setAttribute("data-desktop", "1");
     let seen = false;
     try { seen = sessionStorage.getItem(SPLASH_KEY) === "1"; } catch {}
     if (!seen) {

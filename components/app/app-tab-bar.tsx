@@ -32,7 +32,9 @@ export function AppTabBar() {
   const pathname = usePathname() ?? "";
   const { items } = useCart();
   const parsed = parseStorePath(pathname);
-  const visible = !!parsed && !HIDE.test(parsed.rest);
+  // The bottom tab bar is a phone pattern; the desktop app keeps the storefront's own header.
+  const isDesktopApp = typeof navigator !== "undefined" && navigator.userAgent.includes("BizNestDesktop");
+  const visible = !!parsed && !HIDE.test(parsed.rest) && !isDesktopApp;
 
   useEffect(() => {
     document.documentElement.toggleAttribute("data-tabbar", visible);

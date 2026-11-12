@@ -3,7 +3,8 @@
 //   - its own window, icon and a single running copy;
 //   - an offline page and an offline register (offline-pos.html) when there is no connection;
 //   - device storage (preload.js) used by the register to keep its catalogue and unsent sales.
-const { app, BrowserWindow, Menu, shell, dialog, session } = require("electron");
+const { app, BrowserWindow, Menu, shell, dialog, session, screen } = require("electron");
+const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const updater = require("./updater");
@@ -23,7 +24,9 @@ const isAllowed = (url) => {
 
 // Plain Chrome identity (no "Electron" token) so sites that sniff the user agent treat the window normally.
 const PLATFORM_TOKEN = process.platform === "win32" ? "Windows NT 10.0; Win64; x64" : process.platform === "darwin" ? "Macintosh; Intel Mac OS X 10_15_7" : "X11; Linux x86_64";
-const CHROME_UA = `Mozilla/5.0 (${PLATFORM_TOKEN}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`;
+// "BizNestApp" switches the site into app mode (no marketing pages: sign-in welcome or straight to the
+// dashboard, splash screen, no text-selection, background refresh); "BizNestDesktop" adds the desktop tweaks.
+const CHROME_UA = `Mozilla/5.0 (${PLATFORM_TOKEN}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36 BizNestApp/1.0 BizNestDesktop/${app.getVersion()}`;
 
 let win;
 
@@ -59,21 +62,63 @@ function handleProtocolUrl(raw) {
   win.loadURL(`${new URL(START_URL).origin}/desktop-auth/finish?code=${encodeURIComponent(code)}&verifier=${encodeURIComponent(verifier)}`);
 }
 
+// Window size/position/maximised state survive restarts, like any desktop program.
+const stateFile = path.join(app.getPath("userData"), "window-state.json");
+function loadState() {
+  try {
+    const st = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+    const visible = screen.getAllDisplays().some((d) => {
+      const b = d.workArea;
+      return st.x >= b.x - 50 && st.y >= b.y - 50 && st.x < b.x + b.width - 100 && st.y < b.y + b.height - 100;
+    });
+    return { width: st.width || 1360, height: st.height || 880, ...(visible ? { x: st.x, y: st.y } : {}), maximized: !!st.maximized };
+  } catch {
+    return { width: 1360, height: 880, maximized: false };
+  }
+}
+function saveState() {
+  if (!win || win.isDestroyed()) return;
+  try {
+    const b = win.getNormalBounds();
+    fs.writeFileSync(stateFile, JSON.stringify({ ...b, maximized: win.isMaximized() }));
+  } catch { /* not worth failing for */ }
+}
+
 function createWindow() {
+  const st = loadState();
   win = new BrowserWindow({
-    width: 1360,
-    height: 880,
+    width: st.width,
+    height: st.height,
+    ...(st.x !== undefined ? { x: st.x, y: st.y } : {}),
     minWidth: 900,
     minHeight: 600,
+    show: false, // shown once the first paint is ready: no white flash
     backgroundColor: "#0f6410",
     title: "BizNest",
+    autoHideMenuBar: true, // menu stays on Alt; the app UI has its own navigation
     icon: path.join(__dirname, "build", "icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false, // preload needs fs for device storage; it exposes only get/set via contextBridge
+      spellcheck: true,
+      devTools: !app.isPackaged,
     },
+  });
+  if (st.maximized) win.maximize();
+  win.once("ready-to-show", () => win.show());
+  win.on("close", saveState);
+  win.on("resize", () => { clearTimeout(win._st); win._st = setTimeout(saveState, 500); });
+  win.on("move", () => { clearTimeout(win._st); win._st = setTimeout(saveState, 500); });
+
+  // Software, not a web page: fixed zoom, no pinch, no browser right-click menu.
+  win.webContents.setVisualZoomLevelLimits(1, 1);
+  win.webContents.on("context-menu", (_e, params) => {
+    const items = [];
+    if (params.isEditable) items.push({ role: "undo" }, { role: "redo" }, { type: "separator" }, { role: "cut" }, { role: "copy" }, { role: "paste" }, { role: "selectAll" });
+    else if (params.selectionText) items.push({ role: "copy" });
+    if (items.length) Menu.buildFromTemplate(items).popup({ window: win });
   });
 
   win.webContents.setUserAgent(CHROME_UA);
