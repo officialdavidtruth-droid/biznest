@@ -58,10 +58,19 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: write
+    # A throwaway Postgres inside the job: the preview route only needs the tables to exist (it looks up a
+    # store that is not there), so no production secrets are involved and nothing real can be touched.
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: thumbs }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DIRECT_URL: ${{ secrets.DIRECT_URL }}
-      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/thumbs
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/thumbs
+      AUTH_SECRET: thumbnail-build-secret-not-used-for-anything-real
       AUTH_URL: http://localhost:3000
       # `next build` evaluates API routes that construct the Resend client at import time; this key is never used to send.
       RESEND_API_KEY: re_build_placeholder
@@ -73,6 +82,8 @@ jobs:
         with: { node-version: 20, cache: npm }
       - run: npm ci
       - run: npx prisma generate
+      - name: Create tables in the throwaway database
+        run: npx prisma db push --skip-generate --accept-data-loss
 
       - name: Stop early if nothing is stale
         id: stale
