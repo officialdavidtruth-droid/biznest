@@ -406,11 +406,20 @@ function EmptyState({ text }: { text: string }) { return <div style={{ padding: 
 type DesignT = BuilderConfig["design"];
 type SectionT = BuilderConfig["sections"][number];
 
+/** Black or white, whichever reads on a brand colour (a light primary made the logo initial invisible). */
+function letterOn(bg: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(bg.trim());
+  if (!m) return "#fff";
+  const n = parseInt(m[1], 16);
+  const y = (((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000;
+  return y > 160 ? "#111" : "#fff";
+}
+
 export function BuilderHeader({ store, d, experience, visible }: { store: BuilderStore; d: DesignT; experience: ReturnType<typeof getBusinessExperience>; visible: SectionT[] }) {
   const style = d.headerStyle ?? "classic";
   const mark = store.logoUrl
     ? <img src={store.logoUrl} alt="" style={{ width: 36, height: 36, borderRadius: Math.min(d.radius, 12), objectFit: "cover" }} />
-    : <span style={{ width: 36, height: 36, borderRadius: Math.min(d.radius, 12), background: d.primary, display: "grid", placeItems: "center", color: "#fff" }}>{store.name.slice(0, 1).toUpperCase()}</span>;
+    : <span style={{ width: 36, height: 36, borderRadius: Math.min(d.radius, 12), background: d.primary, display: "grid", placeItems: "center", fontWeight: 800, color: letterOn(d.primary) }}>{store.name.slice(0, 1).toUpperCase()}</span>;
   const brand = <Link href={`/store/${store.slug}`} style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 800, fontFamily: d.headingFont }}>{mark}{store.name}</Link>;
   // Default header menu (used until the owner builds one in Dashboard > Menus). It used to list only the
   // homepage sections that happened to exist, so a simple store showed a single "Featured Products" link.
