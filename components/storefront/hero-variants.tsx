@@ -488,6 +488,99 @@ export function HeroVariantView({ variant, section, d, items, categories, slug }
       );
     }
 
+    /* Real estate (Pinterest: full-bleed home photo, white search card overlapping it, listing stat chips). Nestoria. */
+    case "estate": {
+      const picks = items.slice(0, 3);
+      const stats = [["Verified listings", "Every property checked"], ["Book a viewing", "Pick a time that suits you"], ["Clear pricing", "No hidden fees"]];
+      return (
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ padding: 0, background: "#F5F3EE" }}>
+          <div style={{ position: "relative", minHeight: 560, ...bgImg(s.image, "linear-gradient(135deg, #243B3A, #6E8F86)") }}>
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,20,20,.15), rgba(10,20,20,.6))" }} />
+            <div className={wrap} style={{ position: "relative", padding: "96px 0 150px", color: "#fff", maxWidth: 1120 }}>
+              {s.eyebrow && <p style={{ margin: "0 0 14px", fontWeight: 700, fontSize: 14 }}>{s.eyebrow}</p>}
+              <h1 style={{ fontFamily: d.headingFont, fontWeight: 600, fontSize: "clamp(38px,5.6vw,78px)", lineHeight: 1.02, letterSpacing: "-.03em", margin: 0, maxWidth: 760 }}>{heading}</h1>
+              {s.body && <p style={{ lineHeight: 1.7, maxWidth: 520, margin: "18px 0 0", opacity: 0.92 }}>{s.body}</p>}
+            </div>
+          </div>
+          <div className="bn-wrap" style={{ marginTop: -90, position: "relative", paddingBottom: 64 }}>
+            <div style={{ background: "#fff", color: "#1A2523", borderRadius: Math.min(r, 20) + 4, padding: 22, boxShadow: "0 24px 60px rgba(0,0,0,.16)", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 16, alignItems: "center" }}>
+              {(categories.length ? categories.slice(0, 3) : ["Houses", "Apartments", "Land"]).map((c) => (
+                <div key={c} style={{ borderRight: "1px solid #E7E4DC", paddingRight: 16 }}>
+                  <div style={{ fontSize: 12, color: "#6B7774", fontWeight: 600 }}>Browse</div>
+                  <div style={{ fontWeight: 800, fontSize: 17, marginTop: 4 }}>{c}</div>
+                </div>
+              ))}
+              <Cta s={{ ...s, ctaLabel: s.ctaLabel || "Browse properties" }} d={d} bg="#1F6F6B" fg="#fff" />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 16, marginTop: 20 }}>
+              {(picks.length ? picks.map((it) => [it.name, money(it)]) : stats).map((p, i) => (
+                <div key={i} style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", border: "1px solid #E7E4DC" }}>
+                  <div style={{ fontWeight: 800, color: "#1A2523", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p[0]}</div>
+                  <div style={{ fontSize: 13, color: "#5E6B68", marginTop: 4 }}>{p[1]}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* Electronics (Pinterest: deep navy stage, glowing product circle, spec chips and a floating price card). Electra Blue. */
+    case "volt": {
+      const hero = items[0];
+      const chips = ["1-year warranty", "Genuine products", "Pay on delivery", "Fast shipping"];
+      return (
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ padding: 0, background: "#0B1530", color: "#fff", overflow: "hidden" }}>
+          <div className={wrap} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "center", padding: "72px 0 40px" }}>
+            <div>
+              {s.eyebrow && <p style={{ margin: "0 0 14px", fontWeight: 700, fontSize: 14, color: "#7FB2FF" }}>{s.eyebrow}</p>}
+              <h1 style={{ fontFamily: d.headingFont, fontWeight: 700, fontSize: "clamp(38px,5.4vw,76px)", lineHeight: 1.02, letterSpacing: "-.035em", margin: 0 }}>{heading}</h1>
+              {s.body && <p style={{ lineHeight: 1.75, maxWidth: 480, margin: "20px 0 26px", color: "#B9C6E4" }}>{s.body}</p>}
+              <Cta s={s} d={d} bg="#2F7BFF" fg="#fff" />
+            </div>
+            <div style={{ position: "relative", maxWidth: 480, width: "100%", marginLeft: "auto" }}>
+              <div style={{ aspectRatio: "1/1", borderRadius: "50%", boxShadow: "0 0 120px rgba(47,123,255,.55)", border: "2px solid rgba(127,178,255,.4)", ...bgImg(s.image || hero?.image, "radial-gradient(circle at 35% 30%, #3B6BFF, #0E1F4D 70%)") }} />
+              {hero && (
+                <div style={{ position: "absolute", left: -14, bottom: 22, background: "#fff", color: "#0B1530", borderRadius: 14, padding: "12px 16px", boxShadow: "0 14px 40px rgba(0,0,0,.35)", maxWidth: 230 }}>
+                  <div style={{ fontWeight: 800, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hero.name}</div>
+                  <div style={{ fontWeight: 800, color: "#2F7BFF", marginTop: 2 }}>{money(hero)}</div>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className={wrap} style={{ display: "flex", flexWrap: "wrap", gap: 10, padding: "0 0 44px" }}>
+            {chips.map((c) => <span key={c} style={{ border: "1px solid rgba(127,178,255,.4)", borderRadius: 999, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#CFE0FF" }}>{c}</span>)}
+          </div>
+        </section>
+      );
+    }
+
+    /* Grocery (Pinterest: sunny yellow field, big round produce photo, discount tag, category pills). Fresh & Co. */
+    case "orchard": {
+      const picks = (categories.length ? categories : ["Fruit", "Vegetables", "Dairy", "Bakery"]).slice(0, 5);
+      return (
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ padding: 0, background: "#FFF3C4", color: "#1E3A1B", overflow: "hidden" }}>
+          <div className={wrap} style={{ display: "grid", gridTemplateColumns: "1.05fr .95fr", gap: 40, alignItems: "center", padding: "64px 0 28px" }}>
+            <div>
+              {s.eyebrow && <p style={{ margin: "0 0 14px", fontWeight: 800, fontSize: 14, color: "#2E7D32" }}>{s.eyebrow}</p>}
+              <h1 style={{ fontFamily: d.headingFont, fontWeight: 800, fontSize: "clamp(40px,6vw,86px)", lineHeight: 0.98, letterSpacing: "-.035em", margin: 0 }}>{heading}</h1>
+              {s.body && <p style={{ lineHeight: 1.75, maxWidth: 470, margin: "20px 0 26px", color: "#4C5E3F" }}>{s.body}</p>}
+              <Cta s={s} d={d} bg="#2E7D32" fg="#fff" />
+            </div>
+            <div style={{ position: "relative", maxWidth: 460, width: "100%", marginLeft: "auto" }}>
+              <div style={{ aspectRatio: "1/1", borderRadius: "50%", border: "10px solid #fff", boxShadow: "0 24px 60px rgba(46,125,50,.25)", ...bgImg(s.image, "radial-gradient(circle at 35% 30%, #A5D66F, #2E7D32)") }} />
+              <div style={{ position: "absolute", top: 8, right: 4, width: 96, height: 96, borderRadius: "50%", background: "#E8452C", color: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontWeight: 800, lineHeight: 1.1, transform: "rotate(10deg)" }}>
+                <span style={{ fontSize: 12 }}>Fresh</span><span style={{ fontSize: 20 }}>daily</span>
+              </div>
+            </div>
+          </div>
+          <div className={wrap} style={{ display: "flex", flexWrap: "wrap", gap: 10, padding: "0 0 48px" }}>
+            {picks.map((c) => <span key={c} style={{ background: "#fff", borderRadius: 999, padding: "10px 20px", fontWeight: 700, fontSize: 14, boxShadow: "0 4px 14px rgba(30,58,27,.08)" }}>{c}</span>)}
+          </div>
+        </section>
+      );
+    }
+
     /* Fashion (Pinterest: circle-cropped model on a pastel blob, category chips with thumbnails). */
     case "blob": {
       const hero = items.find((i) => i.image);
