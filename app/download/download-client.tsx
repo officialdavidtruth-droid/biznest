@@ -84,9 +84,12 @@ export function DownloadClient({ apkUrl }: { apkUrl: string }) {
           Your store, orders and bookings in their own window. It includes an offline register: keep selling when the internet drops, and your sales are recorded automatically when it returns.
         </p>
         <div className="grid gap-2 sm:grid-cols-3">
+          {/* Route handler that redirects to the installer, not a page: a plain <a> is correct. */}
+          {/* eslint-disable @next/next/no-html-link-for-pages */}
           <a href="/download/desktop/windows" className={platform === "windows" ? primary : secondary}><Download className="h-4 w-4" /> Windows</a>
           <a href="/download/desktop/mac" className={platform === "mac" ? primary : secondary}><Download className="h-4 w-4" /> Mac</a>
           <a href="/download/desktop/linux" className={platform === "linux" ? primary : secondary}><Download className="h-4 w-4" /> Linux</a>
+          {/* eslint-enable @next/next/no-html-link-for-pages */}
         </div>
         <p className="mt-3 text-xs text-gray-500">
           Windows may show &quot;Windows protected your PC&quot;: choose <em>More info → Run anyway</em>. On Mac, right-click the app and choose <em>Open</em> the first time.
