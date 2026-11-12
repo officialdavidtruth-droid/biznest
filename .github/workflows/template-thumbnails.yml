@@ -63,6 +63,8 @@ jobs:
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
       AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
       AUTH_URL: http://localhost:3000
+      # `next build` evaluates API routes that construct the Resend client at import time; this key is never used to send.
+      RESEND_API_KEY: re_build_placeholder
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       THUMBNAIL_BASE_URL: http://localhost:3000
     steps:
