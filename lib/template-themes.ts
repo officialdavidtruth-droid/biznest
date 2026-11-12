@@ -898,7 +898,7 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
   "Skyview Hotels & Resorts": { chrome: C("bar", "cta", "bordered"), heroStyle: "fullbleed", heroVariant: "tiles" },
   "Maison — Hotel & Stay": { chrome: C("stripe", "minimal", "tall"), heroStyle: "centered", heroVariant: "frame" },
   "Grand — Hotel & Hospitality": { chrome: C("overlay", "cta", "bordered"), heroStyle: "split", heroVariant: "splitcard" },
-  "Bloom — Beauty Boutique": { chrome: C("stripe", "centered", "tall"), heroStyle: "split", heroVariant: "glow", categoriesStyle: "photo", featuresStyle: "strip" },
+  "Bloom — Beauty Boutique": { chrome: C("stripe", "centered", "tall"), heroStyle: "split", heroVariant: "sage", categoriesStyle: "photo", featuresStyle: "strip" },
   "Harvest — Grocery Market": { chrome: C("bar", "cta", "lifted"), heroStyle: "split", heroVariant: "market", categoriesStyle: "circles", featuresStyle: "strip" },
   "Drive — Cars & Rentals": { chrome: C("stripe", "columns", "lifted"), heroStyle: "fullbleed", heroVariant: "showroom", categoriesStyle: "tiles" },
 };

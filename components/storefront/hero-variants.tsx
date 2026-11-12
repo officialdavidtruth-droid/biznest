@@ -452,6 +452,42 @@ export function HeroVariantView({ variant, section, d, items, categories, slug }
       );
     }
 
+    /* Beauty (Pinterest: sage panel, arched portrait, round product thumbnails, teal benefits strip, large serif headline). */
+    case "sage": {
+      const picks = items.slice(0, 4);
+      const benefits = ["Dermatologist tested", "Cruelty free", "Free delivery", "Easy returns"];
+      return (
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ padding: 0 }}>
+          <div style={{ background: "#DDE5D3", color: "#23301F" }}>
+            <div className={wrap} style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: 48, alignItems: "end", padding: "64px 0 0" }}>
+              <div style={{ paddingBottom: 56 }}>
+                {s.eyebrow && <p style={{ margin: "0 0 14px", fontWeight: 700, fontSize: 14, color: "#3E5A36" }}>{s.eyebrow}</p>}
+                <h1 style={{ fontFamily: d.headingFont, fontWeight: 500, fontSize: "clamp(44px,6.4vw,92px)", lineHeight: 1, letterSpacing: "-.03em", margin: 0 }}>{heading}</h1>
+                {s.body && <p style={{ lineHeight: 1.8, maxWidth: 460, margin: "22px 0 26px", color: "#4A5A45" }}>{s.body}</p>}
+                <Cta s={s} d={d} bg="#23301F" fg="#fff" />
+                <div style={{ display: "flex", gap: 14, marginTop: 34, flexWrap: "wrap" }}>
+                  {picks.map((it, i) => (
+                    <div key={it.id + i} style={{ textAlign: "center", width: 76 }}>
+                      <div style={{ width: 76, height: 76, borderRadius: "50%", border: "3px solid #fff", ...bgImg(it.image, "linear-gradient(135deg, #BFD0B2, #F6F8F2)") }} />
+                      <div style={{ fontSize: 11, marginTop: 6, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ maxWidth: 440, width: "100%", marginLeft: "auto" }}>
+                <div style={{ aspectRatio: "3/4", borderRadius: "999px 999px 0 0", ...bgImg(s.image, "linear-gradient(180deg, #A9BF9A, #EEF3E8)") }} />
+              </div>
+            </div>
+          </div>
+          <div style={{ background: "#1F6F6B", color: "#fff" }}>
+            <div className={wrap} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 16, padding: "18px 0", fontSize: 14, fontWeight: 600, textAlign: "center" }}>
+              {benefits.map((b) => <span key={b}>{b}</span>)}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
     /* Fashion (Pinterest: circle-cropped model on a pastel blob, category chips with thumbnails). */
     case "blob": {
       const hero = items.find((i) => i.image);
