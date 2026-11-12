@@ -1,4 +1,209 @@
 {
   "version": 1,
-  "items": {}
+  "items": {
+    "Arcova Architecture": {
+      "file": "/template-reference-previews/generated/arcova-architecture.jpg",
+      "hash": "26e2654772e4381f"
+    },
+    "Aspire Resort": {
+      "file": "/template-reference-previews/generated/aspire-resort.jpg",
+      "hash": "5af4b5db47da4c4c"
+    },
+    "Atelier — Modern Fashion": {
+      "file": "/template-reference-previews/generated/atelier-modern-fashion.jpg",
+      "hash": "686a740c1e41f65f"
+    },
+    "Bloom — Beauty Boutique": {
+      "file": "/template-reference-previews/generated/bloom-beauty-boutique.jpg",
+      "hash": "c7d37a04d5945a49"
+    },
+    "Drive — Cars & Rentals": {
+      "file": "/template-reference-previews/generated/drive-cars-and-rentals.jpg",
+      "hash": "214661d31f38183a"
+    },
+    "Electra — Smart Commerce": {
+      "file": "/template-reference-previews/generated/electra-smart-commerce.jpg",
+      "hash": "ecfe87a5e874bf59"
+    },
+    "Electra Blue Electronics": {
+      "file": "/template-reference-previews/generated/electra-blue-electronics.jpg",
+      "hash": "dc2aea0b676fb543"
+    },
+    "Emarket Furniture & Home": {
+      "file": "/template-reference-previews/generated/emarket-furniture-and-home.jpg",
+      "hash": "04bf950319d95255"
+    },
+    "Ember — Restaurant": {
+      "file": "/template-reference-previews/generated/ember-restaurant.jpg",
+      "hash": "1df1a9c792f429c3"
+    },
+    "Example — Modern Electronics Store": {
+      "file": "/template-reference-previews/generated/example-modern-electronics-store.jpg",
+      "hash": "a562801fd762aee6"
+    },
+    "Fabtex": {
+      "file": "/template-reference-previews/generated/fabtex.jpg",
+      "hash": "692db6adcc624c24"
+    },
+    "Forge — Construction": {
+      "file": "/template-reference-previews/generated/forge-construction.jpg",
+      "hash": "63b580c5bd2b85cd"
+    },
+    "Frame — Photography Studio": {
+      "file": "/template-reference-previews/generated/frame-photography-studio.jpg",
+      "hash": "68289068bf6e197e"
+    },
+    "Fresh & Co.": {
+      "file": "/template-reference-previews/generated/fresh-and-co.jpg",
+      "hash": "d0b921669b6319fe"
+    },
+    "Gala — Events & Celebrations": {
+      "file": "/template-reference-previews/generated/gala-events-and-celebrations.jpg",
+      "hash": "e41aaf677939cb9e"
+    },
+    "Grand — Hotel & Hospitality": {
+      "file": "/template-reference-previews/generated/grand-hotel-and-hospitality.jpg",
+      "hash": "4d1ea253a96d9225"
+    },
+    "Grandeur — Fine Dining Restaurant": {
+      "file": "/template-reference-previews/generated/grandeur-fine-dining-restaurant.jpg",
+      "hash": "c6c74c0ebe4c6d48"
+    },
+    "Harvest — Grocery Market": {
+      "file": "/template-reference-previews/generated/harvest-grocery-market.jpg",
+      "hash": "0c2b2fa6b7d8ade3"
+    },
+    "Haven — Home & Furniture": {
+      "file": "/template-reference-previews/generated/haven-home-and-furniture.jpg",
+      "hash": "c2a509d35dae30f0"
+    },
+    "Heenzy — Boutique Rose": {
+      "file": "/template-reference-previews/generated/heenzy-boutique-rose.jpg",
+      "hash": "b07545d218bd8d46"
+    },
+    "Heenzy Sneaker Co.": {
+      "file": "/template-reference-previews/generated/heenzy-sneaker-co.jpg",
+      "hash": "fcf3d3dd1c703e79"
+    },
+    "HomeVista": {
+      "file": "/template-reference-previews/generated/homevista.jpg",
+      "hash": "c98917140e5a7529"
+    },
+    "Horizon": {
+      "file": "/template-reference-previews/generated/horizon.jpg",
+      "hash": "2a40c8dffad2c2ac"
+    },
+    "JuiceLife": {
+      "file": "/template-reference-previews/generated/juicelife.jpg",
+      "hash": "1c70393467da3ae1"
+    },
+    "Kinetic — Sneaker Drop": {
+      "file": "/template-reference-previews/generated/kinetic-sneaker-drop.jpg",
+      "hash": "7a1d62e59845cb53"
+    },
+    "Larita Luxury Hotel": {
+      "file": "/template-reference-previews/generated/larita-luxury-hotel.jpg",
+      "hash": "63daefb09c76a71b"
+    },
+    "Maison — Hotel & Stay": {
+      "file": "/template-reference-previews/generated/maison-hotel-and-stay.jpg",
+      "hash": "97b03b535cecbca4"
+    },
+    "Marketplace Hub": {
+      "file": "/template-reference-previews/generated/marketplace-hub.jpg",
+      "hash": "a868400695b762c2"
+    },
+    "Muse — Salon & Beauty": {
+      "file": "/template-reference-previews/generated/muse-salon-and-beauty.jpg",
+      "hash": "98996d4aa8e7a962"
+    },
+    "Nestoria Real Estate": {
+      "file": "/template-reference-previews/generated/nestoria-real-estate.jpg",
+      "hash": "23d348b51b13b3eb"
+    },
+    "North — Creative Agency": {
+      "file": "/template-reference-previews/generated/north-creative-agency.jpg",
+      "hash": "e8ba9e5300467455"
+    },
+    "Nova Studio — Ivory Minimal": {
+      "file": "/template-reference-previews/generated/nova-studio-ivory-minimal.jpg",
+      "hash": "f3273180198f8627"
+    },
+    "Nova Studio — Noir": {
+      "file": "/template-reference-previews/generated/nova-studio-noir.jpg",
+      "hash": "0cd333ae1540b84c"
+    },
+    "Premium Marketplace": {
+      "file": "/template-reference-previews/generated/premium-marketplace.jpg",
+      "hash": "5154bffbde674880"
+    },
+    "Pulse — Fitness & Wellness": {
+      "file": "/template-reference-previews/generated/pulse-fitness-and-wellness.jpg",
+      "hash": "a6db76d0cbaaa891"
+    },
+    "Pure — Cleaning Services": {
+      "file": "/template-reference-previews/generated/pure-cleaning-services.jpg",
+      "hash": "118ef347600b88ed"
+    },
+    "Rivora Fresh": {
+      "file": "/template-reference-previews/generated/rivora-fresh.jpg",
+      "hash": "281b61615833aaa4"
+    },
+    "rRW Premium Rental": {
+      "file": "/template-reference-previews/generated/rrw-premium-rental.jpg",
+      "hash": "d4be71991f7fe6ef"
+    },
+    "ShopEase General Store": {
+      "file": "/template-reference-previews/generated/shopease-general-store.jpg",
+      "hash": "f3fdcdac931b3a78"
+    },
+    "ShopNova Marketplace": {
+      "file": "/template-reference-previews/generated/shopnova-marketplace.jpg",
+      "hash": "d96253786939e7b2"
+    },
+    "Skyview Hotels & Resorts": {
+      "file": "/template-reference-previews/generated/skyview-hotels-and-resorts.jpg",
+      "hash": "1ade05471b9bc0b4"
+    },
+    "Talent — Recruitment & HR": {
+      "file": "/template-reference-previews/generated/talent-recruitment-and-hr.jpg",
+      "hash": "ca676b2dbef9559c"
+    },
+    "TasteHouse — Food Delivery": {
+      "file": "/template-reference-previews/generated/tastehouse-food-delivery.jpg",
+      "hash": "947eae24950855a1"
+    },
+    "TechNova Mobile Store": {
+      "file": "/template-reference-previews/generated/technova-mobile-store.jpg",
+      "hash": "95673f192d1a9322"
+    },
+    "TechVerse Gadgets": {
+      "file": "/template-reference-previews/generated/techverse-gadgets.jpg",
+      "hash": "85cfcfc9dbf5e32d"
+    },
+    "Transit — Logistics & Delivery": {
+      "file": "/template-reference-previews/generated/transit-logistics-and-delivery.jpg",
+      "hash": "f9e5fab8639af164"
+    },
+    "Veloura — Superior Luxury Hotel": {
+      "file": "/template-reference-previews/generated/veloura-superior-luxury-hotel.jpg",
+      "hash": "8eb7c243b52ad1f9"
+    },
+    "Violet": {
+      "file": "/template-reference-previews/generated/violet.jpg",
+      "hash": "577fd0039c53c07b"
+    },
+    "Violet — Sunset": {
+      "file": "/template-reference-previews/generated/violet-sunset.jpg",
+      "hash": "072c6065089827b9"
+    },
+    "Vitalis — Clinic & Care": {
+      "file": "/template-reference-previews/generated/vitalis-clinic-and-care.jpg",
+      "hash": "bd8e9f9ecf791faf"
+    },
+    "Wanderly Travel": {
+      "file": "/template-reference-previews/generated/wanderly-travel.jpg",
+      "hash": "2377966eec38eb70"
+    }
+  }
 }
