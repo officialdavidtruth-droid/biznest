@@ -1,7 +1,7 @@
 // Exposes a tiny key/value store backed by a JSON file in the app's own data folder.
 // The web register (lib/pos-offline.ts) and offline-pos.html share it, so sales rung up in the
 // offline register are recorded by the online register on its next start.
-const { contextBridge } = require("electron");
+const { contextBridge, ipcRenderer } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
@@ -29,6 +29,7 @@ function save() {
 
 contextBridge.exposeInMainWorld("bizNestDesktop", {
   isDesktop: true,
+  checkForUpdates: () => ipcRenderer.send("biznest:check-updates"),
   storage: {
     get: (key) => { const v = load()[key]; return typeof v === "string" ? v : null; },
     set: (key, value) => { load()[key] = String(value); save(); },

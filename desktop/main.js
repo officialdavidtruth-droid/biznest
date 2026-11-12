@@ -3,7 +3,7 @@
 //   - its own window, icon and a single running copy;
 //   - an offline page and an offline register (offline-pos.html) when there is no connection;
 //   - device storage (preload.js) used by the register to keep its catalogue and unsent sales.
-const { app, BrowserWindow, Menu, shell, dialog, session, screen } = require("electron");
+const { app, BrowserWindow, Menu, shell, dialog, session, screen, ipcMain } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -206,6 +206,7 @@ if (!app.requestSingleInstanceLock()) {
       } catch {}
       setTimeout(() => { if (win && !win.isDestroyed()) win.loadURL(START_URL); }, 150);
     });
+    ipcMain.on("biznest:check-updates", () => updater.checkNow());
     buildMenu();
     createWindow();
     updater.init(() => win);

@@ -3,9 +3,9 @@
 import type { CSSProperties } from "react";
 import "./sidebar-green.css";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ExternalLink, Pencil, ChevronDown } from "lucide-react";
+import { ExternalLink, Pencil, ChevronDown, RefreshCw } from "lucide-react";
 import { buildNavGroups, filterNavGroupsForRole, type NavItem, type InstalledAppNav } from "@/lib/constants/dashboard-nav";
 import type { StoreAccessRole } from "@/lib/access/store-access";
 import { SignOutButton } from "@/components/forms/sign-out-button";
@@ -136,6 +136,7 @@ export function DashboardSidebar({
       )}
 
       <div className="bn-sidebar-footer border-t border-white/15 px-3 py-3">
+        <DesktopUpdateButton />
         <div className="flex items-center gap-2 px-1">
           <StoreLogo logoUrl={logoUrl} storeName={storeName} size="sm" />
           <div className="min-w-0 flex-1"><p className="truncate text-[11px] font-semibold text-white">Business Admin</p><p className="text-[10px] text-white/70">{staffRole ?? "OWNER"}</p></div>
@@ -143,6 +144,24 @@ export function DashboardSidebar({
         </div>
       </div>
     </aside>
+  );
+}
+
+function DesktopUpdateButton() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const d = (window as unknown as { bizNestDesktop?: { checkForUpdates?: () => void } }).bizNestDesktop;
+    setShow(typeof d?.checkForUpdates === "function");
+  }, []);
+  if (!show) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => (window as unknown as { bizNestDesktop: { checkForUpdates: () => void } }).bizNestDesktop.checkForUpdates()}
+      className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-white/10 px-2 py-1.5 text-[11px] font-medium text-white hover:bg-white/20"
+    >
+      <RefreshCw className="h-3 w-3" aria-hidden /> Check for updates
+    </button>
   );
 }
 
