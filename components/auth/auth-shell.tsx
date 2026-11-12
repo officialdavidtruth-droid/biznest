@@ -219,18 +219,12 @@ export function AuthShell({
         </div>
 
         {!isStoreContext && (
-          <div className="relative z-10 max-w-sm rounded-2xl border border-white/15 bg-white/[0.07] p-4 shadow-2xl backdrop-blur-sm" aria-hidden>
-            <div className="flex items-center justify-between text-xs text-white/60">
-              <span>Today</span>
-              <span className="rounded-full bg-[#6ee7a8]/20 px-2 py-0.5 text-[#6ee7a8]">Live</span>
-            </div>
-            <div className="mt-2 flex items-end justify-between">
-              <div>
-                <p className="text-2xl font-semibold text-white">₦248,500</p>
-                <p className="text-xs text-white/60">Sales · 18 orders</p>
-              </div>
-              <svg width="110" height="36" viewBox="0 0 110 36" fill="none"><path d="M2 30 L20 22 L38 26 L56 14 L74 18 L92 6 L108 10" stroke="#6ee7a8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
+          <div className="relative z-10 flex max-w-sm flex-wrap gap-2" aria-label="What you can run on BizNest">
+            {["Online store", "Point of sale", "Bookings", "Orders", "Staff", "Payments"].map((t) => (
+              <span key={t} className="rounded-full border border-white/20 bg-white/[0.08] px-3 py-1.5 text-xs font-medium text-white/90">
+                {t}
+              </span>
+            ))}
           </div>
         )}
 
