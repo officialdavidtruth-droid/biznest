@@ -3,6 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { sendAlert } from "@/lib/observability/alert";
 import type { EventCategory, EventLevel, Prisma } from "@prisma/client";
 
+// Circuit breaker for the log write itself. Prisma error events are forwarded into logEvent, and logEvent
+// writes to the same database -- so when the DB is saturated (e.g. "max client connections reached") every
+// failed write raised another error event, which tried another write: ~40,000 failed writes in one minute on
+// 2026-11-11, which kept the connection pool pinned and kept logins failing. After one failed write we stop
+// writing rows for a short while (console only) so the database can recover.
+let dbWriteBlockedUntil = 0;
+const DB_WRITE_COOLDOWN_MS = 30_000;
+
 /**
  * Central write path for everything on the System Health page. Every
  * failure mode we care about (payment declines, bounced emails, dead
@@ -25,7 +33,7 @@ export async function logEvent(
   const consoleFn = level === "ERROR" ? console.error : level === "WARN" ? console.warn : console.log;
   consoleFn(`[${category}] ${message}`, metadata ?? "");
 
-  try {
+  if (Date.now() >= dbWriteBlockedUntil) try {
     await prisma.systemEvent.create({
       data: {
         category,
@@ -36,6 +44,7 @@ export async function logEvent(
       },
     });
   } catch (err) {
+    dbWriteBlockedUntil = Date.now() + DB_WRITE_COOLDOWN_MS;
     // If we can't even write the log row (e.g. the DB itself is down --
     // which is exactly when we'd most want a DATABASE event to exist),
     // there's nowhere left to put this but stderr.
