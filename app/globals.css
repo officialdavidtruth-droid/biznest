@@ -1542,3 +1542,51 @@ html[data-app]:not([data-tabbar]) .bn-tabbar { display: none; }
   /* wrappers that existed only to scroll a wide table sideways */
   .bn-admin-main .overflow-x-auto:has(> table.bn-stack) { overflow-x: visible; border: 0; background: transparent; }
 }
+
+/* ================================================================
+   Visual polish pass (Nov 2026): brand-consistent details across the
+   landing page, merchant dashboard and sign-in/app screens. Additive
+   only; nothing here changes layout or sizes, and storefront templates
+   are untouched.
+   ================================================================ */
+
+/* Brand selection colour and keyboard focus that is visible on every surface. */
+::selection { background: rgba(15, 100, 16, 0.22); color: inherit; }
+:where(a, button, [role="button"], summary, input, select, textarea):focus-visible {
+  outline: 2px solid #0f6410;
+  outline-offset: 2px;
+}
+.bn-dark-surface :where(a, button, [role="button"], summary):focus-visible { outline-color: #6ee7a8; }
+
+/* Smooth in-page jumps (landing "See pricing"), but never for people who ask for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+/* Landing: the sticky header reads as a clean bar, and the brand mark lifts a touch on hover. */
+header.sticky a[aria-label="BizNest home"] img { transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease; }
+header.sticky a[aria-label="BizNest home"]:hover img { transform: rotate(-4deg) scale(1.06); box-shadow: 0 4px 12px rgba(15, 100, 16, 0.28); }
+header.sticky { box-shadow: 0 1px 0 rgba(15, 100, 16, 0.06), 0 8px 24px -18px rgba(11, 36, 21, 0.4); }
+
+/* Dashboard: the leftover peach row-hover came from the old gold theme; use the brand green tint instead. */
+.bn-admin-app table tbody tr:hover { background: #f1f8f2 !important; }
+.bn-admin-app .rounded-xl.border, .bn-admin-app .rounded-2xl.border {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 18px -14px rgba(15, 23, 42, 0.18) !important;
+}
+.bn-admin-app .rounded-xl.border, .bn-admin-app .rounded-2xl.border { transition: box-shadow 0.2s ease, border-color 0.2s ease; }
+.bn-admin-app a.rounded-xl.border:hover, .bn-admin-app a.rounded-2xl.border:hover, .bn-admin-app button.rounded-xl.border:hover {
+  border-color: rgba(15, 100, 16, 0.35) !important;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05), 0 12px 26px -16px rgba(15, 100, 16, 0.35) !important;
+}
+.bn-admin-app button[class*="bg-primary"]:hover, .bn-admin-app a[class*="bg-primary"]:hover { background: var(--bn-gold-dark) !important; }
+.bn-admin-app button[class*="bg-primary"]:active, .bn-admin-app a[class*="bg-primary"]:active { transform: translateY(1px); }
+.bn-admin-app main { scrollbar-width: thin; scrollbar-color: #c3d4c6 transparent; }
+
+/* Sidebar: slim, quiet scrollbar so long menus don't show a bright system bar on the dark green. */
+.bn-admin-sidebar { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.25) transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  header.sticky a[aria-label="BizNest home"] img,
+  .bn-admin-app .rounded-xl.border, .bn-admin-app .rounded-2xl.border { transition: none; }
+  header.sticky a[aria-label="BizNest home"]:hover img { transform: none; }
+}
