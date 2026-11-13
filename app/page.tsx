@@ -252,10 +252,11 @@ export default async function HomePage() {
         <Link
           href="/"
           aria-label="BizNest home"
-          className={`shrink-0 text-lg tracking-tight ${FOCUS}`}
+          className={`flex shrink-0 items-center gap-2.5 text-lg tracking-tight ${FOCUS}`}
           style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}
         >
-          BizNest
+          <img src="/icon-192.png" alt="" width={36} height={36} className="h-9 w-9 rounded-[10px] shadow-sm" />
+          <span>BizNest</span>
         </Link>
         <nav aria-label="Primary" className="flex min-w-0 items-center gap-4 whitespace-nowrap text-sm sm:gap-6">
           <Link href="/browse" className={`hidden opacity-80 transition hover:opacity-100 sm:inline ${FOCUS}`}>
@@ -626,7 +627,8 @@ export default async function HomePage() {
       <footer style={{ background: "var(--bn-ink)", borderTop: "1px solid var(--bn-ink-line)" }}>
         <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 sm:grid-cols-2 sm:px-10 lg:grid-cols-4">
           <div>
-            <span className="text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+            <span className="flex items-center gap-2.5 text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+              <img src="/icon-192.png" alt="" width={36} height={36} className="h-9 w-9 rounded-[10px]" />
               BizNest
             </span>
             <p className="mt-3 max-w-xs text-sm leading-relaxed" style={{ color: "var(--bn-mute)" }}>
