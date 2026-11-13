@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import type { ActionResult } from "@/types/actions";
 import { runAutomationsForEvent } from "@/lib/automations/engine";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -11,7 +12,19 @@ export async function subscribeToNewsletter(storeSlug: string, formData: FormDat
   if (!EMAIL_RE.test(email)) return { success: false, error: "Enter a valid email." };
 
   const store = await prisma.store.findUnique({ where: { slug: storeSlug } });
-  if (!store) return { success: false, error: "Store not found." };
+  if (!store || store.status !== "ACTIVE") return { success: false, error: "Store not found." };
+
+  // A first signup sends a welcome email, so unthrottled this could be scripted to email arbitrary addresses.
+  const { headers } = await import("next/headers");
+  const ip = getClientIp(await headers());
+  const [perIp, perStore, perEmail] = await Promise.all([
+    checkRateLimit(`newsletter:ip:${ip}`, 10, 60 * 60 * 1000),
+    checkRateLimit(`newsletter:store:${store.id}`, 200, 60 * 60 * 1000),
+    checkRateLimit(`newsletter:email:${store.id}:${email}`, 3, 24 * 60 * 60 * 1000),
+  ]);
+  if (!perIp.allowed || !perStore.allowed || !perEmail.allowed) {
+    return { success: false, error: "Too many sign-ups right now. Please try again a little later." };
+  }
 
   const existing = await prisma.newsletterSubscriber.findUnique({ where: { storeId_email: { storeId: store.id, email } } });
 
