@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { confirmationPath } from "@/lib/payments/confirm-destination";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,12 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  // The pay page polls every 5-30s (about 12 a minute at most), so 60/min per visitor per store is generous
+  // for real customers (even several behind one network) and stops reference/order-id guessing.
+  const rl = await checkRateLimit(`payment-status:${slug}:${getClientIp(req.headers)}`, 60, 60 * 1000);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many requests." }, { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds ?? 60), "Cache-Control": "no-store" } });
+  }
   const url = new URL(req.url);
   const reference = url.searchParams.get("reference");
   const orderId = url.searchParams.get("orderId");
