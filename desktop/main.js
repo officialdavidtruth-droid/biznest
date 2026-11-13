@@ -96,7 +96,7 @@ function createWindow() {
     backgroundColor: "#0f6410",
     title: "BizNest",
     autoHideMenuBar: true, // menu stays on Alt; the app UI has its own navigation
-    icon: path.join(__dirname, "build", "icon.png"),
+    icon: path.join(__dirname, "assets", "icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

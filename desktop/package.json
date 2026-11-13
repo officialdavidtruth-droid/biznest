@@ -20,7 +20,7 @@
     "productName": "BizNest",
     "directories": {
       "output": "dist",
-      "buildResources": "build"
+      "buildResources": "assets"
     },
     "files": [
       "main.js",
@@ -29,6 +29,7 @@
       "offline.html",
       "offline-pos.html",
       "signing-in.html",
+      "assets/icon.png",
       "package.json"
     ],
     "win": {
