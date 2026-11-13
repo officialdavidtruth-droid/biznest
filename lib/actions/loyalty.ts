@@ -6,6 +6,7 @@ import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { getLoyaltyRates } from "@/lib/actions/site-settings";
 import { roundMoney } from "@/lib/utils/pricing";
 import { revalidatePath } from "next/cache";
+import { randomBytes } from "node:crypto";
 import type { ActionResult } from "@/types/actions";
 import type { LoyaltyEntry } from "@prisma/client";
 
@@ -102,7 +103,7 @@ export async function cashOutLoyaltyPoints(
 
   // Short, readable, and collision-resistant enough for a per-store unique
   // code -- matches the manual codes merchants type in via settings-forms.tsx.
-  const couponCode = `LOYALTY-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  const couponCode = `LOYALTY-${randomBytes(5).toString("hex").toUpperCase()}`;
 
   const result = await prisma.$transaction(async (tx) => {
     const fresh = await tx.loyaltyAccount.findUnique({ where: { id: account.id } });
@@ -173,7 +174,7 @@ export async function cashOutStoreLoyaltyPoints(storeSlug: string, pointsToRedee
   const rates = await getLoyaltyRates();
   const discountValue = roundMoney(pointsToRedeem * rates.nairaPerPoint);
   if (discountValue <= 0) return { success: false, error: "That's not enough points to redeem yet." };
-  const couponCode = `LOYALTY-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  const couponCode = `LOYALTY-${randomBytes(5).toString("hex").toUpperCase()}`;
   const result = await prisma.$transaction(async (tx) => {
     const fresh = await tx.storeLoyaltyAccount.findUnique({ where: { id: account.id } });
     if (!fresh || fresh.pointsBalance < pointsToRedeem) throw new Error("INSUFFICIENT_POINTS");
