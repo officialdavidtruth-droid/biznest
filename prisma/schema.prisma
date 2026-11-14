@@ -6017,6 +6017,8 @@ model RoomAccessScan {
 enum LockProvider {
   TTLOCK
   BRIDGE
+  // Seam (seam.co) fronts Salto KS and ASSA ABLOY Visionline: BizNest creates a timed guest user + PIN per stay.
+  SEAM
 }
 
 enum AccessGrantStatus {
@@ -6039,6 +6041,8 @@ model LockIntegration {
   ttPasswordMd5Enc  String?
   ttTokenEnc        String?
   ttTokenExpiresAt  DateTime?
+  seamApiKeyEnc     String?
+  seamSystemId      String?
   bridgeToken       String?      @unique
   bridgeLastSeenAt  DateTime?
   lastError         String?

@@ -8,10 +8,13 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { encryptSecret } from "@/lib/payments/store-gateway";
 import { getToken, listLocks, md5 } from "@/lib/locks/ttlock";
 import { getTtlockSession, issueStayAccess, revokeStayAccess } from "@/lib/locks/grants";
+import { listAccessGroups, listAcsSystems } from "@/lib/locks/seam";
+import { decryptSecret } from "@/lib/payments/store-gateway";
 import type { ActionResult } from "@/types/actions";
 
 export type LockSystemView = {
-  provider: "TTLOCK" | "BRIDGE" | null;
+  provider: "TTLOCK" | "BRIDGE" | "SEAM" | null;
+  seamSystemId: string | null;
   ttUsername: string | null;
   ttClientId: string | null;
   bridgeUrl: string | null;
@@ -42,6 +45,7 @@ export async function getLockSystem(slug: string): Promise<LockSystemView | null
   const byId = new Map(reservations.map((r) => [r.id, r]));
   return {
     provider: integration?.provider ?? null,
+    seamSystemId: integration?.seamSystemId ?? null,
     ttUsername: integration?.ttUsername ?? null,
     ttClientId: integration?.ttClientId ?? null,
     bridgeUrl: integration?.bridgeToken ? `${APP_URL}/api/pms/bridge/${integration.bridgeToken}/jobs` : null,
@@ -67,7 +71,7 @@ export async function connectTtlock(slug: string, input: { clientId: string; cli
     const locks = await listLocks({ clientId, accessToken: token.accessToken });
     const data = {
       provider: "TTLOCK" as const, ttClientId: clientId, ttClientSecretEnc: encryptSecret(clientSecret), ttUsername: username, ttPasswordMd5Enc: encryptSecret(passwordMd5),
-      ttTokenEnc: encryptSecret(token.accessToken), ttTokenExpiresAt: new Date(Date.now() + token.expiresInSec * 1000), lastError: null, bridgeToken: null,
+      ttTokenEnc: encryptSecret(token.accessToken), ttTokenExpiresAt: new Date(Date.now() + token.expiresInSec * 1000), lastError: null, bridgeToken: null, seamApiKeyEnc: null, seamSystemId: null,
     };
     await prisma.lockIntegration.upsert({ where: { storeId: a.store.id }, create: { storeId: a.store.id, ...data }, update: data });
     revalidatePath(`/store/${slug}/admin/pms`);
@@ -95,7 +99,7 @@ export async function enableBridge(slug: string): Promise<ActionResult> {
   const a = await access(slug);
   if (!a.success) return { success: false, error: a.error };
   const bridgeToken = crypto.randomBytes(20).toString("hex");
-  const data = { provider: "BRIDGE" as const, bridgeToken, lastError: null, ttClientId: null, ttClientSecretEnc: null, ttUsername: null, ttPasswordMd5Enc: null, ttTokenEnc: null, ttTokenExpiresAt: null };
+  const data = { provider: "BRIDGE" as const, bridgeToken, lastError: null, ttClientId: null, ttClientSecretEnc: null, ttUsername: null, ttPasswordMd5Enc: null, ttTokenEnc: null, ttTokenExpiresAt: null, seamApiKeyEnc: null, seamSystemId: null };
   await prisma.lockIntegration.upsert({ where: { storeId: a.store.id }, create: { storeId: a.store.id, ...data }, update: data });
   revalidatePath(`/store/${slug}/admin/pms`);
   return { success: true, data: undefined };
@@ -143,4 +147,60 @@ export async function retryRevokeAccess(slug: string, reservationId: string): Pr
   const res = await revokeStayAccess(reservationId);
   revalidatePath(`/store/${slug}/admin/pms`);
   return res.failed > 0 ? { success: false, error: "The lock system did not accept the removal. Try again." } : { success: true, data: undefined };
+}
+
+
+/** Salto KS (or Visionline) through Seam: check the key, then let the owner pick the access system. */
+export async function connectSeam(slug: string, apiKey: string): Promise<ActionResult<{ systems: { id: string; name: string; type: string | null }[] }>> {
+  const a = await access(slug);
+  if (!a.success) return { success: false, error: a.error };
+  const key = apiKey.trim();
+  if (!key) return { success: false, error: "Paste the Seam API key." };
+  try {
+    const systems = await listAcsSystems(key);
+    if (systems.length === 0) return { success: false, error: "That Seam workspace has no access system yet. Connect the Salto KS account in Seam first." };
+    const data = {
+      provider: "SEAM" as const, seamApiKeyEnc: encryptSecret(key), seamSystemId: systems.length === 1 ? systems[0].id : null, lastError: null, bridgeToken: null,
+      ttClientId: null, ttClientSecretEnc: null, ttUsername: null, ttPasswordMd5Enc: null, ttTokenEnc: null, ttTokenExpiresAt: null,
+    };
+    await prisma.lockIntegration.upsert({ where: { storeId: a.store.id }, create: { storeId: a.store.id, ...data }, update: data });
+    revalidatePath(`/store/${slug}/admin/pms`);
+    return { success: true, data: { systems } };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Could not reach Seam." };
+  }
+}
+
+export async function selectSeamSystem(slug: string, systemId: string): Promise<ActionResult> {
+  const a = await access(slug);
+  if (!a.success) return { success: false, error: a.error };
+  const res = await prisma.lockIntegration.updateMany({ where: { storeId: a.store.id, provider: "SEAM" }, data: { seamSystemId: systemId || null } });
+  if (res.count === 0) return { success: false, error: "Connect the lock system first." };
+  revalidatePath(`/store/${slug}/admin/pms`);
+  return { success: true, data: undefined };
+}
+
+/** The Salto access groups the owner can attach to rooms (one group per room, containing that room's door). */
+export async function listSeamAccessGroups(slug: string): Promise<ActionResult<{ groups: { id: string; name: string }[] }>> {
+  const a = await access(slug);
+  if (!a.success) return { success: false, error: a.error };
+  const i = await prisma.lockIntegration.findUnique({ where: { storeId: a.store.id } });
+  if (!i || i.provider !== "SEAM" || !i.seamApiKeyEnc || !i.seamSystemId) return { success: false, error: "Choose the access system first." };
+  try {
+    return { success: true, data: { groups: await listAccessGroups(decryptSecret(i.seamApiKeyEnc), i.seamSystemId) } };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Could not read access groups." };
+  }
+}
+
+export async function listSeamSystems(slug: string): Promise<ActionResult<{ systems: { id: string; name: string; type: string | null }[] }>> {
+  const a = await access(slug);
+  if (!a.success) return { success: false, error: a.error };
+  const i = await prisma.lockIntegration.findUnique({ where: { storeId: a.store.id } });
+  if (!i || i.provider !== "SEAM" || !i.seamApiKeyEnc) return { success: false, error: "Connect the lock system first." };
+  try {
+    return { success: true, data: { systems: await listAcsSystems(decryptSecret(i.seamApiKeyEnc)) } };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Could not reach Seam." };
+  }
 }

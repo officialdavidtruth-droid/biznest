@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { connectTtlock, disconnectLockSystem, enableBridge, mapRoomLock, retryRevokeAccess, retryStayAccess, type LockSystemView } from "@/lib/actions/lock-systems";
+import { connectSeam, connectTtlock, disconnectLockSystem, enableBridge, listSeamAccessGroups, listSeamSystems, mapRoomLock, retryRevokeAccess, retryStayAccess, selectSeamSystem, type LockSystemView } from "@/lib/actions/lock-systems";
 
 const box = "rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[var(--bn-admin-surface)]/[0.025] p-5";
 const field = "w-full rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-page)_20%,transparent)] px-3 py-2.5 text-xs text-[var(--bn-admin-text)]";
@@ -14,6 +14,9 @@ export function PmsLockSystems({ slug, rooms, system }: { slug: string; rooms: {
   const [pending, start] = useTransition();
   const [form, setForm] = useState({ clientId: "", clientSecret: "", username: "", password: "" });
   const [locks, setLocks] = useState<Lock[]>([]);
+  const [seamKey, setSeamKey] = useState("");
+  const [systems, setSystems] = useState<{ id: string; name: string; type: string | null }[]>([]);
+  const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const mapped = new Map((system?.roomLocks ?? []).map((l) => [l.roomId, l]));
   const run = (fn: () => Promise<{ success: boolean; error?: string }>, ok: string) =>
     start(async () => { const r = await fn(); if (r.success) toast.success(ok); else toast.error(r.error || "Something went wrong."); });
@@ -26,7 +29,7 @@ export function PmsLockSystems({ slug, rooms, system }: { slug: string; rooms: {
         <p className="mt-1 text-xs text-[var(--bn-admin-text)]">
           Connect the hotel&apos;s smart locks so a guest&apos;s door access starts at check-in and is removed at check-out, with no manual card work.
           <b> TTLock</b> works over the internet (the locks need a WiFi lock or a TTLock gateway). Systems that run on a server inside the hotel, such as <b>ASSA ABLOY Visionline / VingCard</b>, use the on-site agent option.
-          Salto KS is not connected yet.
+          <b>Salto KS</b> connects through Seam (seam.co), which gives BizNest a documented way to create each guest&apos;s PIN.
         </p>
       </div>
 
@@ -45,6 +48,15 @@ export function PmsLockSystems({ slug, rooms, system }: { slug: string; rooms: {
             })}>Connect TTLock</button>
           </div>
           <div className="space-y-2 rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] p-4">
+            <p className="text-sm font-medium">Salto KS (through Seam)</p>
+            <p className="text-[11px] text-[var(--bn-admin-text)]">In Seam, connect the hotel&apos;s Salto KS account, then paste a Seam API key here. At check-in BizNest makes a timed guest user in Salto, adds it to the room&apos;s access group, and Salto issues the PIN. Seam is a separate paid service.</p>
+            <input className={field} type="password" placeholder="Seam API key" value={seamKey} onChange={(e) => setSeamKey(e.target.value)} />
+            <button disabled={pending} className={btn} onClick={() => start(async () => {
+              const r = await connectSeam(slug, seamKey);
+              if (r.success) { setSeamKey(""); setSystems(r.data.systems); toast.success(r.data.systems.length === 1 ? "Connected." : "Connected. Choose the access system."); } else toast.error(r.error);
+            })}>Connect Salto KS</button>
+          </div>
+          <div className="space-y-2 rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] p-4">
             <p className="text-sm font-medium">On-site system (Visionline / VingCard and similar)</p>
             <p className="text-[11px] text-[var(--bn-admin-text)]">BizNest cannot reach a lock server inside the hotel. An on-site agent asks BizNest for check-in and check-out jobs and carries them out locally. The agent must be set up with the lock vendor.</p>
             <button disabled={pending} className={btn} onClick={() => run(() => enableBridge(slug), "On-site agent address created.")}>Use an on-site agent</button>
@@ -56,7 +68,7 @@ export function PmsLockSystems({ slug, rooms, system }: { slug: string; rooms: {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
             <p>
-              {system?.provider === "TTLOCK" ? <>Connected to TTLock as <b>{system.ttUsername}</b>.</> : <>On-site agent enabled{system?.bridgeLastSeenAt ? <>, last seen {new Date(system.bridgeLastSeenAt).toLocaleString()}</> : <>, not connected yet</>}.</>}
+              {system?.provider === "SEAM" ? <>Connected to Salto KS through Seam.</> : system?.provider === "TTLOCK" ? <>Connected to TTLock as <b>{system.ttUsername}</b>.</> : <>On-site agent enabled{system?.bridgeLastSeenAt ? <>, last seen {new Date(system.bridgeLastSeenAt).toLocaleString()}</> : <>, not connected yet</>}.</>}
               {system?.lastError && <span className="ml-2 text-[var(--bn-admin-danger)]">Last problem: {system.lastError}</span>}
             </p>
             <button disabled={pending} className={btn} onClick={() => { if (confirm("Disconnect the lock system? Existing guest access will not be removed from the locks.")) run(() => disconnectLockSystem(slug), "Disconnected."); }}>Disconnect</button>
@@ -64,21 +76,42 @@ export function PmsLockSystems({ slug, rooms, system }: { slug: string; rooms: {
           {system?.provider === "BRIDGE" && system.bridgeUrl && (
             <p className="break-all rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] p-3 font-mono text-[10px]">{system.bridgeUrl}</p>
           )}
+          {system?.provider === "SEAM" && (
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span>Access system:</span>
+              {systems.length > 0 ? (
+                <select className={`${field} max-w-xs`} value={system.seamSystemId ?? ""} onChange={(e) => run(() => selectSeamSystem(slug, e.target.value), "Saved.")}>
+                  <option value="">Choose…</option>
+                  {systems.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                </select>
+              ) : (
+                <button disabled={pending} className={btn} onClick={() => start(async () => { const r = await listSeamSystems(slug); if (r.success) setSystems(r.data.systems); else toast.error(r.error); })}>{system.seamSystemId ? "Change system" : "Load systems"}</button>
+              )}
+              {system.seamSystemId && (
+                <button disabled={pending} className={btn} onClick={() => start(async () => { const r = await listSeamAccessGroups(slug); if (r.success) { setGroups(r.data.groups); toast.success(`${r.data.groups.length} access group(s) loaded.`); } else toast.error(r.error); })}>Load Salto access groups</button>
+              )}
+            </div>
+          )}
           <div>
-            <p className="mb-2 text-sm font-medium">Which lock is each room?</p>
+            <p className="mb-2 text-sm font-medium">{system?.provider === "SEAM" ? "Which Salto access group opens each room?" : "Which lock is each room?"}</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {rooms.map((room) => {
                 const current = mapped.get(room.id);
                 return (
                   <div key={room.id} className="flex items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] p-2">
                     <span className="w-24 shrink-0 truncate text-xs font-medium">{room.name}</span>
-                    {system?.provider === "TTLOCK" && locks.length > 0 ? (
+                    {system?.provider === "SEAM" && groups.length > 0 ? (
+                      <select className={field} value={current?.lockId ?? ""} onChange={(e) => run(() => mapRoomLock(slug, room.id, e.target.value, groups.find((g) => g.id === e.target.value)?.name), "Saved.")}>
+                        <option value="">No access group</option>
+                        {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                      </select>
+                    ) : system?.provider === "TTLOCK" && locks.length > 0 ? (
                       <select className={field} value={current?.lockId ?? ""} onChange={(e) => run(() => mapRoomLock(slug, room.id, e.target.value, locks.find((l) => l.lockId === e.target.value)?.name), "Saved.")}>
                         <option value="">No lock</option>
                         {locks.map((l) => <option key={l.lockId} value={l.lockId}>{l.name}{l.hasGateway ? "" : " (no gateway)"}</option>)}
                       </select>
                     ) : (
-                      <input className={field} defaultValue={current?.lockId ?? ""} placeholder={system?.provider === "TTLOCK" ? "TTLock lock ID" : "Door / room code in the lock system"} onBlur={(e) => { if (e.target.value.trim() !== (current?.lockId ?? "")) run(() => mapRoomLock(slug, room.id, e.target.value), "Saved."); }} />
+                      <input className={field} defaultValue={current?.lockId ?? ""} placeholder={system?.provider === "TTLOCK" ? "TTLock lock ID" : system?.provider === "SEAM" ? "Salto access group ID" : "Door / room code in the lock system"} onBlur={(e) => { if (e.target.value.trim() !== (current?.lockId ?? "")) run(() => mapRoomLock(slug, room.id, e.target.value), "Saved."); }} />
                     )}
                   </div>
                 );

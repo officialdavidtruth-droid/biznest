@@ -6,6 +6,7 @@
 import { prisma } from "@/lib/prisma";
 import { decryptSecret, encryptSecret } from "@/lib/payments/store-gateway";
 import { addPasscode, deletePasscode, generatePasscode, getToken } from "@/lib/locks/ttlock";
+import { createGuestPin, deleteGuest } from "@/lib/locks/seam";
 import { logError, errorMeta } from "@/lib/observability/log";
 
 const TOKEN_SKEW_MS = 10 * 60_000;
@@ -47,6 +48,21 @@ export async function issueStayAccess(reservationId: string): Promise<{ status: 
       return { status: "pending" };
     }
 
+    if (integration.provider === "SEAM") {
+      if (!integration.seamApiKeyEnc || !integration.seamSystemId) return { status: "failed", error: "Finish connecting the lock system first." };
+      const grant = await prisma.stayAccessGrant.create({ data: { ...base, status: "PENDING" } });
+      try {
+        const pin = await createGuestPin({ apiKey: decryptSecret(integration.seamApiKeyEnc), systemId: integration.seamSystemId, accessGroupId: lock.lockId, fullName: `${r.guest.fullName} (${r.room.name})`, startsAt, endsAt });
+        await prisma.stayAccessGrant.update({ where: { id: grant.id }, data: { status: "ACTIVE", externalId: pin.acsUserId, passcode: pin.code, error: null } });
+        return { status: "active" };
+      } catch (err) {
+        const error = err instanceof Error ? err.message.slice(0, 200) : "Could not reach the lock system.";
+        await prisma.stayAccessGrant.update({ where: { id: grant.id }, data: { status: "FAILED", error } });
+        await prisma.lockIntegration.update({ where: { id: integration.id }, data: { lastError: error } }).catch(() => undefined);
+        return { status: "failed", error };
+      }
+    }
+
     const passcode = generatePasscode();
     const grant = await prisma.stayAccessGrant.create({ data: { ...base, passcode, status: "PENDING" } });
     try {
@@ -77,6 +93,16 @@ export async function revokeStayAccess(reservationId: string): Promise<{ revoked
         if (g.provider === "BRIDGE") {
           if (g.status === "PENDING" || g.status === "FAILED") { await prisma.stayAccessGrant.update({ where: { id: g.id }, data: { status: "REVOKED" } }); }
           else await prisma.stayAccessGrant.update({ where: { id: g.id }, data: { status: "REVOKE_PENDING" } });
+          revoked++;
+          continue;
+        }
+        if (g.provider === "SEAM") {
+          if (g.externalId) {
+            const integ = await prisma.lockIntegration.findUnique({ where: { storeId: g.storeId }, select: { seamApiKeyEnc: true } });
+            if (!integ?.seamApiKeyEnc) throw new Error("The lock system is no longer connected.");
+            await deleteGuest(decryptSecret(integ.seamApiKeyEnc), g.externalId);
+          }
+          await prisma.stayAccessGrant.update({ where: { id: g.id }, data: { status: "REVOKED", error: null } });
           revoked++;
           continue;
         }

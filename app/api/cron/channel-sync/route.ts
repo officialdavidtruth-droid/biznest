@@ -44,7 +44,7 @@ export const GET = withCronMonitor("channel-sync", async () => {
   });
   // Guest door access that should already be gone (failed removals, stays that ended without a check-out).
   const stale = await prisma.stayAccessGrant.findMany({
-    where: { provider: "TTLOCK", OR: [{ status: "REVOKE_PENDING" }, { status: "ACTIVE", endsAt: { lt: new Date(Date.now() - 3_600_000) } }] },
+    where: { provider: { in: ["TTLOCK", "SEAM"] }, OR: [{ status: "REVOKE_PENDING" }, { status: "ACTIVE", endsAt: { lt: new Date(Date.now() - 3_600_000) } }] },
     select: { reservationId: true },
     distinct: ["reservationId"],
     take: 20,
