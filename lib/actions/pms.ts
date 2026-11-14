@@ -17,6 +17,7 @@ import crypto from "crypto";
 import { shortToken } from "@/lib/payments/reference";
 import { findChannelBlockOverlap } from "@/lib/channels/sync";
 import { notifyRoomChanged, refreshRoomChannels } from "@/lib/channels/push";
+import { issueStayAccess, revokeStayAccess } from "@/lib/locks/grants";
 import { formatDate } from "@/lib/i18n/locale";
 
 
@@ -385,6 +386,8 @@ export async function checkInReservation(slug:string,id:string):Promise<ActionRe
   prisma.propertyReservation.update({where:{id},data:{status:"CHECKED_IN",checkedInAt:new Date(),guestPresence:"IN"}}),
   prisma.propertyRoom.update({where:{id:r.roomId},data:{status:"OCCUPIED"}})
  ]);
+ // Door access for the stay (TTLock passcode or on-site key job). Never blocks check-in; a failure shows on the Cards tab.
+ await issueStayAccess(id);
  revalidatePath(`/store/${slug}/admin/pms`);return{success:true,data:undefined};
 }
 
@@ -398,6 +401,7 @@ export async function checkOutReservation(slug:string,id:string):Promise<ActionR
   prisma.propertyRoom.update({where:{id:r.roomId},data:{status:"DIRTY"}}),
   prisma.roomAccessCard.updateMany({where:{storeId:a.store.id,reservationId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date(),revokedReason:"Reservation checked out"}}),
  ]);
+ await revokeStayAccess(id);
  await notifyRoomChanged(r.roomId);
  revalidatePath(`/store/${slug}/admin/pms`);return{success:true,data:undefined};
 }

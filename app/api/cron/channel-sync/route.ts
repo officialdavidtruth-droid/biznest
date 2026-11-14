@@ -4,6 +4,7 @@ import { withCronMonitor } from "@/lib/observability/cron";
 import { syncConnection } from "@/lib/channels/sync";
 import { flushDuePushes } from "@/lib/channels/push";
 import { logError, errorMeta } from "@/lib/observability/log";
+import { revokeStayAccess } from "@/lib/locks/grants";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -41,5 +42,13 @@ export const GET = withCronMonitor("channel-sync", async () => {
     void logError("JOBS", "Channel push flush crashed", errorMeta(err));
     return null;
   });
+  // Guest door access that should already be gone (failed removals, stays that ended without a check-out).
+  const stale = await prisma.stayAccessGrant.findMany({
+    where: { provider: "TTLOCK", OR: [{ status: "REVOKE_PENDING" }, { status: "ACTIVE", endsAt: { lt: new Date(Date.now() - 3_600_000) } }] },
+    select: { reservationId: true },
+    distinct: ["reservationId"],
+    take: 20,
+  }).catch(() => []);
+  for (const g of stale) await revokeStayAccess(g.reservationId).catch(() => undefined);
   return NextResponse.json({ synced: ok, failed, remaining: Math.max(0, due.length - ok - failed), push });
 });

@@ -608,6 +608,7 @@ model PropertyRoom {
   channelConnections ChannelConnection[]
   channelBlocks ChannelBlock[]
   doorReaders DoorReader[]
+  roomLock RoomLock?
   maintenanceTickets PropertyMaintenanceTicket[]
   @@unique([storeId, name])
   @@index([storeId, status])
@@ -673,6 +674,7 @@ model PropertyReservation {
   bookingId       String? @unique
   payments        Payment[]
   accessCards     RoomAccessCard[]
+  accessGrants    StayAccessGrant[]
   folioCharges    PropertyFolioCharge[]
 
   createdAt   DateTime @default(now())
@@ -1048,6 +1050,9 @@ model Store {
   channelManagerRequests ChannelManagerRequest[]
   doorReaders DoorReader[]
   roomAccessScans RoomAccessScan[]
+  lockIntegration LockIntegration?
+  roomLocks RoomLock[]
+  stayAccessGrants StayAccessGrant[]
   propertyReservations PropertyReservation[]
   propertyFolioCharges PropertyFolioCharge[]
   orders        Order[]
@@ -6002,4 +6007,77 @@ model RoomAccessScan {
 
   @@index([storeId, createdAt])
   @@index([readerId, createdAt])
+}
+
+
+// ---- Smart-lock systems -------------------------------------------------------------
+// TTLOCK: BizNest calls the TTLock cloud to create a timed guest passcode at check-in and
+// delete it at check-out. BRIDGE: for locks run from a server inside the hotel (e.g. ASSA ABLOY
+// Visionline): an on-site agent fetches pending jobs over HTTPS, does the work locally, and reports back.
+enum LockProvider {
+  TTLOCK
+  BRIDGE
+}
+
+enum AccessGrantStatus {
+  PENDING
+  ACTIVE
+  REVOKE_PENDING
+  REVOKED
+  FAILED
+}
+
+model LockIntegration {
+  id                String       @id @default(cuid())
+  storeId           String       @unique
+  store             Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  provider          LockProvider
+  ttClientId        String?
+  ttClientSecretEnc String?
+  ttUsername        String?
+  // TTLock logs in with the MD5 of the account password; only that hash is kept, encrypted.
+  ttPasswordMd5Enc  String?
+  ttTokenEnc        String?
+  ttTokenExpiresAt  DateTime?
+  bridgeToken       String?      @unique
+  bridgeLastSeenAt  DateTime?
+  lastError         String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+model RoomLock {
+  id        String       @id @default(cuid())
+  storeId   String
+  store     Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  roomId    String       @unique
+  room      PropertyRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  // TTLock lock id, or the door/room code the on-site system knows this room by.
+  lockId    String
+  lockLabel String?
+  createdAt DateTime     @default(now())
+
+  @@index([storeId])
+}
+
+model StayAccessGrant {
+  id            String            @id @default(cuid())
+  storeId       String
+  store         Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  reservationId String
+  reservation   PropertyReservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  roomId        String
+  provider      LockProvider
+  lockId        String
+  externalId    String?
+  passcode      String?
+  status        AccessGrantStatus @default(PENDING)
+  startsAt      DateTime
+  endsAt        DateTime
+  error         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([reservationId, status])
+  @@index([storeId, provider, status])
 }

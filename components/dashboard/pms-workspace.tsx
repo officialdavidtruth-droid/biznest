@@ -34,6 +34,7 @@ import {
 import { toast } from "sonner";
 import { PmsChannels } from "@/components/dashboard/pms-channels";
 import { PmsDoorReaders } from "@/components/dashboard/pms-door-readers";
+import { PmsLockSystems } from "@/components/dashboard/pms-lock-systems";
 import {
   cancelReservation,
   checkInReservation,
@@ -73,6 +74,7 @@ type PmsWorkspaceProps = {
   /** Bookings held by connected OTAs, shown on the room calendar. */
   channelBlocks?: { id: string; roomId: string; startDate: string; endDate: string; summary: string | null; provider: string; label: string | null }[];
   doorReaders?: import("@/lib/actions/door-readers").DoorReaderView[];
+  lockSystem?: import("@/lib/actions/lock-systems").LockSystemView | null;
   channels?: { connections: import("@/lib/actions/channels").ChannelConnectionView[]; requests: import("@/lib/actions/channels").ChannelManagerRequestView[] } | null;
 };
 
@@ -115,7 +117,7 @@ function statusClass(value: string) {
   return "bg-[color-mix(in_srgb,var(--bn-admin-surface)_5%,transparent)] text-[var(--bn-admin-text)] border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)]";
 }
 
-export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: initialGuests, reservations: initialReservations, cards: initialCards, units = [], tickets: initialTickets = [], channels, channelBlocks = [], doorReaders = [] }: PmsWorkspaceProps) {
+export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: initialGuests, reservations: initialReservations, cards: initialCards, units = [], tickets: initialTickets = [], channels, channelBlocks = [], doorReaders = [], lockSystem = null }: PmsWorkspaceProps) {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [rooms, setRooms] = useState(initialRooms);
   const [guests, setGuests] = useState(initialGuests);
@@ -385,7 +387,7 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
           {tab === "housekeeping" && <Housekeeping rooms={rooms} onStatus={roomStatus} />}
           {tab === "guests" && <Guests guests={guests} reservations={reservations} onAdd={() => setShowGuestForm(true)} />}
           {tab === "billing" && <Billing slug={slug} reservations={reservations} onAction={reservationAction} />}
-          {tab === "cards" && <div className="space-y-6"><RoomCards rooms={rooms} guests={guests} reservations={reservations} cards={cards} onAdd={() => setShowCardForm(true)} onDeactivate={deactivateCard} /><PmsDoorReaders slug={slug} rooms={rooms.map((r: any) => ({ id: r.id, name: r.name }))} readers={doorReaders} /></div>}
+          {tab === "cards" && <div className="space-y-6"><RoomCards rooms={rooms} guests={guests} reservations={reservations} cards={cards} onAdd={() => setShowCardForm(true)} onDeactivate={deactivateCard} /><PmsLockSystems slug={slug} rooms={rooms.map((r: any) => ({ id: r.id, name: r.name }))} system={lockSystem} /><PmsDoorReaders slug={slug} rooms={rooms.map((r: any) => ({ id: r.id, name: r.name }))} readers={doorReaders} /></div>}
           {tab === "reports" && <Reports data={reportData} />}
           {tab === "maintenance" && <Maintenance rooms={rooms} maintenanceRooms={maintenanceRooms} tickets={tickets} onReport={() => setShowMaintenanceForm(true)} onResolve={resolveMaintenanceIssue} onResolveTicket={resolveTicket} />}
           {tab === "channels" && <PmsChannels slug={slug} rooms={rooms.map((r: any) => ({ id: r.id, name: r.name }))} connections={channels?.connections ?? []} requests={channels?.requests ?? []} />}
