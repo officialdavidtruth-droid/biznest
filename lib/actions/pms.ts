@@ -96,7 +96,11 @@ export async function getPmsData(slug: string) {
   const a = await access(slug); if (!a.success) return null;
   await syncOnlineStaysIntoPms(a.store.id).catch(() => {}); // online rooms + bookings appear in the PMS
   await syncRoomStatuses(a.store.id).catch(() => {}); // best effort: never block the workspace on a sync failure
-  const [rooms, guests, reservations, cards, units, tickets] = await Promise.all([
+  // Pull any OTA calendar older than 10 minutes so opening the PMS shows current channel bookings
+  // (the scheduled sync is only daily on Vercel's free schedule). Never blocks for more than a few seconds.
+  const roomIdRows = await prisma.propertyRoom.findMany({ where: { storeId: a.store.id }, select: { id: true } });
+  await refreshRoomChannels(roomIdRows.map((r) => r.id), undefined, 4_000).catch(() => {});
+  const [rooms, guests, reservations, cards, units, tickets, channelBlockRows] = await Promise.all([
     prisma.propertyRoom.findMany({ where: { storeId: a.store.id }, orderBy: { name: "asc" } }),
     prisma.propertyGuest.findMany({ where: { storeId: a.store.id }, orderBy: { updatedAt: "desc" }, take: 300 }),
     // Oldest-first with a hard cap used to cut off the newest bookings once a
@@ -110,6 +114,13 @@ export async function getPmsData(slug: string) {
     // Online room units, so each PMS room can be linked to the same physical room.
     prisma.serviceUnit.findMany({ where: { storeId: a.store.id }, select: { id: true, label: true, service: { select: { name: true } } }, orderBy: [{ serviceId: "asc" }, { label: "asc" }] }),
     prisma.propertyMaintenanceTicket.findMany({ where: { storeId: a.store.id, OR: [{ status: "OPEN" }, { resolvedAt: { gte: new Date(Date.now() - 90 * 86_400_000) } }] }, orderBy: { reportedAt: "desc" }, take: 300 }),
+    // Bookings held by connected channels (Booking.com, Airbnb...) so they show on the room calendar.
+    prisma.channelBlock.findMany({
+      where: { storeId: a.store.id, endDate: { gt: new Date(Date.now() - 86_400_000) }, connection: { isActive: true } },
+      select: { id: true, roomId: true, startDate: true, endDate: true, summary: true, connection: { select: { provider: true, label: true } } },
+      orderBy: { startDate: "asc" },
+      take: 2000,
+    }),
   ]);
   // depositAmount is a Prisma Decimal (a decimal.js class instance), not a
   // plain JS value — React Server Components can't serialize it across the
@@ -130,7 +141,16 @@ export async function getPmsData(slug: string) {
   }));
   const plainUnits = units.map((u) => ({ id: u.id, label: u.label, serviceName: u.service.name }));
   const plainTickets = tickets.map((t) => ({ ...t, reportedAt: t.reportedAt.toISOString(), resolvedAt: t.resolvedAt?.toISOString() ?? null }));
-  return { rooms, guests, reservations: plainReservations, cards: plainCards, units: plainUnits, tickets: plainTickets };
+  const channelBlocks = channelBlockRows.map((b) => ({
+    id: b.id,
+    roomId: b.roomId,
+    startDate: b.startDate.toISOString(),
+    endDate: b.endDate.toISOString(),
+    summary: b.summary,
+    provider: b.connection.provider,
+    label: b.connection.label,
+  }));
+  return { rooms, guests, reservations: plainReservations, cards: plainCards, units: plainUnits, tickets: plainTickets, channelBlocks };
 }
 
 export async function activateRoomCard(

@@ -607,6 +607,7 @@ model PropertyRoom {
   accessCards RoomAccessCard[]
   channelConnections ChannelConnection[]
   channelBlocks ChannelBlock[]
+  doorReaders DoorReader[]
   maintenanceTickets PropertyMaintenanceTicket[]
   @@unique([storeId, name])
   @@index([storeId, status])
@@ -1045,6 +1046,8 @@ model Store {
   channelConnections ChannelConnection[]
   channelBlocks ChannelBlock[]
   channelManagerRequests ChannelManagerRequest[]
+  doorReaders DoorReader[]
+  roomAccessScans RoomAccessScan[]
   propertyReservations PropertyReservation[]
   propertyFolioCharges PropertyFolioCharge[]
   orders        Order[]
@@ -5962,4 +5965,41 @@ model BrowseInterest {
   @@unique([viewerKey, kind, key])
   @@index([viewerKey, weight])
   @@index([updatedAt])
+}
+
+
+// A door reader/controller (ESP32, relay board, or a lock vendor's gateway) that asks BizNest
+// "may this card open this door?" at POST /api/pms/door/<token>. A reader tied to a room only
+// opens for cards active on that room; a reader with no room (main door, gym) opens for any active card.
+model DoorReader {
+  id         String   @id @default(cuid())
+  storeId    String
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  roomId     String?
+  room       PropertyRoom? @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  name       String
+  token      String   @unique
+  isActive   Boolean  @default(true)
+  lastSeenAt DateTime?
+  createdAt  DateTime @default(now())
+  scans      RoomAccessScan[]
+
+  @@index([storeId, isActive])
+  @@index([roomId])
+}
+
+model RoomAccessScan {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  readerId  String
+  reader    DoorReader @relation(fields: [readerId], references: [id], onDelete: Cascade)
+  cardUid   String
+  cardId    String?
+  allowed   Boolean
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@index([storeId, createdAt])
+  @@index([readerId, createdAt])
 }
