@@ -121,6 +121,9 @@ export async function getPmsData(slug: string) {
       select: { id: true, roomId: true, startDate: true, endDate: true, summary: true, connection: { select: { provider: true, label: true } } },
       orderBy: { startDate: "asc" },
       take: 2000,
+    }).catch((e: unknown) => {
+      console.error("[PMS] channel blocks failed to load", e);
+      return [] as never[];
     }),
   ]);
   // depositAmount is a Prisma Decimal (a decimal.js class instance), not a

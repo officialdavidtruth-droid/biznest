@@ -33,8 +33,14 @@ export default async function PmsPage({ params }: { params: Promise<{ slug: stri
     getPmsData(slug),
     prisma.store.findUnique({ where: { slug }, select: { name: true } }),
     getChannelData(slug),
-    getDoorReaders(slug),
-    getLockSystem(slug),
+    getDoorReaders(slug).catch((e: unknown) => {
+      console.error("[PMS] door readers failed to load", e);
+      return [];
+    }),
+    getLockSystem(slug).catch((e: unknown) => {
+      console.error("[PMS] lock system failed to load", e);
+      return null;
+    }),
   ]);
   if (!data || !store) notFound();
   return <PmsWorkspace slug={slug} storeName={store.name} rooms={data.rooms} guests={data.guests} reservations={data.reservations} cards={data.cards} units={data.units} tickets={data.tickets} channels={channels} channelBlocks={data.channelBlocks} doorReaders={doorReaders} lockSystem={lockSystem} />;
