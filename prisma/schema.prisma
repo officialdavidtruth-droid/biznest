@@ -6120,6 +6120,8 @@ model FinancialAudit {
   conclusion    String?  @db.Text
   varianceValue Decimal  @db.Decimal(14, 2) @default(0)
   journalPosted Boolean  @default(false)
+  // Blind count: system quantities stay hidden from whoever is counting until the audit is sent for review.
+  blind         Boolean  @default(false)
   startedAt     DateTime @default(now())
   completedAt   DateTime?
   signedOffAt   DateTime?

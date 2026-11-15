@@ -94,9 +94,10 @@ function NewAudit({ slug, onCancel, onCreated }: { slug: string; onCancel: () =>
   const [title, setTitle] = useState("");
   const [auditor, setAuditor] = useState("");
   const [scope, setScope] = useState("");
+  const [blind, setBlind] = useState(true);
   const [busy, start] = useTransition();
   const submit = () => start(async () => {
-    const res = await createFinancialAudit(slug, { title: title || `${typeLabel(type)} ${new Date().toLocaleDateString(undefined, { month: "short", year: "numeric" })}`, type, auditorName: auditor, scope });
+    const res = await createFinancialAudit(slug, { title: title || `${typeLabel(type)} ${new Date().toLocaleDateString(undefined, { month: "short", year: "numeric" })}`, type, auditorName: auditor, scope, blind });
     if (res.success) { toast.success("Audit started"); onCreated(res.data.id); } else toast.error(res.error);
   });
   return (
@@ -113,6 +114,12 @@ function NewAudit({ slug, onCancel, onCreated }: { slug: string; onCancel: () =>
         <label className="space-y-1 text-xs font-bold text-[var(--bn-admin-muted)]">Auditor<input value={auditor} onChange={(e) => setAuditor(e.target.value)} placeholder="Name of the person or firm" className={field} /></label>
       </div>
       <label className="block space-y-1 text-xs font-bold text-[var(--bn-admin-muted)]">Scope (optional)<textarea value={scope} onChange={(e) => setScope(e.target.value)} rows={2} placeholder="Which store room, till or period this covers" className={field} /></label>
+      {type !== "GENERAL" && (
+        <label className="flex items-start gap-2 rounded-xl border border-[var(--bn-admin-border)] p-3 text-sm">
+          <input type="checkbox" className="mt-1" checked={blind} onChange={(e) => setBlind(e.target.checked)} />
+          <span><b>Blind count</b> <span className="text-[var(--bn-admin-muted)]">· Hide what the system expects until the count is sent for review, so people count what is really there instead of what they expect to find.</span></span>
+        </label>
+      )}
       <div className="flex gap-2"><button className={btnPrimary} onClick={submit} disabled={busy}>{busy ? "Starting…" : "Start audit"}</button><button className={btnGhost} onClick={onCancel}>Cancel</button></div>
     </div>
   );
@@ -128,6 +135,7 @@ function AuditDetail({ slug, audit, money, onBack, onChanged, busy, auditorMode 
   const [filter, setFilter] = useState<"ALL" | "TODO" | "DIFF">("ALL");
   const locked = audit.status === "SIGNED_OFF";
   const isCount = audit.lines.length > 0;
+  const hidden = audit.expectedHidden;
   const unit = audit.type === "CASH" ? "Amount" : "Qty";
 
   const run = (fn: () => Promise<{ success: boolean; error?: string }>, ok?: string) => start(async () => {
@@ -139,10 +147,12 @@ function AuditDetail({ slug, audit, money, onBack, onChanged, busy, auditorMode 
   const effective = audit.lines.map((l) => {
     const typed = local[l.id];
     const counted = typed === undefined ? l.countedQty : typed === "" ? null : Number(typed);
-    return { ...l, counted: counted !== null && Number.isFinite(counted) ? counted : null };
+    return { ...l, expectedQty: l.expectedQty ?? 0, counted: counted !== null && Number.isFinite(counted) ? counted : null };
   });
-  const live = summariseCount(effective.map((l) => ({ expectedQty: l.expectedQty, countedQty: l.counted, unitCost: l.unitCost })));
-  const shown = effective.filter((l) => filter === "ALL" || (filter === "TODO" ? l.counted === null : lineVariance({ expectedQty: l.expectedQty, countedQty: l.counted, unitCost: l.unitCost }).qty !== 0));
+  const live = hidden
+    ? { ...audit.summary, counted: effective.filter((l) => l.counted !== null).length, remaining: effective.filter((l) => l.counted === null).length, progressPct: effective.length ? Math.round((effective.filter((l) => l.counted !== null).length / effective.length) * 100) : 0 }
+    : summariseCount(effective.map((l) => ({ expectedQty: l.expectedQty, countedQty: l.counted, unitCost: l.unitCost })));
+  const shown = effective.filter((l) => filter === "ALL" || (filter === "TODO" ? l.counted === null : hidden ? false : lineVariance({ expectedQty: l.expectedQty, countedQty: l.counted, unitCost: l.unitCost }).qty !== 0));
 
   const saveCount = (id: string, raw: string, note?: string) => {
     const n = raw === "" ? null : Number(raw);
@@ -155,8 +165,8 @@ function AuditDetail({ slug, audit, money, onBack, onChanged, busy, auditorMode 
 
   const exportCsv = () => download(`${audit.auditNo}.csv`, toCsv([
     [audit.title, audit.auditNo, typeLabel(audit.type), STATUS_LABEL[audit.status]], [],
-    ["Item", "Code", `Expected ${unit.toLowerCase()}`, `Counted ${unit.toLowerCase()}`, "Unit value", "Variance", "Variance value", "Note"],
-    ...effective.map((l) => { const v = lineVariance({ expectedQty: l.expectedQty, countedQty: l.counted, unitCost: l.unitCost }); return [l.label, l.sku, l.expectedQty, l.counted, l.unitCost, v.counted ? v.qty : null, v.counted ? v.value : null, l.note]; }),
+    hidden ? ["Item", "Code", `Counted ${unit.toLowerCase()}`, "Note"] : ["Item", "Code", `Expected ${unit.toLowerCase()}`, `Counted ${unit.toLowerCase()}`, "Unit value", "Variance", "Variance value", "Note"],
+    ...effective.map((l) => { const v = lineVariance({ expectedQty: l.expectedQty, countedQty: l.counted, unitCost: l.unitCost }); return hidden ? [l.label, l.sku, l.counted, l.note] : [l.label, l.sku, l.expectedQty, l.counted, l.unitCost, v.counted ? v.qty : null, v.counted ? v.value : null, l.note]; }),
     [], ["Findings"], ["Severity", "Finding", "Recommendation", "Status", "Management response"],
     ...audit.findings.map((f) => [f.severity, f.title, f.recommendation, f.status, f.response]),
     [], ["Conclusion", audit.conclusion],
@@ -178,7 +188,13 @@ function AuditDetail({ slug, audit, money, onBack, onChanged, busy, auditorMode 
         </div>
       </div>
 
-      {isCount && (
+      {isCount && hidden && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Stat label="Progress" value={`${live.progressPct}%`} sub={`${live.counted} of ${live.total} counted`} />
+          <div className={`${card} p-4 text-sm text-[var(--bn-admin-muted)]`}><b className="text-[var(--bn-admin-text)]">Blind count.</b> System quantities are hidden while you count. They appear when the audit is sent for review.</div>
+        </div>
+      )}
+      {isCount && !hidden && (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Stat label="Progress" value={`${live.progressPct}%`} sub={`${live.counted} of ${live.total} counted`} />
           <Stat label="Accuracy" value={live.counted ? `${live.accuracyPct}%` : "n/a"} sub={`${live.matched} matched exactly`} tone={live.counted && live.accuracyPct >= 98 ? "good" : undefined} />
@@ -196,20 +212,20 @@ function AuditDetail({ slug, audit, money, onBack, onChanged, busy, auditorMode 
       {tab === "count" && isCount && (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2 print:hidden">
-            {([["ALL", "All"], ["TODO", `Still to count ${live.remaining}`], ["DIFF", "Differences only"]] as const).map(([k, l]) => <Chip key={k} active={filter === k} onClick={() => setFilter(k)}>{l}</Chip>)}
+            {([["ALL", "All"], ["TODO", `Still to count ${live.remaining}`], ...(hidden ? [] : [["DIFF", "Differences only"]])] as ["ALL" | "TODO" | "DIFF", string][]).map(([k, l]) => <Chip key={k} active={filter === k} onClick={() => setFilter(k)}>{l}</Chip>)}
           </div>
           <div className={`${card} overflow-x-auto`}>
             <table className="w-full min-w-[820px] text-sm">
               <thead className="border-b border-[var(--bn-admin-border)] text-left text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--bn-admin-muted)]">
-                <tr><th className="px-4 py-3">{audit.type === "CASH" ? "Account" : "Item"}</th><th className="px-4 py-3 text-right">System</th><th className="px-4 py-3 text-right">Counted</th><th className="px-4 py-3 text-right">Difference</th><th className="px-4 py-3 text-right">Value</th><th className="px-4 py-3">Note</th></tr>
+                <tr><th className="px-4 py-3">{audit.type === "CASH" ? "Account" : "Item"}</th>{!hidden && <th className="px-4 py-3 text-right">System</th>}<th className="px-4 py-3 text-right">Counted</th>{!hidden && <><th className="px-4 py-3 text-right">Difference</th><th className="px-4 py-3 text-right">Value</th></>}<th className="px-4 py-3">Note</th></tr>
               </thead>
               <tbody>
                 {shown.map((l) => {
                   const v = lineVariance({ expectedQty: l.expectedQty, countedQty: l.counted, unitCost: l.unitCost });
                   return (
-                    <tr key={l.id} className={`border-b border-[var(--bn-admin-border)] last:border-0 ${v.counted && v.qty !== 0 ? "bg-rose-50/40" : ""}`}>
+                    <tr key={l.id} className={`border-b border-[var(--bn-admin-border)] last:border-0 ${!hidden && v.counted && v.qty !== 0 ? "bg-rose-50/40" : ""}`}>
                       <td className="px-4 py-2.5"><p className="font-semibold">{l.label}</p>{l.sku && <p className="text-xs text-[var(--bn-admin-muted)]">{l.sku}</p>}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">{audit.type === "CASH" ? money(l.expectedQty) : l.expectedQty}</td>
+                      {!hidden && <td className="px-4 py-2.5 text-right tabular-nums">{audit.type === "CASH" ? money(l.expectedQty) : l.expectedQty}</td>}
                       <td className="px-4 py-2.5 text-right">
                         {locked ? <span className="tabular-nums">{l.counted ?? ""}</span> : (
                           <input
@@ -221,13 +237,13 @@ function AuditDetail({ slug, audit, money, onBack, onChanged, busy, auditorMode 
                           />
                         )}
                       </td>
-                      <td className={`px-4 py-2.5 text-right font-bold tabular-nums ${v.qty > 0 ? "text-rose-600" : v.qty < 0 ? "text-sky-600" : "text-[var(--bn-admin-muted)]"}`}>{v.counted ? (v.qty === 0 ? "✓" : v.qty > 0 ? `-${v.qty}` : `+${-v.qty}`) : ""}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">{v.counted && v.value !== 0 ? money(Math.abs(v.value)) : ""}</td>
+                      {!hidden && <><td className={`px-4 py-2.5 text-right font-bold tabular-nums ${v.qty > 0 ? "text-rose-600" : v.qty < 0 ? "text-sky-600" : "text-[var(--bn-admin-muted)]"}`}>{v.counted ? (v.qty === 0 ? "✓" : v.qty > 0 ? `-${v.qty}` : `+${-v.qty}`) : ""}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{v.counted && v.value !== 0 ? money(Math.abs(v.value)) : ""}</td></>}
                       <td className="px-4 py-2.5">{locked ? l.note : <input defaultValue={l.note ?? ""} aria-label={`Note for ${l.label}`} placeholder="Add a note" onBlur={(e) => { if (e.target.value !== (l.note ?? "")) saveCount(l.id, local[l.id] ?? (l.countedQty === null ? "" : String(l.countedQty)), e.target.value); }} className={`${field} min-w-[160px] py-1.5 text-xs`} />}</td>
                     </tr>
                   );
                 })}
-                {shown.length === 0 && <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--bn-admin-muted)]">Nothing to show here.</td></tr>}
+                {shown.length === 0 && <tr><td colSpan={hidden ? 3 : 6} className="px-4 py-10 text-center text-sm text-[var(--bn-admin-muted)]">Nothing to show here.</td></tr>}
               </tbody>
             </table>
           </div>

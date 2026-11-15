@@ -11,30 +11,36 @@ import { auth } from "@/lib/auth";
 type AuditType = (typeof AUDIT_TYPES)[number];
 const num = (d: unknown) => (d === null || d === undefined ? null : Number(d));
 
-type LineView = { id: string; subjectType: string; subjectId: string | null; label: string; sku: string | null; expectedQty: number; countedQty: number | null; unitCost: number; note: string | null; countedAt: string | null };
+type LineView = { id: string; subjectType: string; subjectId: string | null; label: string; sku: string | null; expectedQty: number | null; countedQty: number | null; unitCost: number; note: string | null; countedAt: string | null };
 type FindingView = { id: string; title: string; detail: string | null; severity: string; status: string; recommendation: string | null; response: string | null; createdAt: string };
 export type AuditView = {
   id: string; auditNo: string; title: string; type: AuditType; status: string; auditorName: string | null; scope: string | null; conclusion: string | null;
-  varianceValue: number; journalPosted: boolean; startedAt: string; signedOffAt: string | null;
+  varianceValue: number; journalPosted: boolean; blind: boolean; expectedHidden: boolean; startedAt: string; signedOffAt: string | null;
   lines: LineView[]; findings: FindingView[]; summary: ReturnType<typeof summariseCount>;
 };
 
 function view(a: any): AuditView {
-  const lines: LineView[] = (a.lines ?? []).map((l: any) => ({
+  // In a blind count the system figures are withheld on the server until the audit leaves the counting stage.
+  const hidden = !!a.blind && a.status === "IN_PROGRESS";
+  const real: LineView[] = (a.lines ?? []).map((l: any) => ({
     id: l.id, subjectType: l.subjectType as string, subjectId: l.subjectId as string | null, label: l.label as string, sku: l.sku as string | null,
     expectedQty: Number(l.expectedQty), countedQty: num(l.countedQty), unitCost: Number(l.unitCost), note: l.note as string | null, countedAt: l.countedAt ? (l.countedAt as Date).toISOString() : null,
   }));
+  const full = summariseCount(real.map((l) => ({ expectedQty: l.expectedQty as number, countedQty: l.countedQty, unitCost: l.unitCost })));
+  const summary = hidden
+    ? { ...full, matched: 0, shortages: 0, surpluses: 0, shortageValue: 0, surplusValue: 0, netVariance: 0, expectedValue: 0, accuracyPct: 0 }
+    : full;
   return {
     id: a.id as string, auditNo: a.auditNo as string, title: a.title as string, type: a.type as AuditType, status: a.status as string,
     auditorName: a.auditorName as string | null, scope: a.scope as string | null, conclusion: a.conclusion as string | null,
-    varianceValue: Number(a.varianceValue), journalPosted: a.journalPosted as boolean,
+    varianceValue: hidden ? 0 : Number(a.varianceValue), journalPosted: a.journalPosted as boolean, blind: !!a.blind, expectedHidden: hidden,
     startedAt: (a.startedAt as Date).toISOString(), signedOffAt: a.signedOffAt ? (a.signedOffAt as Date).toISOString() : null,
-    lines,
+    lines: hidden ? real.map((l) => ({ ...l, expectedQty: null, unitCost: 0 })) : real,
     findings: ((a.findings ?? []) as any[]).map((f: any): FindingView => ({
       id: f.id as string, title: f.title as string, detail: f.detail as string | null, severity: f.severity as string, status: f.status as string,
       recommendation: f.recommendation as string | null, response: f.response as string | null, createdAt: (f.createdAt as Date).toISOString(),
     })),
-    summary: summariseCount(lines.map((l) => ({ expectedQty: l.expectedQty, countedQty: l.countedQty, unitCost: l.unitCost }))),
+    summary,
   };
 }
 
@@ -60,7 +66,7 @@ async function owned(slug: string, auditId: string, needFull = false) {
 }
 
 /** Start an audit. The system figures are frozen as the "expected" column so later sales don't move the goalposts. */
-export async function createFinancialAudit(slug: string, input: { title: string; type: AuditType; auditorName?: string; scope?: string }): Promise<ActionResult<{ id: string }>> {
+export async function createFinancialAudit(slug: string, input: { title: string; type: AuditType; auditorName?: string; scope?: string; blind?: boolean }): Promise<ActionResult<{ id: string }>> {
   const a = await auditAccess(slug);
   if (!a.success) return { success: false, error: a.error };
   const title = input.title.trim().slice(0, 120);
@@ -88,7 +94,7 @@ export async function createFinancialAudit(slug: string, input: { title: string;
   const auditNo = `AUD-${String(count + 1).padStart(4, "0")}-${nanoid(3).toUpperCase()}`;
   const row = await prisma.financialAudit.create({
     data: {
-      storeId: a.store.id, auditNo, title, type: input.type, auditorName: input.auditorName?.trim().slice(0, 80) || null, scope: input.scope?.trim() || null,
+      storeId: a.store.id, auditNo, title, type: input.type, blind: !!input.blind && input.type !== "GENERAL", auditorName: input.auditorName?.trim().slice(0, 80) || null, scope: input.scope?.trim() || null,
       lines: { create: lines.map((l) => ({ ...l, expectedQty: l.expectedQty, unitCost: l.unitCost })) },
     },
   });

@@ -1,0 +1,1 @@
+ALTER TABLE "FinancialAudit" ADD COLUMN "blind" BOOLEAN NOT NULL DEFAULT false;
