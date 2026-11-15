@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getPluginEntitlement } from "@/lib/plugins";
 import type { ActionResult } from "@/types/actions";
+import { createPurchaseOrder } from "@/lib/actions/purchase-order";
 
 const STATUSES = ["DRAFT", "SUBMITTED", "APPROVED", "REJECTED", "CONVERTED", "CANCELLED"] as const;
 const PRIORITIES = ["LOW", "NORMAL", "HIGH", "URGENT"] as const;
@@ -137,4 +138,38 @@ export async function cancelRequisition(slug: string, requisitionId: string): Pr
   await prisma.requisition.update({ where: { id: req.id }, data: { status: "CANCELLED" } });
   revalidatePath(`/store/${slug}/admin/apps/requisition`);
   return { success: true, data: undefined };
+}
+
+
+/**
+ * Turns an approved requisition into a draft purchase order. Every line must be linked to a
+ * product (or variant) because purchase orders receive into inventory. The requisition is
+ * claimed first so two people cannot convert it twice; the claim is released if the PO fails.
+ */
+export async function convertRequisitionToPurchaseOrder(slug: string, requisitionId: string, supplierId: string): Promise<ActionResult<{ purchaseOrderId: string; poNumber: string }>> {
+  const access = await accessStore(slug);
+  if (!access.success) return { success: false, error: access.error };
+  if (!supplierId) return { success: false, error: "Choose a supplier." };
+  const req = await prisma.requisition.findFirst({ where: { id: requisitionId, storeId: access.store.id }, include: { items: true } });
+  if (!req) return { success: false, error: "Requisition not found." };
+  if (req.status !== "APPROVED") return { success: false, error: "Only approved requisitions can be turned into a purchase order." };
+  const unlinked = req.items.filter((i) => !i.productId && !i.variantId);
+  if (unlinked.length) return { success: false, error: `Link these lines to a product first: ${unlinked.map((i) => i.description).join(", ")}.` };
+
+  const claimed = await prisma.requisition.updateMany({ where: { id: req.id, status: "APPROVED" }, data: { status: "CONVERTED", convertedAt: new Date() } });
+  if (claimed.count === 0) return { success: false, error: "This requisition was already converted." };
+
+  const po = await createPurchaseOrder(slug, {
+    supplierId,
+    notes: `From requisition ${req.number}: ${req.title}`,
+    expectedAt: req.neededBy ? req.neededBy.toISOString() : undefined,
+    items: req.items.map((i) => ({ productId: i.productId ?? undefined, variantId: i.variantId ?? undefined, description: i.description, quantityOrdered: i.quantity, unitCost: Number(i.estimatedUnitCost ?? 0) })),
+  });
+  if (!po.success) {
+    await prisma.requisition.updateMany({ where: { id: req.id, status: "CONVERTED" }, data: { status: "APPROVED", convertedAt: null } });
+    return { success: false, error: po.error };
+  }
+  await prisma.auditLog.create({ data: { action: "REQUISITION_CONVERTED", entity: "Requisition", entityId: req.id, metadata: { storeId: access.store.id, purchaseOrderId: po.data.purchaseOrderId } } }).catch(() => {});
+  revalidatePath(`/store/${slug}/admin/apps/requisition`);
+  return po;
 }

@@ -12,6 +12,11 @@ export default async function RequisitionPage({ params }: { params: Promise<{ sl
   if (!store) notFound();
   const entitlement = await getPluginEntitlement(store.id, "requisition");
   if (!entitlement.allowed || !entitlement.installed) return <PluginInstallGate slug={slug} title="Requisitions" message={entitlement.reason} icon={ClipboardList} />;
-  const [rows, summary] = await Promise.all([listRequisitions(slug), getRequisitionSummary(slug)]);
-  return <RequisitionWorkspace slug={slug} rows={rows} summary={summary} />;
+  const [rows, summary, products, suppliers] = await Promise.all([
+    listRequisitions(slug),
+    getRequisitionSummary(slug),
+    prisma.product.findMany({ where: { storeId: store.id }, orderBy: { name: "asc" }, take: 500, select: { id: true, name: true } }).catch(() => []),
+    prisma.supplier.findMany({ where: { storeId: store.id, isArchived: false }, orderBy: { name: "asc" }, select: { id: true, name: true } }).catch(() => []),
+  ]);
+  return <RequisitionWorkspace slug={slug} rows={rows} summary={summary} products={products} suppliers={suppliers} />;
 }
