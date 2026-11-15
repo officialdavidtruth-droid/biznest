@@ -20,6 +20,8 @@ import { HelpdeskWorkspace } from "@/components/dashboard/helpdesk-workspace";
 import { getHelpdeskWorkspace } from "@/lib/actions/helpdesk";
 import { AssetManagementWorkspace } from "@/components/dashboard/asset-management-workspace";
 import { getAssetWorkspace } from "@/lib/actions/asset-management";
+import { FleetWorkspace } from "@/components/dashboard/fleet-workspace";
+import { getFleetWorkspace } from "@/lib/actions/fleet";
 import { ProcurementWorkspace, type ProcurementData } from "@/components/dashboard/procurement-workspace";
 
 // PMS and FNB are full dedicated workspaces (/admin/pms, /admin/fnb), not the generic
@@ -72,6 +74,11 @@ export default async function PluginPage({ params, searchParams }: { params: Pro
     const data = await getAssetWorkspace(slug);
     if ("error" in data) return <PluginInstallGate slug={slug} title="Asset Management" message={data.error} />;
     return <AssetManagementWorkspace slug={slug} data={data} />;
+  }
+  if (pluginKey === "fleet-management") {
+    const data = await getFleetWorkspace(slug);
+    if ("error" in data) return <PluginInstallGate slug={slug} title="Fleet Management" message={data.error} />;
+    return <FleetWorkspace slug={slug} {...data} />;
   }
   if (pluginKey === "procurement") {
     const data = await getPluginWorkspace(slug, pluginKey);
