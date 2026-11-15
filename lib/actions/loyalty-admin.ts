@@ -18,7 +18,7 @@ async function loyaltyAccess(slug: string) {
 
 export type LoyaltyTier = "Member" | "Silver" | "Gold" | "Platinum";
 /** Tiers are based on points earned over the account's lifetime, so spending points never lowers a tier. */
-export function tierFor(lifetimeEarned: number): LoyaltyTier {
+function tierFor(lifetimeEarned: number): LoyaltyTier {
   if (lifetimeEarned >= 5000) return "Platinum";
   if (lifetimeEarned >= 2000) return "Gold";
   if (lifetimeEarned >= 500) return "Silver";
