@@ -25,7 +25,7 @@ const STATUS_LABEL: Record<string, string> = { IN_PROGRESS: "Counting", UNDER_RE
 const SEV_TONE: Record<string, string> = { LOW: "grey", MEDIUM: "blue", HIGH: "amber", CRITICAL: "red" };
 const typeLabel = (t: string) => TYPES.find((x) => x.id === t)?.label ?? t;
 
-export function FinancialAudit({ slug, currency, startNew }: { slug: string; currency?: string; startNew?: boolean }) {
+export function FinancialAudit({ slug, currency, startNew, auditorMode = false }: { slug: string; currency?: string; startNew?: boolean; auditorMode?: boolean }) {
   const [audits, setAudits] = useState<AuditView[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [creating, setCreating] = useState(!!startNew);
@@ -41,7 +41,7 @@ export function FinancialAudit({ slug, currency, startNew }: { slug: string; cur
   const money = (n: number) => formatMoney(n, currency);
   const current = audits?.find((a) => a.id === openId) ?? null;
 
-  if (current) return <AuditDetail slug={slug} audit={current} money={money} onBack={() => setOpenId(null)} onChanged={reload} busy={busy} />;
+  if (current) return <AuditDetail slug={slug} audit={current} auditorMode={auditorMode} money={money} onBack={() => setOpenId(null)} onChanged={reload} busy={busy} />;
 
   return (
     <div className="space-y-5">
@@ -118,7 +118,7 @@ function NewAudit({ slug, onCancel, onCreated }: { slug: string; onCancel: () =>
   );
 }
 
-function AuditDetail({ slug, audit, money, onBack, onChanged, busy }: { slug: string; audit: AuditView; money: (n: number) => string; onBack: () => void; onChanged: () => void; busy: boolean }) {
+function AuditDetail({ slug, audit, money, onBack, onChanged, busy, auditorMode }: { slug: string; audit: AuditView; money: (n: number) => string; onBack: () => void; onChanged: () => void; busy: boolean; auditorMode: boolean }) {
   const [tab, setTab] = useState<"count" | "findings" | "report">(audit.lines.length ? "count" : "findings");
   const [working, start] = useTransition();
   const [local, setLocal] = useState<Record<string, string>>({});
@@ -174,7 +174,7 @@ function AuditDetail({ slug, audit, money, onBack, onChanged, busy }: { slug: st
           <Badge tone={STATUS_TONE[audit.status]}>{STATUS_LABEL[audit.status]}</Badge>
           <button className={btnGhost} onClick={exportCsv}><Download className="h-3.5 w-3.5" /> Excel / CSV</button>
           <button className={btnGhost} onClick={() => window.print()}><Printer className="h-3.5 w-3.5" /> Print</button>
-          {!locked && <button className={`${btnGhost} text-rose-600`} onClick={() => { if (confirm("Delete this audit and everything recorded in it?")) run(async () => { const r = await deleteFinancialAudit(slug, audit.id); if (r.success) onBack(); return r; }); }}>Delete</button>}
+          {!locked && !auditorMode && <button className={`${btnGhost} text-rose-600`} onClick={() => { if (confirm("Delete this audit and everything recorded in it?")) run(async () => { const r = await deleteFinancialAudit(slug, audit.id); if (r.success) onBack(); return r; }); }}>Delete</button>}
         </div>
       </div>
 
@@ -276,7 +276,11 @@ function AuditDetail({ slug, audit, money, onBack, onChanged, busy }: { slug: st
             )}
           </div>
 
-          {locked && (audit.type === "STOCK" || audit.type === "CASH") && (
+          {locked && auditorMode && (audit.type === "STOCK" || audit.type === "CASH") && !audit.journalPosted && Math.abs(audit.varianceValue) >= 0.01 && (
+            <div className={`${card} p-5 text-sm text-[var(--bn-admin-muted)] print:hidden`}>The finance team books this variance to the ledger. Your sign-off has been recorded.</div>
+          )}
+
+          {locked && !auditorMode && (audit.type === "STOCK" || audit.type === "CASH") && (
             <div className={`${card} space-y-3 p-5 print:hidden`}>
               <h3 className="font-bold">Book the difference</h3>
               {audit.journalPosted ? <Badge tone="green">Variance posted to the ledger</Badge> : Math.abs(audit.varianceValue) < 0.01 ? <p className="text-sm text-[var(--bn-admin-muted)]">Nothing to post: the count matched the books, or shortages and surpluses cancel out.</p> : (

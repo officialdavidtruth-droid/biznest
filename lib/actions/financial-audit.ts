@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { financialAccess } from "@/lib/financial/access";
+import { financialAccess, financialAccessLevel } from "@/lib/financial/access";
 import { adjustStock } from "@/lib/actions/inventory";
 import { lineVariance, summariseCount, SEVERITIES, AUDIT_TYPES } from "@/lib/financial/audit-math";
 import type { ActionResult } from "@/types/actions";
@@ -38,15 +38,21 @@ function view(a: any): AuditView {
   };
 }
 
+/** Reads and everyday audit work are open to auditors; ledger postings and deletes need full access. */
+async function auditAccess(slug: string) {
+  const r = await financialAccessLevel(slug);
+  return r.success ? { ...r.a, level: r.level } : { success: false as const, error: r.error };
+}
+
 export async function listFinancialAudits(slug: string): Promise<ActionResult<AuditView[]>> {
-  const a = await financialAccess(slug);
+  const a = await auditAccess(slug);
   if (!a.success) return { success: false, error: a.error };
   const rows = await prisma.financialAudit.findMany({ where: { storeId: a.store.id }, include: { lines: true, findings: { orderBy: { createdAt: "desc" } } }, orderBy: { createdAt: "desc" }, take: 40 });
   return { success: true, data: rows.map(view) };
 }
 
-async function owned(slug: string, auditId: string) {
-  const a = await financialAccess(slug);
+async function owned(slug: string, auditId: string, needFull = false) {
+  const a = needFull ? await financialAccess(slug) : await auditAccess(slug);
   if (!a.success) return { ok: false as const, error: a.error };
   const audit = await prisma.financialAudit.findFirst({ where: { id: auditId, storeId: a.store.id } });
   if (!audit) return { ok: false as const, error: "Audit not found." };
@@ -55,7 +61,7 @@ async function owned(slug: string, auditId: string) {
 
 /** Start an audit. The system figures are frozen as the "expected" column so later sales don't move the goalposts. */
 export async function createFinancialAudit(slug: string, input: { title: string; type: AuditType; auditorName?: string; scope?: string }): Promise<ActionResult<{ id: string }>> {
-  const a = await financialAccess(slug);
+  const a = await auditAccess(slug);
   if (!a.success) return { success: false, error: a.error };
   const title = input.title.trim().slice(0, 120);
   if (!title) return { success: false, error: "Give the audit a title." };
@@ -167,7 +173,7 @@ export async function signOffAudit(slug: string, auditId: string, conclusion: st
  * optionally correct the quantities on hand so the shop matches what was counted.
  */
 export async function postAuditVariance(slug: string, auditId: string, options: { correctStock: boolean }): Promise<ActionResult<{ reference: string; amount: number }>> {
-  const o = await owned(slug, auditId);
+  const o = await owned(slug, auditId, true);
   if (!o.ok) return { success: false, error: o.error };
   const { a, audit } = o;
   if (audit.status !== "SIGNED_OFF") return { success: false, error: "Sign the audit off before posting its variance." };
@@ -234,7 +240,7 @@ export async function postAuditVariance(slug: string, auditId: string, options: 
 }
 
 export async function deleteFinancialAudit(slug: string, auditId: string): Promise<ActionResult> {
-  const o = await owned(slug, auditId);
+  const o = await owned(slug, auditId, true);
   if (!o.ok) return { success: false, error: o.error };
   if (o.audit.status === "SIGNED_OFF") return { success: false, error: "Signed-off audits are kept as a record and can't be deleted." };
   await prisma.financialAudit.delete({ where: { id: auditId } });

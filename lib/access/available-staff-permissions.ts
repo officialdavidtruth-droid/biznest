@@ -11,6 +11,7 @@ import { STAFF_PERMISSIONS } from "@/lib/access/staff-permissions";
  */
 const PLUGIN_GATED: Record<string, string> = {
   finance: "financial-control",
+  "finance:audit": "financial-control",
   hr: "hr-payroll",
   "fnb:pos": "fnb-operations",
   "fnb:orders": "fnb-operations",

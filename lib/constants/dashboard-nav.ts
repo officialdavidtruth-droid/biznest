@@ -231,7 +231,9 @@ export function filterNavGroupsForRole<T extends { items: NavItem[] }>(
 ): T[] {
   if (opts.canManageOwnerOnly) return groups;
   const granted = new Set(opts.permissions ?? []);
-  const allowed = (i: NavItem) => !i.ownerOnly && (!i.permission || granted.has(i.permission));
+  // An auditor-only grant opens just the Financial Control page (its actions enforce the narrower scope).
+  const allowed = (i: NavItem) =>
+    !i.ownerOnly && (!i.permission || granted.has(i.permission) || (i.permission === "plugin:financial-control" && granted.has("finance:audit")));
   return groups
     .map((g) => ({
       ...g,

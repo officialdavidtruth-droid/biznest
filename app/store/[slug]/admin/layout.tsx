@@ -96,7 +96,8 @@ export default async function StoreAdminLayout({
       // A staff member without the plugin permission never sees this area at all,
       // installed or not -- that's real access control, not the "redirect away"
       // behavior being scoped down below, so it stays for every plugin.
-      if (!hasStorePermission(role, staffPermissions, `plugin:${pluginKey}`)) redirect(`/${slug}/admin`);
+      const auditorOnly = pluginKey === "financial-control" && hasStorePermission(role, staffPermissions, "finance:audit");
+      if (!auditorOnly && !hasStorePermission(role, staffPermissions, `plugin:${pluginKey}`)) redirect(`/${slug}/admin`);
       // PMS and FNB are full dedicated workspaces reached via this same layout
       // (isPmsRoute/isFnbRoute), so an uninstalled visit still bounces out here.
       // Every other plugin now renders its own inline "install this app" message
@@ -113,7 +114,9 @@ export default async function StoreAdminLayout({
     );
     const blocked =
       navItem?.ownerOnly ||
-      (navItem?.permission && !hasStorePermission(role, staffPermissions, navItem.permission));
+      (navItem?.permission &&
+        !hasStorePermission(role, staffPermissions, navItem.permission) &&
+        !(navItem.permission === "plugin:financial-control" && hasStorePermission(role, staffPermissions, "finance:audit")));
     if (blocked) redirect(`/${slug}/admin`);
   }
 
