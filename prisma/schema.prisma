@@ -935,6 +935,8 @@ model Store {
   financialSheets FinancialSheet[]
   financialAudits FinancialAudit[]
   fleetVehicles FleetVehicle[]
+  loyaltyPointsPerNaira Decimal? @db.Decimal(12, 6)
+  loyaltyNairaPerPoint Decimal? @db.Decimal(12, 4)
   fleetLogs FleetLog[]
   crmLeads      CrmLead[]
 

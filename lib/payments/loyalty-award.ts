@@ -2,6 +2,7 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { getLoyaltyRates } from "@/lib/actions/site-settings";
+import { getStoreLoyaltyRates } from "@/lib/loyalty-rates";
 import { awardReferralRewardForOrder } from "@/lib/payments/referral-award";
 import { logError, errorMeta } from "@/lib/observability/log";
 
@@ -73,7 +74,7 @@ export async function awardStoreLoyaltyPointsForOrder(orderId: string): Promise<
   if (!order) return;
   const alreadyAwarded = await prisma.storeLoyaltyEntry.findFirst({ where: { orderId, type: "EARN" } });
   if (alreadyAwarded) return;
-  const rates = await getLoyaltyRates();
+  const rates = await getStoreLoyaltyRates(order.storeId);
   const points = Math.floor(Number(order.subtotal) * rates.pointsPerNaira);
   if (points <= 0) return;
   await prisma.$transaction(async (tx) => {

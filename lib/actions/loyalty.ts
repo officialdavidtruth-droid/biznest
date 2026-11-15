@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { getLoyaltyRates } from "@/lib/actions/site-settings";
+import { getStoreLoyaltyRates } from "@/lib/loyalty-rates";
 import { roundMoney } from "@/lib/utils/pricing";
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "node:crypto";
@@ -152,8 +153,9 @@ export async function cashOutLoyaltyPoints(
 // customer experience under /store/[slug]/account only uses these functions.
 export async function getStoreLoyaltySummary(storeSlug: string) {
   const session = await auth();
-  const rates = await getLoyaltyRates();
   if (!session?.user?.id) return null;
+  const storeRow = await prisma.store.findUnique({ where: { slug: storeSlug }, select: { id: true } });
+  const rates = storeRow ? await getStoreLoyaltyRates(storeRow.id) : await getLoyaltyRates();
   const account = await prisma.storeLoyaltyAccount.findFirst({
     where: { userId: session.user.id, store: { slug: storeSlug } },
     include: { entries: { orderBy: { createdAt: "desc" }, take: 50 } },
@@ -171,7 +173,7 @@ export async function cashOutStoreLoyaltyPoints(storeSlug: string, pointsToRedee
   if (!membership) return { success: false, error: "You don't have a customer account with this store." };
   const account = await prisma.storeLoyaltyAccount.findUnique({ where: { storeId_userId: { storeId: store.id, userId: session.user.id } } });
   if (!account || account.pointsBalance < pointsToRedeem) return { success: false, error: "You don't have enough points for that." };
-  const rates = await getLoyaltyRates();
+  const rates = await getStoreLoyaltyRates(store.id);
   const discountValue = roundMoney(pointsToRedeem * rates.nairaPerPoint);
   if (discountValue <= 0) return { success: false, error: "That's not enough points to redeem yet." };
   const couponCode = `LOYALTY-${randomBytes(5).toString("hex").toUpperCase()}`;

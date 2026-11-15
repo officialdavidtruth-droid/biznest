@@ -2,22 +2,30 @@
 
 import { useState, useTransition } from "react";
 import { Award, Coins, Search, Users, X } from "lucide-react";
-import { adjustLoyaltyPoints, type LoyaltyAccountView } from "@/lib/actions/loyalty-admin";
+import { adjustLoyaltyPoints, saveLoyaltyRates, type LoyaltyAccountView } from "@/lib/actions/loyalty-admin";
 import { currencySymbol } from "@/lib/utils/format-money";
 import { formatDate } from "@/lib/i18n/locale";
 
-type Props = { slug: string; accounts: LoyaltyAccountView[]; rates: { pointsPerNaira: number; nairaPerPoint: number }; totals: { accounts: number; outstanding: number; earned30: number; redeemed30: number; liability: number } };
+type Props = { slug: string; accounts: LoyaltyAccountView[]; rates: { pointsPerNaira: number; nairaPerPoint: number; custom: boolean }; platformRates: { pointsPerNaira: number; nairaPerPoint: number }; totals: { accounts: number; outstanding: number; earned30: number; redeemed30: number; liability: number } };
 const TIER_TONE: Record<string, string> = { Member: "bg-muted text-muted-foreground", Silver: "bg-slate-200 text-slate-700", Gold: "bg-amber-100 text-amber-800", Platinum: "bg-violet-100 text-violet-800" };
 const TIERS = [["Member", "Under 500 points earned"], ["Silver", "500 points earned"], ["Gold", "2,000 points earned"], ["Platinum", "5,000 points earned"]];
 const n = (x: number) => x.toLocaleString();
 
-export function LoyaltyWorkspace({ slug, accounts, rates, totals }: Props) {
+export function LoyaltyWorkspace({ slug, accounts, rates, platformRates, totals }: Props) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<LoyaltyAccountView | null>(null);
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState("");
   const shown = accounts.filter((a) => !q.trim() || `${a.name} ${a.email}`.toLowerCase().includes(q.trim().toLowerCase()));
   const spendPerPoint = rates.pointsPerNaira > 0 ? Math.round(1 / rates.pointsPerNaira) : 0;
+  const [rateMsg, setRateMsg] = useState("");
+  function saveRates(e: React.FormEvent<HTMLFormElement>, reset = false) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const spend = reset ? null : Number(f.get("spend"));
+    const value = reset ? null : Number(f.get("value"));
+    start(async () => { const r = await saveLoyaltyRates(slug, spend, value); if (r.success) location.reload(); else setRateMsg(r.error); });
+  }
 
   function adjust(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -65,14 +73,16 @@ export function LoyaltyWorkspace({ slug, accounts, rates, totals }: Props) {
         </section>
 
         <aside className="space-y-4">
-          <div className="rounded-2xl border bg-background p-5 shadow-sm">
-            <h2 className="text-sm font-bold">How points work</h2>
-            <ul className="mt-3 space-y-2 text-xs text-muted-foreground">
-              <li>Earn: 1 point for every {currencySymbol()}{n(spendPerPoint)} spent on a paid order.</li>
-              <li>Cash out: 1 point is worth {currencySymbol()}{rates.nairaPerPoint} as a single-use coupon.</li>
-              <li>These rates are set for the whole BizNest platform.</li>
-            </ul>
-          </div>
+          <form onSubmit={(e) => saveRates(e)} className="rounded-2xl border bg-background p-5 shadow-sm">
+            <h2 className="text-sm font-bold">Points rates</h2>
+            <p className="mt-1 text-[11px] text-muted-foreground">{rates.custom ? "Your store uses its own rates." : "Following the BizNest platform rates."} Changes apply to future orders and cash-outs only.</p>
+            <label className="mt-3 grid gap-1 text-xs font-medium">Spend to earn 1 point ({currencySymbol()})<input name="spend" type="number" min="1" step="1" required defaultValue={spendPerPoint} className="rounded-lg border bg-background px-3 py-2 text-sm font-normal" /></label>
+            <label className="mt-3 grid gap-1 text-xs font-medium">Value of 1 point at cash-out ({currencySymbol()})<input name="value" type="number" min="0.01" step="0.01" required defaultValue={rates.nairaPerPoint} className="rounded-lg border bg-background px-3 py-2 text-sm font-normal" /></label>
+            <p className="mt-2 text-[11px] text-muted-foreground">With these rates a customer gets back about {(rates.pointsPerNaira * rates.nairaPerPoint * 100).toFixed(1)}% of what they spend.</p>
+            {rateMsg && <p className="mt-2 text-xs text-[var(--bn-admin-danger)]">{rateMsg}</p>}
+            <div className="mt-3 flex gap-2"><button disabled={pending} className="flex-1 rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground">{pending ? "Saving…" : "Save rates"}</button>{rates.custom && <button type="button" disabled={pending} onClick={(e) => saveRates({ preventDefault() {}, currentTarget: e.currentTarget.form! } as any, true)} className="rounded-lg border px-3 py-2 text-xs font-bold">Use platform rates</button>}</div>
+            {rates.custom && <p className="mt-2 text-[10px] text-muted-foreground">Platform: {currencySymbol()}{n(Math.round(1 / platformRates.pointsPerNaira))} per point, 1 point = {currencySymbol()}{platformRates.nairaPerPoint}.</p>}
+          </form>
           <div className="rounded-2xl border bg-background p-5 shadow-sm">
             <h2 className="text-sm font-bold">Tiers</h2>
             <ul className="mt-3 space-y-2">{TIERS.map(([t, d]) => <li key={t} className="flex items-center justify-between text-xs"><span className={`rounded-full px-2.5 py-1 font-bold ${TIER_TONE[t]}`}>{t}</span><span className="text-muted-foreground">{d}</span></li>)}</ul>

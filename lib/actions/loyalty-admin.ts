@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { getLoyaltyRates } from "@/lib/actions/site-settings";
+import { getStoreLoyaltyRates } from "@/lib/loyalty-rates";
 import type { ActionResult } from "@/types/actions";
 
 async function loyaltyAccess(slug: string) {
@@ -30,7 +31,7 @@ export type LoyaltyAccountView = {
   entries: { id: string; type: string; points: number; note: string | null; createdAt: string }[];
 };
 
-export async function getLoyaltyAdmin(slug: string): Promise<{ error: string } | { accounts: LoyaltyAccountView[]; rates: { pointsPerNaira: number; nairaPerPoint: number }; totals: { accounts: number; outstanding: number; earned30: number; redeemed30: number; liability: number } }> {
+export async function getLoyaltyAdmin(slug: string): Promise<{ error: string } | { accounts: LoyaltyAccountView[]; rates: { pointsPerNaira: number; nairaPerPoint: number; custom: boolean }; platformRates: { pointsPerNaira: number; nairaPerPoint: number }; totals: { accounts: number; outstanding: number; earned30: number; redeemed30: number; liability: number } }> {
   const a = await loyaltyAccess(slug);
   if (!a.success) return { error: a.error };
   const since = new Date(Date.now() - 30 * 86_400_000);
@@ -41,7 +42,7 @@ export async function getLoyaltyAdmin(slug: string): Promise<{ error: string } |
       take: 500,
       include: { user: { select: { name: true, email: true } }, entries: { orderBy: { createdAt: "desc" }, take: 25 } },
     }),
-    getLoyaltyRates(),
+    getStoreLoyaltyRates(a.store.id),
   ]);
   const sums = await prisma.storeLoyaltyEntry.groupBy({ by: ["loyaltyAccountId", "type"], where: { loyaltyAccount: { storeId: a.store.id } }, _sum: { points: true } });
   const earned = new Map<string, number>(); const spent = new Map<string, number>();
@@ -57,6 +58,7 @@ export async function getLoyaltyAdmin(slug: string): Promise<{ error: string } |
   const outstanding = rows.reduce((n, r) => n + r.pointsBalance, 0);
   return {
     rates,
+    platformRates: await getLoyaltyRates(),
     accounts: rows.map((r) => ({
       id: r.id, name: r.user.name || r.user.email.split("@")[0], email: r.user.email, balance: r.pointsBalance,
       lifetimeEarned: earned.get(r.id) ?? 0, redeemed: spent.get(r.id) ?? 0, tier: tierFor(earned.get(r.id) ?? 0), updatedAt: r.updatedAt.toISOString(),
@@ -82,6 +84,25 @@ export async function adjustLoyaltyPoints(slug: string, accountId: string, point
     return null;
   });
   if (ok) return { success: false, error: ok };
+  revalidatePath(`/store/${slug}/admin/apps/loyalty-rewards`);
+  return { success: true, data: undefined };
+}
+
+/**
+ * Sets this store's own rates. Pass spendPerPoint (naira spent to earn one point) and pointValue
+ * (naira one point is worth at cash-out), or null for either to follow the platform rate again.
+ */
+export async function saveLoyaltyRates(slug: string, spendPerPoint: number | null, pointValue: number | null): Promise<ActionResult> {
+  const a = await loyaltyAccess(slug);
+  if (!a.success) return { success: false, error: a.error };
+  if (spendPerPoint != null && !(spendPerPoint >= 1 && spendPerPoint <= 1_000_000)) return { success: false, error: "Spend per point must be between 1 and 1,000,000." };
+  if (pointValue != null && !(pointValue > 0 && pointValue <= 10_000)) return { success: false, error: "Point value must be greater than 0." };
+  const platform = await getLoyaltyRates();
+  const earn = spendPerPoint != null ? 1 / spendPerPoint : platform.pointsPerNaira;
+  const redeem = pointValue ?? platform.nairaPerPoint;
+  // Each naira spent returns earn * redeem naira of coupon. At 100% or more the store pays customers to buy.
+  if (earn * redeem >= 1) return { success: false, error: "These rates would give back as much as customers spend. Raise the spend per point or lower the point value." };
+  await prisma.store.update({ where: { id: a.store.id }, data: { loyaltyPointsPerNaira: spendPerPoint != null ? earn : null, loyaltyNairaPerPoint: pointValue } });
   revalidatePath(`/store/${slug}/admin/apps/loyalty-rewards`);
   return { success: true, data: undefined };
 }
