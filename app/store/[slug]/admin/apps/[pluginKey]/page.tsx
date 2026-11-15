@@ -22,6 +22,8 @@ import { AssetManagementWorkspace } from "@/components/dashboard/asset-managemen
 import { getAssetWorkspace } from "@/lib/actions/asset-management";
 import { FleetWorkspace } from "@/components/dashboard/fleet-workspace";
 import { getFleetWorkspace } from "@/lib/actions/fleet";
+import { LoyaltyWorkspace } from "@/components/dashboard/loyalty-workspace";
+import { getLoyaltyAdmin } from "@/lib/actions/loyalty-admin";
 import { ProcurementWorkspace, type ProcurementData } from "@/components/dashboard/procurement-workspace";
 
 // PMS and FNB are full dedicated workspaces (/admin/pms, /admin/fnb), not the generic
@@ -74,6 +76,11 @@ export default async function PluginPage({ params, searchParams }: { params: Pro
     const data = await getAssetWorkspace(slug);
     if ("error" in data) return <PluginInstallGate slug={slug} title="Asset Management" message={data.error} />;
     return <AssetManagementWorkspace slug={slug} data={data} />;
+  }
+  if (pluginKey === "loyalty-rewards") {
+    const data = await getLoyaltyAdmin(slug);
+    if ("error" in data) return <PluginInstallGate slug={slug} title="Loyalty Rewards" message={data.error} />;
+    return <LoyaltyWorkspace slug={slug} {...data} />;
   }
   if (pluginKey === "fleet-management") {
     const data = await getFleetWorkspace(slug);
