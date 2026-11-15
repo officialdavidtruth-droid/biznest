@@ -932,6 +932,8 @@ model Store {
   recruitCandidates RecruitCandidate[]
   recruitApplications RecruitApplication[]
   financialAssets FinancialAsset[]
+  financialSheets FinancialSheet[]
+  financialAudits FinancialAudit[]
   crmLeads      CrmLead[]
 
   subscriptionId String?
@@ -6084,4 +6086,87 @@ model StayAccessGrant {
 
   @@index([reservationId, status])
   @@index([storeId, provider, status])
+}
+
+
+// A saved spreadsheet in Financial Control. `cells` is a map of "A1" -> raw input
+// (a number, text, or a formula starting with "="); values are always recomputed.
+model FinancialSheet {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name      String
+  cells     Json     @default("{}")
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeId, updatedAt])
+}
+
+// An audit engagement: a count or review of stock, cash, fixed assets or a general
+// area, with the auditor's findings and a final sign-off.
+// type: STOCK | CASH | ASSETS | GENERAL. status: PLANNED | IN_PROGRESS | UNDER_REVIEW | SIGNED_OFF.
+model FinancialAudit {
+  id            String   @id @default(cuid())
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  auditNo       String
+  title         String
+  type          String
+  status        String   @default("IN_PROGRESS")
+  auditorName   String?
+  scope         String?  @db.Text
+  conclusion    String?  @db.Text
+  varianceValue Decimal  @db.Decimal(14, 2) @default(0)
+  journalPosted Boolean  @default(false)
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  signedOffAt   DateTime?
+  signedOffBy   String?
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  lines    FinancialAuditLine[]
+  findings FinancialAuditFinding[]
+
+  @@unique([storeId, auditNo])
+  @@index([storeId, status])
+}
+
+// One thing counted: a stock item, a cash/bank account, or a fixed asset.
+// expected* is the system figure at the moment the audit started; counted* is what the auditor found.
+model FinancialAuditLine {
+  id           String   @id @default(cuid())
+  auditId      String
+  audit        FinancialAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  subjectType  String
+  subjectId    String?
+  label        String
+  sku          String?
+  expectedQty  Decimal  @db.Decimal(14, 2)
+  countedQty   Decimal? @db.Decimal(14, 2)
+  unitCost     Decimal  @db.Decimal(14, 2) @default(0)
+  note         String?  @db.Text
+  countedAt    DateTime?
+
+  @@index([auditId])
+}
+
+// severity: LOW | MEDIUM | HIGH | CRITICAL. status: OPEN | ACTIONED | CLOSED.
+model FinancialAuditFinding {
+  id             String   @id @default(cuid())
+  auditId        String
+  audit          FinancialAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  title          String
+  detail         String?  @db.Text
+  severity       String   @default("MEDIUM")
+  status         String   @default("OPEN")
+  recommendation String?  @db.Text
+  response       String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([auditId, status])
 }
