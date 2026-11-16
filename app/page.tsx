@@ -12,6 +12,7 @@ import { ALL_BUSINESS_TYPE_NAMES } from "@/lib/capabilities";
 import { DownloadAppLink } from "@/components/site/download-app-link";
 import { FaqAccordion } from "@/components/site/faq-accordion";
 import { StorefrontPreviewMock } from "@/components/site/storefront-preview-mock";
+import { StorefrontRailDemo } from "@/components/motion/storefront-rail-demo";
 import { redirect } from "next/navigation";
 import { isAppRequest } from "@/lib/app-mode";
 import { AppWelcome } from "@/components/app/app-welcome";
@@ -477,7 +478,7 @@ export default async function HomePage() {
               Browse storefront templates <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
-          <StorefrontPreviewMock />
+          <StorefrontRailDemo />
         </div>
       </section>
 
