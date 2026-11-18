@@ -3,8 +3,9 @@ import { listProducts } from "@/lib/actions/product";
 import { listVariants } from "@/lib/actions/variant";
 import { VariantManager } from "@/components/dashboard/variant-manager";
 
-export default async function MenuVariantsPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function MenuVariantsPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ product?: string }> }) {
   const { slug } = await params;
+  const { product: selected } = await searchParams;
   const products = await listProducts(slug);
 
   const variantsByProduct: Record<string, Awaited<ReturnType<typeof listVariants>>> = {};
@@ -15,14 +16,15 @@ export default async function MenuVariantsPage({ params }: { params: Promise<{ s
   return (
     <div className="bn-admin-page space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Menu Variants</h1>
+        <h1 className="text-2xl font-bold">Variants</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Give a menu item different sizes, portions, or options — each with its own price and stock.
+          Give an item different sizes, colours or options, each with its own price and stock.
         </p>
       </div>
 
       <VariantManager
         slug={slug}
+        initialProductId={selected}
         products={products.map((p) => ({
           id: p.id,
           name: p.name,

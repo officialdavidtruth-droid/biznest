@@ -24,12 +24,14 @@ export function VariantManager({
   slug,
   products,
   initialVariantsByProduct,
+  initialProductId,
 }: {
   slug: string;
+  initialProductId?: string;
   products: MenuItem[];
   initialVariantsByProduct: Record<string, Variant[]>;
 }) {
-  const [productId, setProductId] = useState(products[0]?.id ?? "");
+  const [productId, setProductId] = useState(products.some((p) => p.id === initialProductId) ? (initialProductId as string) : products[0]?.id ?? "");
   const [variantsByProduct, setVariantsByProduct] = useState(initialVariantsByProduct);
   const [busy, setBusy] = useState(false);
 

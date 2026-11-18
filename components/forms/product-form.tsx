@@ -4,6 +4,9 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { productSchema, type ProductInput } from "@/lib/validations/product";
 import { createProduct, updateProduct } from "@/lib/actions/product";
+import { setVariantOptions } from "@/lib/actions/variant";
+import { CategoryDropdown } from "@/components/forms/category-dropdown";
+import { VariantPicker, axesToOptions, type Axis } from "@/components/forms/variant-picker";
 import { MultiImageUpload } from "@/components/forms/multi-image-upload";
 import { getCatalogItemPreset } from "@/lib/catalog-item-presets";
 import { useMemo, useRef, useState } from "react";
@@ -101,6 +104,7 @@ export function ProductForm({
     name: string;
     categoryId: string | null;
     categoryLinks?: { categoryId: string }[];
+    variantOptions?: unknown;
     type: "PHYSICAL" | "DIGITAL" | "RENTAL";
     description: string;
     price: unknown;
@@ -184,6 +188,12 @@ export function ProductForm({
 
   const name = watch("name");
   const selectedCategoryIds = watch("categoryIds") ?? [];
+  const initialAxes: Axis[] = Array.isArray(product?.variantOptions)
+    ? (product!.variantOptions as Axis[]).filter((o) => o && typeof o.name === "string" && Array.isArray(o.values)).map((o) => ({ name: o.name, values: [...o.values] }))
+    : [];
+  const [axes, setAxes] = useState<Axis[]>(initialAxes);
+  const variantOptions = axesToOptions(axes);
+  const wantsVariants = variantOptions.length > 0;
   const toggleCategory = (id: string) => {
     const next = selectedCategoryIds.includes(id) ? selectedCategoryIds.filter((x) => x !== id) : [...selectedCategoryIds, id];
     setValue("categoryIds", next, { shouldDirty: true });
@@ -254,7 +264,7 @@ export function ProductForm({
       if (k) attributes[k] = value;
     }
     // Editing: the plain Save keeps the current published state; only Save & Publish changes it.
-    const payload: ProductInput = { ...values, isPublished: product && !publish ? product.isPublished : publish, attributes };
+    const payload: ProductInput = { ...values, isPublished: product && !publish ? product.isPublished : publish, attributes, ...(!product && wantsVariants && productType === "PHYSICAL" ? { quantity: 0 } : {}) };
     const result = product ? await updateProduct(storeSlug, product.id, payload, { baselineQuantity: product.inventory?.quantity }) : await createProduct(storeSlug, payload);
     setIsSubmitting(null);
 
@@ -263,6 +273,23 @@ export function ProductForm({
       return;
     }
     toast.success(product ? `${entityLabel} updated` : publish ? `${entityLabel} published` : `${entityLabel} saved as draft`);
+
+    // Optional sizes/colours: applied after the product exists. A failure here never undoes the save.
+    const savedId = product ? product.id : (result.data as { productId: string }).productId;
+    const changed = JSON.stringify(variantOptions) !== JSON.stringify(initialAxes.length ? axesToOptions(initialAxes) : []);
+    if (wantsVariants && productType === "PHYSICAL" && changed) {
+      const v = await setVariantOptions(storeSlug, savedId, variantOptions);
+      if (!v.success) {
+        toast.error(`Saved, but the sizes/colours weren't applied: ${v.error}`);
+        router.push(`/${storeSlug}/admin/products/${savedId}/edit`);
+        router.refresh();
+        return;
+      }
+      toast.success("Now set the stock for each size/colour.");
+      router.push(`/${storeSlug}/admin/variants?product=${savedId}`);
+      router.refresh();
+      return;
+    }
     router.push(`/${storeSlug}/admin/products`);
     router.refresh();
   }
@@ -343,31 +370,7 @@ export function ProductForm({
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-sm font-medium">{categoryLabel} <span className="text-destructive">*</span></label>
-                  {selectedCategoryIds.length > 0 && (
-                    <div className="mb-2 flex flex-wrap gap-1.5">
-                      {selectedCategoryIds.map((id, i) => (
-                        <span key={id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                          {categoryName(id)}{i === 0 && selectedCategoryIds.length > 1 ? " (main)" : ""}
-                          <button type="button" onClick={() => toggleCategory(id)} aria-label={`Remove ${categoryName(id)}`} className="leading-none">×</button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="max-h-56 overflow-y-auto rounded-lg border bg-background p-2 text-sm">
-                    {topLevelCategories.length === 0 && <p className="p-1 text-xs text-muted-foreground">No {categoryLabel.toLowerCase()}s yet. Add some under Categories.</p>}
-                    {topLevelCategories.map((c) => (
-                      <div key={c.id} className="py-0.5">
-                        <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 font-semibold hover:bg-muted/50">
-                          <input type="checkbox" checked={selectedCategoryIds.includes(c.id)} onChange={() => toggleCategory(c.id)} className="h-4 w-4" />{c.name}
-                        </label>
-                        {(childrenByParent.get(c.id) ?? []).map((child) => (
-                          <label key={child.id} className="ml-6 flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-muted/50">
-                            <input type="checkbox" checked={selectedCategoryIds.includes(child.id)} onChange={() => toggleCategory(child.id)} className="h-4 w-4" />{child.name}
-                          </label>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
+                  <CategoryDropdown categories={categories} selectedIds={selectedCategoryIds} onToggle={toggleCategory} label={categoryLabel} />
                   <p className="mt-1 text-xs text-muted-foreground">Tick as many as fit. The first one you tick is the main {categoryLabel.toLowerCase()}.</p>
                 </div>
                 <div>
@@ -477,12 +480,12 @@ export function ProductForm({
                   <input
                     type="number"
                     className="input disabled:cursor-not-allowed disabled:bg-muted"
-                    disabled={Boolean(product?.hasVariants)}
+                    disabled={Boolean(product?.hasVariants) || (!product && wantsVariants)}
                     {...register("quantity")}
                   />
-                  {product?.hasVariants && (
+                  {(product?.hasVariants || (!product && wantsVariants)) && (
                     <p className="mt-1 text-[11px] text-muted-foreground">
-                      This product uses variant stock. Manage quantities from the Variants page.
+                      {product?.hasVariants ? "This product uses variant stock. Manage quantities from the Variants page." : "Stock is set per size/colour after you save."}
                     </p>
                   )}
                 </div>
@@ -510,6 +513,14 @@ export function ProductForm({
                   {errors.barcode && <p className="mt-1 text-xs text-destructive">{errors.barcode.message}</p>}
                 </div>
               </div>
+            </section>
+          )}
+
+          {productType === "PHYSICAL" && (
+            <section className="rounded-xl border bg-white p-5 shadow-sm">
+              <h2 className="text-sm font-bold">Sizes, colours & options <span className="font-normal text-muted-foreground">(Optional)</span></h2>
+              <p className="mb-4 mt-1 text-xs text-muted-foreground">Skip this if the {entityLabel.toLowerCase()} comes in one version. Otherwise pick what applies; each combination gets its own stock and price.</p>
+              <VariantPicker axes={axes} onChange={setAxes} />
             </section>
           )}
 
