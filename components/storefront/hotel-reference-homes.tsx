@@ -132,6 +132,8 @@ function Larita({ store, slug, content }: P) {
 .rh-larita small.e{display:block;letter-spacing:.2em;color:#b58a69;font-size:11px;text-transform:uppercase;margin-bottom:12px}
 .rh-larita h2{font:400 clamp(28px,3.4vw,42px)/1.15 Georgia,serif;margin:0 0 18px}.rh-larita .wel p{font-size:14px;line-height:1.85;color:#55504c}
 .rh-larita .btn{display:inline-block;background:#b58a69;color:#fff!important;padding:13px 22px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-top:10px}
+.rh-larita .btn.ghost{background:#fff;color:#181716!important;border:1px solid #181716}
+.rh-larita .btn.ghost:hover{background:#181716;color:#fff!important}
 .rh-larita .rate{display:flex;justify-content:center;gap:50px;padding:10px 5% 70px;font-size:13px;color:#55504c;flex-wrap:wrap}.rh-larita .rate b{font-size:20px;color:#181716}
 .rh-larita .col{background:#f5f1ed;padding:70px 5%;text-align:center}.rh-larita .col h2{margin-bottom:30px}
 .rh-larita .slide{display:grid;grid-template-columns:1fr 1fr;background:#fff;text-align:left;max-width:1180px;margin:0 auto}
@@ -154,7 +156,7 @@ function Larita({ store, slug, content }: P) {
       <div><small className="e">Welcome to {first(store.name)}</small><h2>{content.skin?.headline || "Luxury hotel in the heart of the city."}</h2><p>{content.home.body || content.home.subtitle}</p><Link className="btn" href={href(slug, "/about")}>Read more →</Link></div></section>
 
     {room && <section className="col"><small className="e">Exquisite and luxurious</small><h2>Room and suite collection</h2>
-      <div className="slide"><div className="t"><span style={{ fontSize: 13 }}>From:</span> <b className="pr">{money(room.price)}</b><small>/NIGHT</small><h3>{room.name}</h3><p>{room.description}</p><p>{room.area} · {room.bed} · {room.guests} guests</p><Link className="btn" href={href(slug, "/book")}>Book now</Link> <Link className="btn" style={{ background: "#fff", color: "#181716", border: "1px solid #181716" }} href={href(slug, `/rooms/${room.slug}`)}>View room →</Link></div><img src={ph(room.image, 4)} alt={room.name} /></div></section>}
+      <div className="slide"><div className="t"><span style={{ fontSize: 13 }}>From:</span> <b className="pr">{money(room.price)}</b><small>/NIGHT</small><h3>{room.name}</h3><p>{room.description}</p><p>{room.area} · {room.bed} · {room.guests} guests</p><Link className="btn" href={href(slug, "/book")}>Book now</Link> <Link className="btn ghost" href={href(slug, `/rooms/${room.slug}`)}>View room →</Link></div><img src={ph(room.image, 4)} alt={room.name} /></div></section>}
     <section className="fac"><small className="e">Modern and comfortable</small><h2>Facilities and amenities</h2>
       <div className="fg">{(am.length ? am.map(a => [a.title, a.description]) : [["High Speed Wifi", "Seamless internet access throughout the hotel."], ["Parking Space", "Secure parking for all guests."], ...(content.hasDining ? [["Restaurant & Bar", "Gourmet dishes and cocktails."]] : [["Room Service", "Round-the-clock in-room assistance."]]), ["Spa Center", "Relaxing and rejuvenating treatments."], ["Fitness Center", "Modern gym equipment."], ["Swimming Pool", "Our pristine outdoor pool."]]).map(([t, d], i) => { const I = AM[i % 6]; return <div key={t}><I size={30} strokeWidth={1.2} /><div><h5>{t}</h5><p>{d}</p></div></div>; })}</div></section>
     <section className="vid"><small className="e" style={{ color: "#fff" }}>Hotel video</small><h2 style={{ margin: 0 }}>Explore {store.name}</h2><b><Play fill="#fff" /></b></section>
