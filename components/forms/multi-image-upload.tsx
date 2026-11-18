@@ -47,25 +47,42 @@ export function MultiImageUpload({
   tileSize?: "sm" | "lg";
 }) {
   const [isUploading, setIsUploading] = useState(false);
+  const [progress, setProgress] = useState("");
   const isLg = tileSize === "lg";
 
-  async function handleFile(file: File) {
+  async function uploadOne(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append("file", await shrinkImage(file));
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      // A plain-text reply (no JSON) means the host rejected the request before the app saw it, usually because the file was too big.
+      if (!body?.error) throw new Error(res.status === 413 ? `${file.name} is too large. Try a smaller photo.` : `Upload failed (error ${res.status}). Try a smaller photo.`);
+      throw new Error(body.error);
+    }
+    return body.url as string;
+  }
+
+  /** Uploads every chosen photo (up to the free slots) and adds them in one update so none overwrite each other. */
+  async function handleFiles(picked: File[]) {
+    const room = max - value.length;
+    const files = picked.slice(0, Math.max(0, room));
+    if (picked.length > files.length) toast.message(`Only ${files.length} more ${files.length === 1 ? "photo fits" : "photos fit"} (limit ${max}). The rest were skipped.`);
+    if (!files.length) return;
     setIsUploading(true);
+    const urls: string[] = [];
+    let failed = 0;
     try {
-      const formData = new FormData();
-      formData.append("file", await shrinkImage(file));
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        // A plain-text reply (no JSON) means the host rejected the request before the app saw it, usually because the file was too big.
-        if (!body?.error) throw new Error(res.status === 413 ? "That photo is too large. Try a smaller one." : `Upload failed (error ${res.status}). Try a smaller photo.`);
-        throw new Error(body.error);
+      for (let i = 0; i < files.length; i++) {
+        setProgress(files.length > 1 ? `${i + 1}/${files.length}` : "");
+        try { urls.push(await uploadOne(files[i])); }
+        catch (err) { failed++; toast.error(err instanceof Error ? err.message : "Upload failed"); }
       }
-      onChange([...value, body.url]);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Upload failed");
+      if (urls.length) onChange([...value, ...urls]);
+      if (failed && urls.length) toast.message(`${urls.length} added, ${failed} failed.`);
     } finally {
       setIsUploading(false);
+      setProgress("");
     }
   }
 
@@ -115,7 +132,7 @@ export function MultiImageUpload({
             }
           >
             {isUploading ? (
-              <span className="text-xs">Uploading…</span>
+              <span className="text-xs">Uploading{progress ? ` ${progress}` : "…"}</span>
             ) : isLg ? (
               <>
                 <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-current">
@@ -133,12 +150,13 @@ export function MultiImageUpload({
             <input
               type="file"
               accept="image/*"
+              multiple
               className="hidden"
               disabled={isUploading}
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleFile(file);
+                const files = Array.from(e.target.files ?? []);
                 e.target.value = "";
+                if (files.length) void handleFiles(files);
               }}
             />
           </label>
