@@ -10,6 +10,8 @@ import { BusinessCapabilitiesEditor } from "@/components/dashboard/business-capa
 import { WebhooksPanel } from "@/components/dashboard/webhooks-panel";
 import { planAllows, type PlanFeatures } from "@/lib/entitlements/plan-features";
 import { listWebhookEndpoints, availableWebhookEvents } from "@/lib/actions/webhook";
+import { redirect } from "next/navigation";
+import { checkDomainStatus } from "@/lib/vercel-domains";
 import { dnsInstructionFor } from "@/lib/domain-dns";
 import { APP_URL } from "@/lib/constants/app-url";
 import { GuideToggle } from "@/components/app/page-guide";
@@ -22,8 +24,9 @@ import { isDemoStoreSlug } from "@/lib/demo-store";
 import { ALL_BUSINESS_TYPE_NAMES } from "@/lib/capabilities";
 import { STORE_FONT_OPTIONS, STORE_SETTINGS_LIMITS } from "@/lib/validations/store-settings";
 
-export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function SettingsPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { slug } = await params;
+  const checked = (await searchParams).domainCheck;
   const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true, business: true } });
   if (!store) return null;
 
@@ -42,6 +45,9 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
   const domainUnlocked = Boolean(features?.customDomain);
   const webhooksUnlocked = planAllows(store.subscription?.features as PlanFeatures, "webhooks", store.subscription?.name);
 
+  const liveDomain = store.customDomain && store.customDomainStatus !== "VERIFIED" ? await checkDomainStatus(store.customDomain).catch(() => null) : null;
+  const txtRecords = liveDomain && liveDomain.ok ? (liveDomain.verification ?? []).filter((v) => v.type === "TXT") : [];
+
   const [webhookEndpoints, webhookEventOptions] = await Promise.all([
     listWebhookEndpoints(slug),
     availableWebhookEvents(),
@@ -57,7 +63,9 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
   }
   async function recheck() {
     "use server";
-    await recheckDomainStatus(slug);
+    const r = await recheckDomainStatus(slug);
+    const outcome = !r.success ? "error" : (r as { verified?: boolean }).verified ? "verified" : "pending";
+    redirect(`/store/${slug}/admin/settings?domainCheck=${outcome}#custom-domain`);
   }
   async function remove() {
     "use server";
@@ -195,7 +203,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
       )}
 
       {canManageIdentity && (
-      <div className="mt-6 rounded-lg border bg-background p-4">
+      <div id="custom-domain" className="mt-6 scroll-mt-20 rounded-lg border bg-background p-4">
         <p className="mb-1 text-sm font-medium">Custom domain</p>
         {!domainUnlocked ? (
           <p className="text-xs text-muted-foreground">
@@ -215,6 +223,11 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
                 {store.customDomainStatus}
               </span>
             </p>
+            {checked && (
+              <p role="status" className={`mt-2 rounded-md p-2.5 text-xs font-medium ${checked === "verified" ? "bg-emerald-50 text-emerald-700" : checked === "error" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"}`}>
+                {checked === "verified" ? "Checked just now: your domain is verified and live." : checked === "error" ? "The check could not run. Try again in a minute." : "Checked just now: not verified yet. Your DNS changes have not been detected. Follow the steps below, wait a few minutes, then check again."}
+              </p>
+            )}
             {store.customDomainStatus !== "VERIFIED" && (() => {
               const dns = dnsInstructionFor(store.customDomain!);
               return (
@@ -234,6 +247,17 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
                           : "This is a subdomain, so it uses a CNAME record. Leave Proxy off if your provider (e.g. Cloudflare) shows an orange cloud."}
                       </p>
                     </li>
+                    {txtRecords.length > 0 && (
+                      <li>
+                        <b>2b. Also add this ownership record.</b> Vercel needs proof you own this domain.
+                        {txtRecords.map((t) => (
+                          <div key={t.domain} className="mt-2 overflow-hidden rounded-md border bg-background">
+                            <div className="grid grid-cols-3 border-b bg-muted/50 px-3 py-1.5 font-semibold"><span>Type</span><span>Name / Host</span><span>Value</span></div>
+                            <div className="grid grid-cols-3 px-3 py-2 font-mono"><span>TXT</span><span className="break-all">{t.domain.replace(`.${store.customDomain}`, "")}</span><span className="break-all">{t.value}</span></div>
+                          </div>
+                        ))}
+                      </li>
+                    )}
                     <li><b>3. Save, wait, then press Re-check status.</b> It usually works in 5–30 minutes, but can take up to 24 hours. The status changes from PENDING to VERIFIED.</li>
                   </ol>
                   <details className="mt-3 rounded-md border bg-background p-3">

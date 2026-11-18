@@ -19,8 +19,10 @@ function headers() {
   };
 }
 
+export type DomainVerificationRecord = { type: string; domain: string; value: string };
+
 export type VercelDomainResult =
-  | { ok: true; verified: boolean }
+  | { ok: true; verified: boolean; verification?: DomainVerificationRecord[] }
   | { ok: false; error: string };
 
 /** Attaches a domain to this Vercel project. Idempotent-ish — Vercel returns 409 if already attached, which we treat as success. */
@@ -60,7 +62,19 @@ export async function checkDomainStatus(domain: string): Promise<VercelDomainRes
     return { ok: false, error: body?.error?.message ?? `Vercel API error (${res.status})` };
   }
   const body = await res.json();
-  return { ok: true, verified: Boolean(body.verified) };
+  const body2 = body as { verified?: boolean; verification?: DomainVerificationRecord[] };
+  if (body2.verified) return { ok: true, verified: true };
+
+  // Not verified yet: ask Vercel to re-run its ownership check now, instead of waiting for its own schedule.
+  const vres = await fetch(
+    `${BASE}/v9/projects/${process.env.VERCEL_PROJECT_ID}/domains/${domain}/verify${teamQuery()}`,
+    { method: "POST", headers: headers() }
+  ).catch(() => null);
+  if (vres?.ok) {
+    const vbody = (await vres.json().catch(() => ({}))) as { verified?: boolean; verification?: DomainVerificationRecord[] };
+    return { ok: true, verified: Boolean(vbody.verified), verification: vbody.verification ?? body2.verification };
+  }
+  return { ok: true, verified: false, verification: body2.verification };
 }
 
 export async function removeDomainFromVercel(domain: string): Promise<void> {

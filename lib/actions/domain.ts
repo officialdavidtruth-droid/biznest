@@ -71,7 +71,7 @@ export async function recheckDomainStatus(slug: string): Promise<ActionResult> {
   });
 
   revalidatePath(`/store/${slug}/admin/settings`);
-  return { success: true, data: undefined };
+  return { success: true, data: undefined, verified: result.verified } as ActionResult & { verified: boolean };
 }
 
 export async function removeCustomDomain(slug: string): Promise<ActionResult> {
