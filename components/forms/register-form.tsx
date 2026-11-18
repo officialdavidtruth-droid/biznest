@@ -100,10 +100,14 @@ export function RegisterForm({
         </AuthSubmitButton>
       </form>
 
-      {!storeSlug && <>
-        <AuthDivider />
-        <GoogleButton onClick={() => signIn("google", { callbackUrl: callbackUrl ?? "/onboarding/business-verification" })} />
-      </>}
+      <AuthDivider />
+      <GoogleButton
+        onClick={() =>
+          storeSlug
+            ? (window.location.href = `/api/store-google/start?store=${encodeURIComponent(storeSlug)}&returnTo=${encodeURIComponent(callbackUrl ?? `/store/${storeSlug}/account`)}`)
+            : signIn("google", { callbackUrl: callbackUrl ?? "/onboarding/business-verification" })
+        }
+      />
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}

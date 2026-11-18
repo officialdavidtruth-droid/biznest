@@ -52,6 +52,7 @@ export function LoginForm({
     const messages: Record<string, string> = {
       OAuthAccountNotLinked: "An account with this email already exists. Sign in with your email and password instead.",
       AccessDenied: "Google sign-in isn't available for this account. Use your email and password.",
+      GoogleUnavailable: "Google sign-in isn't available here right now. Use your email and password.",
     };
     toast.error(messages[oauthError] ?? "Google sign-in failed. Please try again.");
   }, [oauthError]);
@@ -177,10 +178,14 @@ export function LoginForm({
         </AuthSubmitButton>
       </form>
 
-      {!isStoreContext && <>
-        <AuthDivider />
-        <GoogleButton onClick={() => signIn("google", { callbackUrl })} />
-      </>}
+      <AuthDivider />
+      <GoogleButton
+        onClick={() =>
+          isStoreContext && storeSlug
+            ? (window.location.href = `/api/store-google/start?store=${encodeURIComponent(storeSlug)}&returnTo=${encodeURIComponent(callbackUrl)}`)
+            : signIn("google", { callbackUrl })
+        }
+      />
 
       <ResendVerification defaultEmail={prefillEmail} storeSlug={isStoreContext ? storeSlug : undefined} />
 
