@@ -81,7 +81,9 @@ function isPlatformHost(host: string): boolean {
 function pathSlug(pathname: string): { slug: string | null; rest: string } {
   const segments = pathname.split("/").filter(Boolean);
   const [first, ...remaining] = segments;
-  if (!first || RESERVED_SLUGS.has(first)) {
+  // The official BizNest account is reserved so no vendor can claim it, but its store is the demo store
+  // (see lib/demo-store.ts) and must route like any store. Literal, not imported: this runs on the edge.
+  if (!first || (RESERVED_SLUGS.has(first) && first !== "biznest-official")) {
     return { slug: null, rest: pathname };
   }
   const rest = `/${remaining.join("/")}`;
