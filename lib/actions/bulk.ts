@@ -366,6 +366,10 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
               ...(finalPublished ? { archivedAt: null } : {}),
             },
           });
+          if (categoryId !== undefined) {
+            await tx.productCategory.deleteMany({ where: { productId: product.id } });
+            if (categoryId) await tx.productCategory.create({ data: { productId: product.id, categoryId } });
+          }
           return product.id;
         }, { isolationLevel: "Serializable", timeout: 15000 });
 
@@ -446,6 +450,7 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
               data: {
                 storeId: access.store.id,
                 categoryId: categoryId || null,
+                ...(categoryId ? { categoryLinks: { create: [{ categoryId }] } } : {}),
                 type: "PHYSICAL",
                 name: newName,
                 slug: productSlug,
@@ -582,6 +587,9 @@ export async function bulkUpdateProducts(slug: string, patches: BulkEditPatch[])
           if (!cat) throw new Error("Choose a product category from this store.");
         }
         productData.categoryId = patch.categoryId;
+        // Setting one category replaces the product's whole list so no stale category links linger.
+        await tx.productCategory.deleteMany({ where: { productId: product.id } });
+        if (patch.categoryId) await tx.productCategory.create({ data: { productId: product.id, categoryId: patch.categoryId } });
       }
 
       // Publish state is decided once and written once. An explicit publish/unpublish in the

@@ -9,6 +9,7 @@ const productUpdate = vi.fn();
 const state = { archivedAt: null as Date | null, isPublished: false };
 
 const makeTx = () => ({
+  productCategory: { deleteMany: vi.fn(async () => ({ count: 0 })), createMany: vi.fn(async () => ({ count: 0 })) },
   product: {
     findFirst: vi.fn(async () => ({ id: "p1", hasVariants: false, archivedAt: state.archivedAt, isPublished: state.isPublished, inventory: { id: "i1", quantity: 3, autoUnpublished: false, costPrice: null } })),
     update: (...a: unknown[]) => productUpdate(...a),

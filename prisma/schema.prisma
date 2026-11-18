@@ -1323,6 +1323,7 @@ model Category {
   updatedAt DateTime @updatedAt
 
   products Product[]
+  productLinks ProductCategory[]
   services Service[]
 
   @@unique([storeId, slug])
@@ -1357,6 +1358,8 @@ model Product {
   store        Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
   categoryId   String?
   category     Category?   @relation(fields: [categoryId], references: [id])
+  // Every category the product is listed under (categoryId stays the primary/first one).
+  categoryLinks ProductCategory[]
 
   type         ProductType @default(PHYSICAL)
   name         String
@@ -4501,6 +4504,16 @@ model HrPayrollItem {
   @@index([employeeId])
 }
 
+
+// A product can sit in several categories/subcategories at once (like WordPress).
+model ProductCategory {
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  @@id([productId, categoryId])
+  @@index([categoryId])
+}
 
 // Working hours used to decide LATE vs PRESENT when someone clocks in.
 model HrSettings {

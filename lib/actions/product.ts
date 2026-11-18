@@ -105,7 +105,8 @@ export async function listProductsPage(slug: string, query: ProductListQuery = {
   const where: Prisma.ProductWhereInput = { storeId, archivedAt: query.status === "archived" ? { not: null } : null };
   const q = query.q?.trim();
   if (q) where.name = { contains: q, mode: "insensitive" };
-  if (query.categoryId) where.categoryId = query.categoryId;
+  // A product shows up under every category it is listed in, not just its primary one.
+  if (query.categoryId) where.OR = [{ categoryId: query.categoryId }, { categoryLinks: { some: { categoryId: query.categoryId } } }];
   if (query.status === "published") where.isPublished = true;
   if (query.status === "draft") where.isPublished = false;
 
@@ -164,14 +165,20 @@ export async function getProductStats(slug: string) {
     prisma.product.count({ where: { storeId, archivedAt: null, isPublished: true } }),
     prisma.product.count({ where: { storeId, archivedAt: null, type: "PHYSICAL", hasVariants: false, inventory: { is: { quantity: { lte: 0 } } } } }),
     prisma.product.count({ where: { storeId, archivedAt: null, type: "PHYSICAL", hasVariants: true, variants: { none: { isActive: true, quantity: { gt: 0 } } } } }),
-    prisma.product.groupBy({ by: ["categoryId"], where: { storeId, archivedAt: null }, _count: { _all: true } }),
+    // Distinct products per category, counting both the primary category and extra links.
+    prisma.$queryRaw<{ categoryId: string; n: bigint }[]>`
+      SELECT t."categoryId", COUNT(*)::bigint AS n FROM (
+        SELECT p."categoryId", p."id" FROM "Product" p WHERE p."storeId" = ${storeId} AND p."archivedAt" IS NULL AND p."categoryId" IS NOT NULL
+        UNION
+        SELECT pc."categoryId", pc."productId" FROM "ProductCategory" pc JOIN "Product" p ON p."id" = pc."productId" WHERE p."storeId" = ${storeId} AND p."archivedAt" IS NULL
+      ) t GROUP BY t."categoryId"`,
   ]);
 
   return {
     total,
     published,
     outOfStock: outPlain + outVariant,
-    byCategory: Object.fromEntries(byCategory.filter((r) => r.categoryId).map((r) => [r.categoryId as string, r._count._all])) as Record<string, number>,
+    byCategory: Object.fromEntries(byCategory.map((r) => [r.categoryId, Number(r.n)])) as Record<string, number>,
   };
 }
 
@@ -181,7 +188,7 @@ export async function getProduct(slug: string, productId: string) {
 
   return prisma.product.findFirst({
     where: { id: productId, storeId: access.store.id },
-    include: { inventory: true },
+    include: { inventory: true, categoryLinks: { select: { categoryId: true } } },
   });
 }
 
@@ -205,12 +212,10 @@ export async function createProduct(
   }
   const data = parsed.data;
 
-  if (data.categoryId) {
-    const category = await prisma.category.findFirst({
-      where: { id: data.categoryId, storeId: access.store.id, type: "PRODUCT" },
-      select: { id: true },
-    });
-    if (!category) return { success: false, error: "Choose a product category from this store." };
+  const categoryIds = Array.from(new Set(data.categoryIds?.length ? data.categoryIds : data.categoryId ? [data.categoryId] : []));
+  if (categoryIds.length) {
+    const found = await prisma.category.count({ where: { id: { in: categoryIds }, storeId: access.store.id, type: "PRODUCT" } });
+    if (found !== categoryIds.length) return { success: false, error: "Choose product categories from this store." };
   }
 
   const fileError = await checkDigitalRef(data.digitalFileUrl, null);
@@ -246,7 +251,8 @@ export async function createProduct(
         const created = await tx.product.create({
           data: {
             storeId: access.store.id,
-            categoryId: data.categoryId || null,
+            categoryId: categoryIds[0] ?? null,
+            categoryLinks: { create: categoryIds.map((categoryId) => ({ categoryId })) },
             type: data.type,
             name: data.name,
             slug: productSlug,
@@ -333,12 +339,10 @@ export async function updateProduct(
   }
   const data = parsed.data;
 
-  if (data.categoryId) {
-    const category = await prisma.category.findFirst({
-      where: { id: data.categoryId, storeId: access.store.id, type: "PRODUCT" },
-      select: { id: true },
-    });
-    if (!category) return { success: false, error: "Choose a product category from this store." };
+  const categoryIds = Array.from(new Set(data.categoryIds?.length ? data.categoryIds : data.categoryId ? [data.categoryId] : []));
+  if (categoryIds.length) {
+    const found = await prisma.category.count({ where: { id: { in: categoryIds }, storeId: access.store.id, type: "PRODUCT" } });
+    if (found !== categoryIds.length) return { success: false, error: "Choose product categories from this store." };
   }
 
   const existing = await prisma.product.findFirst({
@@ -444,10 +448,12 @@ export async function updateProduct(
           if (!limit.allowed) throw new Error(`PLAN_LIMIT:${limit.error}`);
         }
 
+        await tx.productCategory.deleteMany({ where: { productId } });
+        if (categoryIds.length) await tx.productCategory.createMany({ data: categoryIds.map((categoryId) => ({ productId, categoryId })) });
         await tx.product.update({
           where: { id: productId },
           data: {
-            categoryId: data.categoryId || null,
+            categoryId: categoryIds[0] ?? null,
             type: data.type,
             name: data.name,
             description: data.description,

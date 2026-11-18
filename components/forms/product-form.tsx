@@ -100,6 +100,7 @@ export function ProductForm({
     id: string;
     name: string;
     categoryId: string | null;
+    categoryLinks?: { categoryId: string }[];
     type: "PHYSICAL" | "DIGITAL" | "RENTAL";
     description: string;
     price: unknown;
@@ -163,6 +164,9 @@ export function ProductForm({
     defaultValues: {
       name: product?.name ?? "",
       categoryId: product?.categoryId ?? defaultCategoryId ?? "",
+      categoryIds: product
+        ? Array.from(new Set([...(product.categoryId ? [product.categoryId] : []), ...(product.categoryLinks ?? []).map((l) => l.categoryId)]))
+        : defaultCategoryId ? [defaultCategoryId] : [],
       type: product?.type ?? "PHYSICAL",
       description: product?.description ?? "",
       price: product ? Number(product.price) : undefined,
@@ -179,6 +183,13 @@ export function ProductForm({
   });
 
   const name = watch("name");
+  const selectedCategoryIds = watch("categoryIds") ?? [];
+  const toggleCategory = (id: string) => {
+    const next = selectedCategoryIds.includes(id) ? selectedCategoryIds.filter((x) => x !== id) : [...selectedCategoryIds, id];
+    setValue("categoryIds", next, { shouldDirty: true });
+    setValue("categoryId", next[0] ?? "", { shouldDirty: true });
+  };
+  const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? "";
   const shortDescription = watch("description");
 
   const topLevelCategories = categories.filter((c) => !c.parentId);
@@ -332,17 +343,32 @@ export function ProductForm({
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-sm font-medium">{categoryLabel} <span className="text-destructive">*</span></label>
-                  <select className="input" {...register("categoryId")}>
-                    <option value="">Select {categoryLabel.toLowerCase()}</option>
+                  {selectedCategoryIds.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {selectedCategoryIds.map((id, i) => (
+                        <span key={id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          {categoryName(id)}{i === 0 && selectedCategoryIds.length > 1 ? " (main)" : ""}
+                          <button type="button" onClick={() => toggleCategory(id)} aria-label={`Remove ${categoryName(id)}`} className="leading-none">×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="max-h-56 overflow-y-auto rounded-lg border bg-background p-2 text-sm">
+                    {topLevelCategories.length === 0 && <p className="p-1 text-xs text-muted-foreground">No {categoryLabel.toLowerCase()}s yet. Add some under Categories.</p>}
                     {topLevelCategories.map((c) => (
-                      <optgroup key={c.id} label={c.name}>
-                        <option value={c.id}>{c.name} (all)</option>
+                      <div key={c.id} className="py-0.5">
+                        <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 font-semibold hover:bg-muted/50">
+                          <input type="checkbox" checked={selectedCategoryIds.includes(c.id)} onChange={() => toggleCategory(c.id)} className="h-4 w-4" />{c.name}
+                        </label>
                         {(childrenByParent.get(c.id) ?? []).map((child) => (
-                          <option key={child.id} value={child.id}>{child.name}</option>
+                          <label key={child.id} className="ml-6 flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-muted/50">
+                            <input type="checkbox" checked={selectedCategoryIds.includes(child.id)} onChange={() => toggleCategory(child.id)} className="h-4 w-4" />{child.name}
+                          </label>
                         ))}
-                      </optgroup>
+                      </div>
                     ))}
-                  </select>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">Tick as many as fit. The first one you tick is the main {categoryLabel.toLowerCase()}.</p>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium">{preset.sectionLabel}</label>

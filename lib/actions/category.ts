@@ -40,8 +40,16 @@ export async function getStoreCategories(slug: string) {
 export async function getCategoryItemCounts(slug: string): Promise<Record<string, number>> {
   const a = await access(slug);
   if (!a.success) return {};
+  const storeId = a.store.id;
   const [products, services] = await Promise.all([
-    prisma.product.groupBy({ by: ["categoryId"], where: { storeId: a.store.id, categoryId: { not: null } }, _count: { _all: true } }),
+    // Distinct products per category: the primary category plus any extra categories they are listed in.
+    prisma.$queryRaw<{ categoryId: string; n: bigint }[]>`
+      SELECT t."categoryId", COUNT(*)::bigint AS n FROM (
+        SELECT p."categoryId", p."id" FROM "Product" p WHERE p."storeId" = ${storeId} AND p."categoryId" IS NOT NULL
+        UNION
+        SELECT pc."categoryId", pc."productId" FROM "ProductCategory" pc JOIN "Product" p ON p."id" = pc."productId" WHERE p."storeId" = ${storeId}
+      ) t GROUP BY t."categoryId"`
+      .then((rows) => rows.map((r) => ({ categoryId: r.categoryId as string | null, _count: { _all: Number(r.n) } }))),
     prisma.service.groupBy({ by: ["categoryId"], where: { storeId: a.store.id, categoryId: { not: null } }, _count: { _all: true } }),
   ]);
   const counts: Record<string, number> = {};

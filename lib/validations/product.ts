@@ -16,6 +16,8 @@ function isValidCurrency(code: string): boolean {
 export const productSchema = z.object({
   name: z.string().min(2, "Product name is required").max(120),
   categoryId: z.string().cuid().optional().or(z.literal("")),
+  // Every category/subcategory the product is listed under; the first is the primary one.
+  categoryIds: z.array(z.string().cuid()).max(20).optional(),
   type: z.enum(["PHYSICAL", "DIGITAL", "RENTAL"]),
   description: z.string().min(10, "Add a bit more detail (10+ characters)").max(255, "Keep the short description under 255 characters"),
   price: z.coerce.number().positive("Price must be greater than 0").max(MAX_PRICE, "Price is too large"),

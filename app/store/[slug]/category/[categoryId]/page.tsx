@@ -62,7 +62,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   }
   const ids = category.children.length ? [category.id, ...category.children.map(c=>c.id)] : [category.id];
   const [products, services] = await Promise.all([
-    prisma.product.findMany({where:{storeId:store.id,categoryId:{in:ids},isPublished:true},include:{category:true}}),
+    prisma.product.findMany({where:{storeId:store.id,isPublished:true,OR:[{categoryId:{in:ids}},{categoryLinks:{some:{categoryId:{in:ids}}}}]},include:{category:true}}),
     prisma.service.findMany({where:{storeId:store.id,categoryId:{in:ids},isPublished:true},include:{category:true}}),
   ]);
   const items = [...products.map(p=>({id:p.id,kind:"product" as const,name:p.name,price:Number(p.price),currency:p.currency,image:p.images[0]??null,categoryName:p.category?.name??null,hasVariants:p.hasVariants})), ...services.map(s=>({id:s.id,kind:"service" as const,name:s.name,price:Number(s.price),currency:s.currency,image:s.images[0]??null,categoryName:s.category?.name??null}))];
