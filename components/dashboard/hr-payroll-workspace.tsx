@@ -1,15 +1,19 @@
 "use client";
 
-import { useState, useTransition, type FormEvent, type ReactNode } from "react";
-import { BriefcaseBusiness, CalendarDays, CheckCircle2, Plus, Users, Wallet, X } from "lucide-react";
+import { useEffect, useState, useTransition, type FormEvent, type ReactNode } from "react";
+import { BriefcaseBusiness, CalendarDays, CheckCircle2, FileText, Plus, Users, Wallet, X } from "lucide-react";
 import {
   createHrEmployee, createHrPayrollRun, recordHrAttendance, requestHrLeave,
   decideHrLeave, updateHrPayrollStatus, getHrDashboard,
 } from "@/lib/actions/hr-payroll";
+import { getBiometricSetup, getPayrollRunItems, updateHrEmployee } from "@/lib/actions/hr-biometrics";
+import { HrScannersPanel } from "@/components/dashboard/hr-scanners-panel";
 import { formatMoney } from "@/lib/utils/format-money";
 
 type Data = Exclude<Awaited<ReturnType<typeof getHrDashboard>>, { error: string }>;
-type Tab = "overview" | "employees" | "attendance" | "leave" | "payroll";
+type Tab = "overview" | "employees" | "attendance" | "leave" | "payroll" | "scanners";
+type Setup = Exclude<Awaited<ReturnType<typeof getBiometricSetup>>, { error: string }>;
+type RunItems = Extract<Awaited<ReturnType<typeof getPayrollRunItems>>, { items: unknown }>["items"];
 type Modal = null | "employee" | "payroll" | "leave";
 
 const fmt = (n: number) => formatMoney(n);
@@ -57,6 +61,25 @@ export function HrPayrollWorkspace({ slug, data }: { slug: string; data: Data })
   const [modal, setModal] = useState<Modal>(null);
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState("");
+  const [setup, setSetup] = useState<Setup | null>(null);
+  const [editing, setEditing] = useState<Data["employees"][number] | null>(null);
+  const [openRun, setOpenRun] = useState<string | null>(null);
+  const [runItems, setRunItems] = useState<RunItems>([]);
+  const loadSetup = async () => { const r = await getBiometricSetup(slug); if (!("error" in r)) setSetup(r); };
+  useEffect(() => { void loadSetup(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const toggleRun = async (id: string) => {
+    if (openRun === id) return setOpenRun(null);
+    const r = await getPayrollRunItems(slug, id);
+    if ("error" in r) return setMsg(r.error ?? "Could not load payslips");
+    setRunItems(r.items); setOpenRun(id);
+  };
+  const tzTime = (d: Date | string | null) => (d ? new Date(d).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Lagos" }) : "—");
+  const submitEdit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); if (!editing) return;
+    const fd = new FormData(e.currentTarget);
+    run(() => updateHrEmployee(slug, editing.id, fd), () => { setEditing(null); void loadSetup(); });
+  };
 
   // Reloads through the same server action that built the page (there is no separate API route).
   const refresh = async () => {
@@ -115,7 +138,7 @@ export function HrPayrollWorkspace({ slug, data }: { slug: string; data: Data })
       </div>
 
       <div className="flex gap-1 overflow-x-auto border-b">
-        {(["overview", "employees", "attendance", "leave", "payroll"] as const).map((x) => (
+        {(["overview", "employees", "attendance", "leave", "payroll", "scanners"] as const).map((x) => (
           <button key={x} onClick={() => setTab(x)} className={`whitespace-nowrap px-3 py-2 text-xs font-semibold ${tab === x ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>{x[0].toUpperCase() + x.slice(1)}</button>
         ))}
       </div>
@@ -156,14 +179,16 @@ export function HrPayrollWorkspace({ slug, data }: { slug: string; data: Data })
           {d.employees.length ? (
             <div className="mt-4 overflow-x-auto">
               <table className="w-full min-w-[640px] text-left text-xs">
-                <thead className="text-muted-foreground"><tr><th className="py-2 pr-3 font-semibold">Employee</th><th className="pr-3 font-semibold">No.</th><th className="pr-3 font-semibold">Position</th><th className="pr-3 font-semibold">Department</th><th className="pr-3 text-right font-semibold">Monthly gross</th><th className="font-semibold">Status</th></tr></thead>
+                <thead className="text-muted-foreground"><tr><th className="py-2 pr-3 font-semibold">Employee</th><th className="pr-3 font-semibold">No.</th><th className="pr-3 font-semibold">Position</th><th className="pr-3 font-semibold">Department</th><th className="pr-3 text-right font-semibold">Monthly gross</th><th className="pr-3 font-semibold">Scanner ID</th><th className="pr-3 font-semibold">Status</th><th /></tr></thead>
                 <tbody>
                   {d.employees.map((e) => (
                     <tr key={e.id} className="border-t">
                       <td className="py-2.5 pr-3 font-semibold">{e.firstName} {e.lastName}{e.email && <span className="block font-normal text-muted-foreground">{e.email}</span>}</td>
                       <td className="pr-3">{e.employeeNo}</td><td className="pr-3">{e.position || "—"}</td><td className="pr-3">{e.department || "—"}</td>
                       <td className="pr-3 text-right">{fmt(e.basicSalary + e.housingAllowance + e.transportAllowance + e.otherAllowance)}</td>
-                      <td><Pill s={e.status} /></td>
+                      <td className="pr-3">{e.deviceUserId || "—"}</td>
+                      <td className="pr-3"><Pill s={e.status} /></td>
+                      <td><button onClick={() => setEditing(e)} className="rounded border px-2 py-1 text-[10px] font-bold">Edit</button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -183,7 +208,7 @@ export function HrPayrollWorkspace({ slug, data }: { slug: string; data: Data })
               return (
                 <div key={e.id} className="flex flex-wrap items-center gap-2 rounded-lg border p-2.5 text-xs">
                   <span className="font-semibold">{e.firstName} {e.lastName}</span>
-                  <span className="ml-auto text-muted-foreground">{current ? current.replace("_", " ") : "Not marked"}</span>
+                  <span className="ml-auto text-muted-foreground">{(() => { const row = d.attendance.find((x) => x.employee.id === e.id); return row?.checkIn ? `In ${tzTime(row.checkIn)} · Out ${tzTime(row.checkOut)}${row.checkInSource ? ` · ${row.checkInSource.toLowerCase()}` : ""} · ` : ""; })()}{current ? current.replace("_", " ") : "Not marked"}</span>
                   {(["PRESENT", "LATE", "ABSENT", "HALF_DAY"] as const).map((s) => (
                     <button key={s} disabled={pending} onClick={() => run(() => recordHrAttendance(slug, e.id, s))} className={`rounded border px-2 py-1 text-[10px] font-semibold ${current === s ? "border-primary bg-primary/10 text-primary" : ""}`}>{s.replace("_", " ")}</button>
                   ))}
@@ -228,14 +253,56 @@ export function HrPayrollWorkspace({ slug, data }: { slug: string; data: Data })
               <div key={r.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-2.5 text-xs">
                 <div><span className="font-semibold">{day(r.periodStart)} to {day(r.periodEnd)}</span><span className="block text-muted-foreground">Gross {fmt(r.totalGross)} · Deductions {fmt(r.totalDeductions)} · Net {fmt(r.totalNet)}</span></div>
                 <span className="ml-auto"><Pill s={r.status} /></span>
+                <button onClick={() => toggleRun(r.id)} className="inline-flex items-center gap-1 rounded border px-2 py-1 text-[10px] font-bold"><FileText className="h-3 w-3" />Payslips</button>
                 {r.status === "DRAFT" && <button disabled={pending} onClick={() => run(() => updateHrPayrollStatus(slug, r.id, "APPROVED"))} className="rounded bg-primary px-2 py-1 text-[10px] font-bold text-primary-foreground">Approve</button>}
                 {r.status === "APPROVED" && <button disabled={pending} onClick={() => run(() => updateHrPayrollStatus(slug, r.id, "PAID"))} className="rounded bg-primary px-2 py-1 text-[10px] font-bold text-primary-foreground">Mark paid</button>}
                 {(r.status === "DRAFT" || r.status === "APPROVED") && <button disabled={pending} onClick={() => run(() => updateHrPayrollStatus(slug, r.id, "VOID"))} className="rounded border px-2 py-1 text-[10px] font-bold">Void</button>}
+                {openRun === r.id && (
+                  <div className="basis-full space-y-1.5 border-t pt-2">
+                    {runItems.map((i) => (
+                      <div key={i.id} className="flex items-center gap-2 rounded bg-muted/40 p-2">
+                        <span className="font-semibold">{i.name}</span><span className="text-muted-foreground">{i.employeeNo} · Net {fmt(i.net)}</span>
+                        <a href={`/api/hr/payslip/${i.id}?inline=1`} target="_blank" rel="noreferrer" className="ml-auto rounded border px-2 py-1 text-[10px] font-bold">View</a>
+                        <a href={`/api/hr/payslip/${i.id}`} className="rounded bg-primary px-2 py-1 text-[10px] font-bold text-primary-foreground">PDF</a>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             {!d.payrollRuns.length && <Empty>No payroll runs yet.</Empty>}
           </div>
         </section>
+      )}
+
+      {tab === "scanners" && (setup ? <HrScannersPanel slug={slug} setup={setup} onChanged={() => { void loadSetup(); void refresh(); }} /> : <Empty>Loading…</Empty>)}
+
+      {editing && (
+        <Dialog title={`Edit ${editing.firstName} ${editing.lastName}`} onClose={() => setEditing(null)} wide>
+          <form onSubmit={submitEdit} className="mt-4 grid gap-2.5">
+            <div className="grid gap-2 sm:grid-cols-2"><input required name="firstName" defaultValue={editing.firstName} className={input} /><input required name="lastName" defaultValue={editing.lastName} className={input} /></div>
+            <div className="grid gap-2 sm:grid-cols-2"><input name="position" defaultValue={editing.position ?? ""} placeholder="Position" className={input} /><input name="department" defaultValue={editing.department ?? ""} placeholder="Department" className={input} /></div>
+            <div className="grid gap-2 sm:grid-cols-2"><input name="email" type="email" defaultValue={editing.email ?? ""} placeholder="Email" className={input} /><input name="phone" defaultValue={editing.phone ?? ""} placeholder="Phone" className={input} /></div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="text-[11px] text-muted-foreground">Scanner ID (user ID enrolled on the fingerprint machine)<input name="deviceUserId" defaultValue={editing.deviceUserId ?? ""} placeholder="e.g. 12" className={`${input} mt-1 w-full`} /></label>
+              <label className="text-[11px] text-muted-foreground">Staff login (for clock-in and payslips)
+                <select name="staffId" defaultValue={editing.staffId ?? ""} className={`${input} mt-1 w-full`}>
+                  <option value="">Match by email</option>
+                  {(setup?.staff ?? []).map((s) => <option key={s.id} value={s.id}>{s.invitedName || s.username || s.invitedEmail}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input name="basicSalary" type="number" min="0" defaultValue={editing.basicSalary} placeholder="Basic salary" className={input} />
+              <input name="housingAllowance" type="number" min="0" defaultValue={editing.housingAllowance} placeholder="Housing" className={input} />
+              <input name="transportAllowance" type="number" min="0" defaultValue={editing.transportAllowance} placeholder="Transport" className={input} />
+              <input name="otherAllowance" type="number" min="0" defaultValue={editing.otherAllowance} placeholder="Other allowance" className={input} />
+            </div>
+            <input name="annualRent" type="number" min="0" defaultValue={editing.annualRent} placeholder="Annual rent (PAYE rent relief)" className={input} />
+            <div className="grid gap-2 sm:grid-cols-2"><input name="bankName" defaultValue={editing.bankName ?? ""} placeholder="Bank" className={input} /><input name="accountNumber" defaultValue={editing.accountNumber ?? ""} placeholder="Account number" className={input} /></div>
+            <button disabled={pending} className="mt-1 rounded-lg bg-primary py-2.5 text-xs font-bold text-primary-foreground">{pending ? "Saving…" : "Save changes"}</button>
+          </form>
+        </Dialog>
       )}
 
       {modal === "employee" && (
@@ -245,6 +312,7 @@ export function HrPayrollWorkspace({ slug, data }: { slug: string; data: Data })
             <div className="grid gap-2 sm:grid-cols-2"><input required name="employeeNo" placeholder="Employee number" className={input} /><input name="position" placeholder="Position" className={input} /></div>
             <div className="grid gap-2 sm:grid-cols-2"><input name="department" placeholder="Department" className={input} /><input name="email" type="email" placeholder="Email" className={input} /></div>
             <input name="hireDate" type="date" className={input} />
+            <input name="deviceUserId" placeholder="Scanner ID (optional, from the fingerprint machine)" className={input} />
             <div className="grid gap-2 sm:grid-cols-2">
               <input name="basicSalary" type="number" min="0" placeholder="Basic salary (monthly)" className={input} />
               <input name="housingAllowance" type="number" min="0" placeholder="Housing allowance" className={input} />

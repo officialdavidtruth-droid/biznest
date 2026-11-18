@@ -6,6 +6,8 @@ import { assertAnyStorePermission } from "@/lib/access/assert-store-access";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { logStoreActivity } from "@/lib/activity-log";
 import { computeMonthlyPayroll } from "@/lib/hr/nigeria-payroll";
+import { workDateFor } from "@/lib/hr/attendance-core";
+import { rematchPunches, storeTimeZone } from "@/lib/hr/attendance-service";
 import type { ActionResult } from "@/types/actions";
 
 // Staff can reach HR either through the "HR & payroll" checkbox or the plugin permission.
@@ -42,8 +44,9 @@ export async function getHrDashboard(slug: string) {
   if (!a.ok) return { error: a.error };
   const storeId = a.store.id;
   await syncLeaveStatus(storeId);
-  const today = startOfToday();
-  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+  // "Today" is the store's local day (Lagos), not the server's UTC day.
+  const today = workDateFor(new Date(), await storeTimeZone(storeId));
+  const tomorrow = new Date(today.getTime() + 86_400_000);
   const live = { in: ["ACTIVE", "ON_LEAVE"] as ("ACTIVE" | "ON_LEAVE")[] };
 
   const [employeeRows, attendance, leaveRows, runRows] = await Promise.all([
@@ -64,6 +67,7 @@ export async function getHrDashboard(slug: string) {
   const employees = employeeRows.map((e) => ({
     id: e.id, employeeNo: e.employeeNo, firstName: e.firstName, lastName: e.lastName,
     email: e.email, phone: e.phone, department: e.department, position: e.position,
+    deviceUserId: e.deviceUserId, staffId: e.staffId, bankName: e.bankName, accountNumber: e.accountNumber,
     employmentType: e.employmentType, status: e.status, hireDate: e.hireDate,
     basicSalary: money(e.basicSalary), housingAllowance: money(e.housingAllowance),
     transportAllowance: money(e.transportAllowance), otherAllowance: money(e.otherAllowance),
@@ -109,13 +113,16 @@ export async function createHrEmployee(slug: string, form: FormData): Promise<Ac
         hireDate: form.get("hireDate") ? new Date(String(form.get("hireDate"))) : null,
         basicSalary: basic, housingAllowance: housing, transportAllowance: transport, otherAllowance: other, annualRent: rent,
         bankName: text(form, "bankName") || null, accountName: text(form, "accountName") || null, accountNumber: text(form, "accountNumber") || null,
+        deviceUserId: text(form, "deviceUserId") || null,
+        staffId: text(form, "staffId") || null,
       },
     });
+    if (employee.deviceUserId) await rematchPunches(a.store.id, employee.id, employee.deviceUserId);
     const s = await auth();
     await logStoreActivity({ storeId: a.store.id, actor: { id: s?.user?.id, name: s?.user?.name, email: s?.user?.email, role: s?.user?.role ?? "OWNER" }, action: "hr.employee_created", target: employee.employeeNo });
     return { success: true, data: { id: employee.id } };
   } catch {
-    return { success: false, error: "Employee number already exists or the employee could not be created." };
+    return { success: false, error: "Employee number, scanner ID or login is already used by another employee." };
   }
 }
 
@@ -125,7 +132,7 @@ export async function recordHrAttendance(slug: string, employeeId: string, statu
   if (!allowed.includes(status)) return { success: false, error: "Invalid attendance status." };
   const employee = await prisma.hrEmployee.findFirst({ where: { id: employeeId, storeId: a.store.id, status: { in: ["ACTIVE", "ON_LEAVE"] } } });
   if (!employee) return { success: false, error: "Employee not found." };
-  const workDate = startOfToday();
+  const workDate = workDateFor(new Date(), await storeTimeZone(a.store.id));
   const present = status !== "ABSENT" && status !== "ON_LEAVE";
   await prisma.hrAttendance.upsert({
     where: { employeeId_workDate: { employeeId, workDate } },
@@ -194,6 +201,7 @@ export async function createHrPayrollRun(
           payrollRunId: created.id, employeeId: e.id,
           basic: money(e.basicSalary), allowances: p.gross - money(e.basicSalary),
           deductions: p.deductions, gross: p.gross, net: p.net,
+          pension: p.pension, nhf: p.nhf, paye: p.paye,
           note: applyStatutory ? `Pension ${p.pension} | NHF ${p.nhf} | PAYE ${p.paye}` : "No statutory deductions applied",
         },
       });

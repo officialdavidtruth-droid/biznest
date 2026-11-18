@@ -928,6 +928,9 @@ model Store {
   hrAttendance HrAttendance[]
   hrLeaveRequests HrLeaveRequest[]
   hrPayrollRuns HrPayrollRun[]
+  hrSettings HrSettings?
+  hrBiometricDevices HrBiometricDevice[]
+  hrPunches HrPunch[]
   recruitJobs RecruitJob[]
   recruitCandidates RecruitCandidate[]
   recruitApplications RecruitApplication[]
@@ -4399,6 +4402,9 @@ model HrEmployee {
   transportAllowance Decimal          @db.Decimal(14,2) @default(0)
   otherAllowance  Decimal            @db.Decimal(14,2) @default(0)
   annualRent      Decimal            @db.Decimal(14,2) @default(0)
+  // The user ID this person was enrolled under on a fingerprint/face scanner (the "PIN" or
+  // "User ID" on the device). The biometric template itself never leaves the scanner.
+  deviceUserId    String?
   bankName        String?
   accountName     String?
   accountNumber   String?
@@ -4406,10 +4412,13 @@ model HrEmployee {
   attendance      HrAttendance[]
   leaveRequests   HrLeaveRequest[]
   payrollItems    HrPayrollItem[]
+  punches         HrPunch[]
+  webauthnCredentials HrWebAuthnCredential[]
   recruitApplications RecruitApplication[]
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   @@unique([storeId, employeeNo])
+  @@unique([storeId, deviceUserId])
   @@index([storeId, status])
   @@index([storeId, department])
 }
@@ -4424,6 +4433,9 @@ model HrAttendance {
   status      HrAttendanceStatus @default(PRESENT)
   checkIn    DateTime?
   checkOut   DateTime?
+  // How each end was captured: MANUAL, SELF (button), WEBAUTHN (phone biometrics), DEVICE (scanner), IMPORT.
+  checkInSource  String?
+  checkOutSource String?
   note       String?
   createdAt  DateTime            @default(now())
   updatedAt  DateTime            @updatedAt
@@ -4481,11 +4493,89 @@ model HrPayrollItem {
   deductions      Decimal       @db.Decimal(14,2) @default(0)
   gross           Decimal       @db.Decimal(14,2) @default(0)
   net             Decimal       @db.Decimal(14,2) @default(0)
+  pension         Decimal       @db.Decimal(14,2) @default(0)
+  nhf             Decimal       @db.Decimal(14,2) @default(0)
+  paye            Decimal       @db.Decimal(14,2) @default(0)
   note            String?
   @@unique([payrollRunId, employeeId])
   @@index([employeeId])
 }
 
+
+// Working hours used to decide LATE vs PRESENT when someone clocks in.
+model HrSettings {
+  id            String   @id @default(cuid())
+  storeId       String   @unique
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  shiftStart    String   @default("09:00")
+  graceMinutes  Int      @default(15)
+  // When true, staff can only clock themselves in/out with phone fingerprint/Face ID.
+  requireBiometric Boolean @default(false)
+  updatedAt     DateTime @updatedAt
+}
+
+// A fingerprint/face scanner registered to a store. serialNumber is what ZKTeco-style devices
+// send (SN=) when they push; apiKeyHash is for the bridge / generic punch API.
+model HrBiometricDevice {
+  id             String    @id @default(cuid())
+  storeId        String
+  store          Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name           String
+  serialNumber   String    @unique
+  apiKeyHash     String
+  // Minutes ahead of UTC that the device clock is set to (Lagos = 60). Devices send local time.
+  tzOffsetMinutes Int      @default(60)
+  lastSeenAt     DateTime?
+  lastPunchAt    DateTime?
+  createdAt      DateTime  @default(now())
+  punches        HrPunch[]
+  @@index([storeId])
+}
+
+// Every raw scan/clock event. employeeId is null when the scanner's user ID isn't mapped to anyone
+// yet; those are re-matched when an employee is given that deviceUserId.
+model HrPunch {
+  id           String             @id @default(cuid())
+  storeId      String
+  store        Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  deviceId     String?
+  device       HrBiometricDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  employeeId   String?
+  employee     HrEmployee?        @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  deviceUserId String?
+  punchedAt    DateTime
+  source       String
+  direction    String?
+  createdAt    DateTime           @default(now())
+  @@unique([storeId, deviceUserId, punchedAt])
+  @@index([storeId, punchedAt])
+  @@index([storeId, employeeId, punchedAt])
+}
+
+// Phone/laptop fingerprint or Face ID registrations (WebAuthn). Only the public key is stored.
+model HrWebAuthnCredential {
+  id           String     @id @default(cuid())
+  storeId      String
+  employeeId   String
+  employee     HrEmployee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  credentialId String     @unique
+  publicKey    String
+  counter      Int        @default(0)
+  transports   String?
+  label        String?
+  createdAt    DateTime   @default(now())
+  lastUsedAt   DateTime?
+  @@index([storeId, employeeId])
+}
+
+model HrWebAuthnChallenge {
+  id         String   @id @default(cuid())
+  employeeId String
+  challenge  String
+  purpose    String
+  expiresAt  DateTime
+  @@index([employeeId, purpose])
+}
 
 // Standalone BizNest Marketing website intelligence. This is additive to the
 // existing store CRM/catalog and is only used by the Marketing workspace.

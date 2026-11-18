@@ -3,7 +3,7 @@ import {
   CreditCard, BarChart3, Star, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
   LayoutTemplate, Globe, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
-  ClipboardList, Receipt, PlusCircle, Layers, Rows3, Puzzle, ListTree, Share2, Newspaper, Rss, Megaphone, Bell,
+  ClipboardList, Clock, Receipt, PlusCircle, Layers, Rows3, Puzzle, ListTree, Share2, Newspaper, Rss, Megaphone, Bell,
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -126,6 +126,9 @@ export function buildNavGroups(business: NavBusiness): Array<{
     { label: "Staff Management", href: "/staff", icon: Users, ownerOnly: true },
   ];
   const manageItems: NavItem[] = allManageItems.filter((item) => relevantToBusiness(item.href, business));
+  // Every member of a business that uses HR & Payroll can open their own clock-in and payslips,
+  // so this carries no permission (it only ever shows the signed-in person's own record).
+  if (business.installedApps?.some((app) => app.key === "hr-payroll")) manageItems.push({ label: "My work", href: "/my-work", icon: Clock });
 
   const allMoneyItems: NavItem[] = [
     { label: "Payments", href: "/payments", icon: CreditCard, permission: "payments" },

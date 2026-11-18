@@ -34,6 +34,8 @@
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.1",
     "@sentry/nextjs": "^11.9.0",
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/server": "^13.3.3",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.0",
     "cloudinary": "^2.4.0",
@@ -74,9 +76,9 @@
     "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",
     "eslint-config-next": "^15.5.24",
+    "playwright": "^1.49.0",
     "postcss": "^8.4.40",
     "tsx": "^4.16.5",
-    "playwright": "^1.49.0",
     "vitest": "^2.1.1"
   }
 }

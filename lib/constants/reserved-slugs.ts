@@ -15,6 +15,8 @@ export const RESERVED_SLUGS = new Set([
   // apex / platform hosts
   "www",
   "supaadmin",
+  // Fingerprint/face scanner push endpoint (app/iclock/**): devices call /iclock/cdata.
+  "iclock",
   // framework / infra
   "api",
   "_next",
