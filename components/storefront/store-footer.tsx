@@ -20,7 +20,7 @@ export function StoreFooter({ store, slug }: { store: NonNullable<StoreBranding>
   const quickLinks = [
     { href: `/${slug}`, label: "Home" },
     { href: `/${slug}/account`, label: "My Account" },
-    { href: `/${slug}/orders`, label: "My Orders" },
+    { href: `/${slug}/orders/track`, label: "Track Order" },
     { href: `/${slug}/cart`, label: "Cart" },
   ];
 

@@ -1,5 +1,5 @@
 import {redirect} from "next/navigation"; import {OrderConfirmation} from "@/components/storefront/order-confirmation"; import {resolveStorePalette} from "@/lib/store-palette";
-import {getOrderForBuyer} from "@/lib/actions/order"; import {notFound} from "next/navigation"; import {getGrandeurRestaurantData} from "@/lib/grandeur-restaurant"; import {GrandeurConfirmation} from "@/components/storefront/grandeur-restaurant"; import {prisma} from "@/lib/prisma";
+import {getOrderForBuyer} from "@/lib/actions/order"; import {notFound} from "next/navigation"; import {getGrandeurRestaurantData} from "@/lib/grandeur-restaurant"; import {GrandeurConfirmation} from "@/components/storefront/grandeur-restaurant"; import {prisma} from "@/lib/prisma"; import {isGuestCustomer} from "@/lib/actions/order-lookup"; import {GuestPasswordPrompt} from "@/components/storefront/guest-password-prompt";
 import {TrackPurchase} from "@/components/storefront/store-tracking";
 import {OrderStatusNotice, NOTICE_STATUSES} from "@/components/storefront/order-status-notice";
 
@@ -18,9 +18,10 @@ export default async function Page({params}:{params:Promise<{slug:string;orderId
   // waiting on the gateway, cancelled, refunded, disputed) gets an honest notice.
   if(NOTICE_STATUSES.includes(String(order.status)))return renderNotice(slug,order);
   const view=await renderConfirmation(slug,order);
+  const guest=COUNTED_STATUSES.has(String(order.status))&&await isGuestCustomer(slug);
   // One tracker for every confirmation skin (default, TasteHouse, Grandeur, Example).
   const items=(order.items??[]).map((i:any)=>({id:String(i.productId??i.serviceId??i.id),name:String(i.product?.name??i.service?.name??"Item"),price:Number(i.unitPrice),quantity:i.quantity}));
-  return <>{COUNTED_STATUSES.has(String(order.status))&&<TrackPurchase slug={slug} transactionId={order.id} currency={order.currency} value={Number(order.total||0)} items={items}/>}{COUNTED_STATUSES.has(String(order.status))&&<DigitalDownloads slug={slug} orderId={order.id} items={order.items??[]}/>}{view}</>;
+  return <>{COUNTED_STATUSES.has(String(order.status))&&<TrackPurchase slug={slug} transactionId={order.id} currency={order.currency} value={Number(order.total||0)} items={items}/>}{COUNTED_STATUSES.has(String(order.status))&&<DigitalDownloads slug={slug} orderId={order.id} items={order.items??[]}/>}{view}{guest&&<GuestPasswordPrompt slug={slug}/>}</>;
 }
 
 // Shared across every confirmation skin: paid digital items get a download link.

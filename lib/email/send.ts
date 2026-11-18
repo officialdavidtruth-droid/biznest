@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { orderTrackingUrl } from "@/lib/order-tracking";
 import { biznestPromoUrl, showBizNestBranding } from "@/lib/branding";
 import { logError } from "@/lib/observability/log";
 import { APP_URL } from "@/lib/constants/app-url";
@@ -608,7 +609,8 @@ export async function sendOrderConfirmationEmail(
   }
 ) {
   const fmt = (n: number) => `${order.currency} ${formatNumber(n)}`;
-  const orderUrl = `${APP_URL}/orders/${order.id}`;
+  // Sign-in-free tracking link: works for guests and on any device.
+  const orderUrl = orderTrackingUrl(APP_URL, order.storeSlug, order.id);
 
   const itemRows = order.items
     .map(
@@ -677,7 +679,7 @@ export async function sendOrderConfirmationEmail(
         <tr>
           <td align="center" style="border-radius:8px;background-color:${buttonColor};">
             <a href="${orderUrl}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
-              View your order
+              Track your order
             </a>
           </td>
         </tr>
