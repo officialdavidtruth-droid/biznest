@@ -5,7 +5,7 @@ import { listProductsPage, getProductStats, type ProductListQuery } from "@/lib/
 import { ProductsTable } from "@/components/dashboard/products-table";
 import { BulkCsvPanel } from "@/components/dashboard/bulk-csv-panel";
 import { getBusinessTerminology } from "@/lib/business-terminology";
-import { Package, Layers3, CheckCircle2, CircleAlert, Plus, Upload, SlidersHorizontal } from "lucide-react";
+import { Package, Layers3, CheckCircle2, CircleAlert, Plus, Upload, ExternalLink, ChevronRight, Boxes } from "lucide-react";
 
 function one(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v;
@@ -38,35 +38,48 @@ export default async function ProductsListPage({ params, searchParams }: { param
   const categoryCounts = categories.map((c) => ({ ...c, count: stats?.byCategory[c.id] ?? 0 }));
   const genericCategory = terminology.category;
 
+  const outlineBtn = "inline-flex items-center gap-2 rounded-xl border bg-background px-4 py-2.5 text-sm font-semibold shadow-sm transition hover:-translate-y-px hover:bg-muted/60 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--bn-admin-orange)_45%,transparent)]";
+  const categoriesLabel = plural(genericCategory);
+  const filtering = Boolean(query.q || query.categoryId || query.status || query.availability);
+
   return (
-    <div className="bn-admin-page space-y-5">
+    <div className="bn-admin-page space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{terminology.catalogPageTitle}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage your {terminology.catalog.toLowerCase()}, categories and pricing</p>
+        <div className="flex items-center gap-3.5">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[var(--bn-admin-orange)] text-white shadow-md shadow-[color-mix(in_srgb,var(--bn-admin-orange)_30%,transparent)]">
+            <Package className="h-6 w-6" />
+          </span>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">{terminology.catalogPageTitle}</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">Manage your {terminology.catalog.toLowerCase()}, {categoriesLabel.toLowerCase()} and pricing</p>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/store/${slug}`} target="_blank" className="bn-admin-action rounded-lg border bg-background px-4 py-2.5 text-sm font-semibold">View Store ↗</Link>
-          <Link href={`/store/${slug}/admin/products?import=1#bulk-import`} className="bn-admin-action rounded-lg border bg-background px-4 py-2.5 text-sm font-semibold"><Upload className="mr-2 inline h-4 w-4" />Import {terminology.catalog}</Link>
-          <Link href={`/store/${slug}/admin/products/new`} className="bn-admin-action rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><Plus className="mr-2 inline h-4 w-4" />Add {terminology.catalogSingular}</Link>
+          <Link href={`/store/${slug}`} target="_blank" className={outlineBtn}><ExternalLink className="h-4 w-4" />View store</Link>
+          <Link href={`/store/${slug}/admin/products?import=1#bulk-import`} className={outlineBtn}><Upload className="h-4 w-4" />Import {terminology.catalog.toLowerCase()}</Link>
+          <Link href={`/store/${slug}/admin/products/new`} className="inline-flex items-center gap-2 rounded-xl bg-[var(--bn-admin-orange)] px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-[color-mix(in_srgb,var(--bn-admin-orange)_30%,transparent)] transition hover:-translate-y-px hover:bg-[var(--bn-admin-orange-dark)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--bn-admin-orange)_45%,transparent)]"><Plus className="h-4 w-4" />Add {terminology.catalogSingular.toLowerCase()}</Link>
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Stat icon={Package} tone="purple" label={`Total ${terminology.catalog}`} value={totalCount} note="Across all categories" />
-        <Stat icon={Layers3} tone="orange" label={genericCategory + "s"} value={categories.length} note={`Active ${genericCategory.toLowerCase()}s`} />
-        <Stat icon={CheckCircle2} tone="green" label={`Active ${terminology.catalog}`} value={activeCount} note="Published and visible" />
-        <Stat icon={CircleAlert} tone="red" label="Out of Stock" value={outOfStock} note="Currently unavailable" />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <Stat href={`/store/${slug}/admin/products`} icon={Package} tone="green" label={`Total ${terminology.catalog.toLowerCase()}`} value={totalCount} note="Across all categories" />
+        <Stat href={`/store/${slug}/admin/categories`} icon={Layers3} tone="blue" label={categoriesLabel} value={categories.length} note={`Active ${categoriesLabel.toLowerCase()}`} />
+        <Stat href={`/store/${slug}/admin/products?status=published`} icon={CheckCircle2} tone="teal" label={`Active ${terminology.catalog.toLowerCase()}`} value={activeCount} note="Published and visible" />
+        <Stat href={`/store/${slug}/admin/products?avail=out`} icon={CircleAlert} tone={outOfStock > 0 ? "red" : "muted"} label="Out of stock" value={outOfStock} note={outOfStock > 0 ? "Tap to see them" : "Nothing is sold out"} />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_310px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
         <div className="min-w-0">
-          <section className="rounded-xl border bg-background p-5 shadow-sm">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div><h2 className="text-base font-bold">{terminology.catalog}</h2><p className="mt-1 text-xs text-muted-foreground">Manage your {terminology.catalog.toLowerCase()} and their availability</p></div>
-              <button className="rounded-lg border bg-background p-2.5 text-muted-foreground"><SlidersHorizontal className="h-4 w-4" /></button>
+          <section className="rounded-2xl border bg-background p-5 shadow-sm">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold">{terminology.catalog}</h2>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  {filtering ? `${list.total} ${list.total === 1 ? "match" : "matches"} for your filters` : `Manage your ${terminology.catalog.toLowerCase()} and their availability`}
+                </p>
+              </div>
+              <div id="bulk-import" className="scroll-mt-24"><BulkCsvPanel storeSlug={slug} /></div>
             </div>
-            <div id="bulk-import" className="mb-4 scroll-mt-24"><BulkCsvPanel storeSlug={slug} /></div>
             <ProductsTable
               storeSlug={slug}
               products={products.map((p) => ({
@@ -87,26 +100,35 @@ export default async function ProductsListPage({ params, searchParams }: { param
               terminology={terminology}
               query={{ q: query.q ?? "", categoryId: query.categoryId ?? "", status: query.status ?? "", availability: query.availability ?? "" }}
               pagination={{ page: list.page, size: list.size, total: list.total, totalPages: list.totalPages }}
+              addHref={`/store/${slug}/admin/products/new`}
             />
           </section>
         </div>
 
-        <aside className="space-y-5">
-          <section className="rounded-xl border bg-background p-5 shadow-sm">
-            <div className="mb-3"><h2 className="text-base font-bold">{terminology.catalog} Categories</h2><p className="mt-1 text-xs text-muted-foreground">Manage your {genericCategory.toLowerCase()}s</p></div>
-            <div className="divide-y divide-border">
-              <CategoryRow name={`All ${terminology.catalog}`} count={totalCount} />
-              {categoryCounts.slice(0, 8).map((c) => <CategoryRow key={c.id} name={c.name} count={c.count} />)}
+        <aside className="space-y-6 xl:sticky xl:top-4">
+          <section className="rounded-2xl border bg-background p-5 shadow-sm">
+            <div className="mb-3">
+              <h2 className="text-lg font-bold">{terminology.catalog} {categoriesLabel.toLowerCase()}</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">Tap one to filter the list</p>
             </div>
-            <Link href={`/store/${slug}/admin/categories`} className="mt-4 block rounded-lg border px-3 py-2.5 text-center text-xs font-semibold hover:bg-[var(--bn-admin-surface)]">＋ Add {genericCategory}</Link>
+            <nav className="space-y-0.5" aria-label={`${terminology.catalog} ${categoriesLabel.toLowerCase()}`}>
+              <CategoryRow href={`/store/${slug}/admin/products`} name={`All ${terminology.catalog.toLowerCase()}`} count={totalCount} active={!query.categoryId} />
+              {categoryCounts.slice(0, 8).map((c) => (
+                <CategoryRow key={c.id} href={`/store/${slug}/admin/products?category=${c.id}`} name={c.name} count={c.count} active={query.categoryId === c.id} />
+              ))}
+            </nav>
+            {categoryCounts.length > 8 && (
+              <Link href={`/store/${slug}/admin/categories`} className="mt-1 block px-3 py-2 text-xs font-semibold text-[var(--bn-admin-orange)] hover:underline">See all {categoryCounts.length} {categoriesLabel.toLowerCase()}</Link>
+            )}
+            <Link href={`/store/${slug}/admin/categories`} className={`${outlineBtn} mt-4 w-full justify-center`}><Plus className="h-4 w-4" />Add {genericCategory.toLowerCase()}</Link>
           </section>
-          <section className="rounded-xl border bg-background p-5 shadow-sm">
-            <h2 className="text-base font-bold">Quick Actions</h2>
+          <section className="rounded-2xl border bg-background p-5 shadow-sm">
+            <h2 className="text-lg font-bold">Quick actions</h2>
             <div className="mt-3 space-y-1">
-              <Quick href={`/store/${slug}/admin/products/new`} icon={Plus} title={`Add New ${terminology.catalogSingular}`} note={`Create a new ${terminology.catalogSingular.toLowerCase()}`} />
-              <Quick href={`/store/${slug}/admin/products?import=1#bulk-import`} icon={Upload} title={`Bulk Upload ${terminology.catalog}`} note="Import multiple items at once" />
-              <Quick href={`/store/${slug}/admin/categories`} icon={Layers3} title={`Manage ${genericCategory}s`} note={`Organize your ${terminology.catalog.toLowerCase()}`} />
-              <Quick href={`/store/${slug}/admin/inventory`} icon={Package} title="Manage Inventory" note="Stock levels and availability" />
+              <Quick href={`/store/${slug}/admin/products/new`} icon={Plus} title={`Add new ${terminology.catalogSingular.toLowerCase()}`} note={`Create a new ${terminology.catalogSingular.toLowerCase()}`} />
+              <Quick href={`/store/${slug}/admin/products?import=1#bulk-import`} icon={Upload} title={`Bulk upload ${terminology.catalog.toLowerCase()}`} note="Import many items from a CSV file" />
+              <Quick href={`/store/${slug}/admin/categories`} icon={Layers3} title={`Manage ${categoriesLabel.toLowerCase()}`} note={`Organize your ${terminology.catalog.toLowerCase()}`} />
+              <Quick href={`/store/${slug}/admin/inventory`} icon={Boxes} title="Manage inventory" note="Stock levels and availability" />
             </div>
           </section>
         </aside>
@@ -115,8 +137,45 @@ export default async function ProductsListPage({ params, searchParams }: { param
   );
 }
 
-function Stat({ icon: Icon, tone, label, value, note }: { icon: typeof Package; tone: string; label: string; value: number; note: string }) {
-  return <div className="rounded-xl border bg-background p-5 shadow-sm"><div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${tone === "purple" ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : tone === "orange" ? "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]" : tone === "green" ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : "bg-[var(--bn-admin-danger-soft)] text-[var(--bn-admin-danger)]"}`}><Icon className="h-5 w-5" /></div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p><p className="mt-1 text-[11px] text-muted-foreground">{note}</p></div>;
+/** "Category" -> "Categories", "Collection" -> "Collections". */
+function plural(word: string): string {
+  return /[^aeiou]y$/i.test(word) ? `${word.slice(0, -1)}ies` : /(s|x|ch|sh)$/i.test(word) ? `${word}es` : `${word}s`;
 }
-function CategoryRow({ name, count }: { name: string; count: number }) { return <div className="flex items-center justify-between py-3 text-xs"><span className="font-medium">{name}</span><span className="rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground">{count}</span></div>; }
-function Quick({ href, icon: Icon, title, note }: { href: string; icon: typeof Plus; title: string; note: string }) { return <Link href={href} className="flex items-center gap-3 rounded-lg p-2.5 hover:bg-[var(--bn-admin-surface)]"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]"><Icon className="h-4 w-4" /></span><span className="min-w-0"><b className="block text-xs">{title}</b><small className="text-[10px] text-muted-foreground">{note}</small></span></Link>; }
+
+const TONES: Record<string, string> = {
+  green: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]",
+  blue: "bg-sky-50 text-sky-700",
+  teal: "bg-emerald-50 text-emerald-700",
+  red: "bg-red-50 text-red-600",
+  muted: "bg-muted text-muted-foreground",
+};
+
+function Stat({ href, icon: Icon, tone, label, value, note }: { href: string; icon: typeof Package; tone: string; label: string; value: number; note: string }) {
+  return (
+    <Link href={href} className="group flex items-center gap-4 rounded-2xl border bg-background p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--bn-admin-orange)_40%,transparent)] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--bn-admin-orange)_45%,transparent)] sm:p-5">
+      <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${TONES[tone] ?? TONES.muted}`}><Icon className="h-6 w-6" /></span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm text-muted-foreground">{label}</span>
+        <span className="block text-3xl font-extrabold leading-tight tabular-nums">{value}</span>
+        <span className="block truncate text-xs text-muted-foreground">{note}</span>
+      </span>
+    </Link>
+  );
+}
+function CategoryRow({ href, name, count, active }: { href: string; name: string; count: number; active: boolean }) {
+  return (
+    <Link href={href} aria-current={active ? "page" : undefined} className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${active ? "bg-[var(--bn-admin-orange-soft)] font-semibold text-[var(--bn-admin-orange)]" : "hover:bg-muted/60"}`}>
+      <span className="truncate">{name}</span>
+      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums ${active ? "bg-background text-[var(--bn-admin-orange)]" : "bg-muted text-muted-foreground"}`}>{count}</span>
+    </Link>
+  );
+}
+function Quick({ href, icon: Icon, title, note }: { href: string; icon: typeof Plus; title: string; note: string }) {
+  return (
+    <Link href={href} className="group flex items-center gap-3 rounded-xl p-2.5 transition-colors hover:bg-muted/60">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]"><Icon className="h-[18px] w-[18px]" /></span>
+      <span className="min-w-0 flex-1"><b className="block text-sm">{title}</b><small className="text-xs text-muted-foreground">{note}</small></span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5" />
+    </Link>
+  );
+}

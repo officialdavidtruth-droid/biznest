@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, PackageOpen, Plus, RotateCcw, Search, Tag } from "lucide-react";
 import { ProductRowActions } from "@/components/dashboard/product-row-actions";
 import { bulkUpdateProducts } from "@/lib/actions/bulk";
 import { deleteProduct } from "@/lib/actions/product";
@@ -36,6 +36,7 @@ export function ProductsTable({
   terminology,
   query,
   pagination,
+  addHref,
 }: {
   storeSlug: string;
   products: ProductRow[];
@@ -44,6 +45,7 @@ export function ProductsTable({
   /** Current server-side filters (from the URL). */
   query: { q: string; categoryId: string; status: string; availability: string };
   pagination: { page: number; size: number; total: number; totalPages: number };
+  addHref?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -160,97 +162,87 @@ export function ProductsTable({
   }
 
   const selectedLabel = `${visibleSelected.length} selected`;
+  const filtering = Boolean(query.q || query.categoryId || query.status || query.availability);
+  const field = "h-10 rounded-xl border bg-background px-3 text-sm shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--bn-admin-orange)_45%,transparent)]";
+  const tabs: { label: string; value: string }[] = [
+    { label: "All", value: "" },
+    { label: "Active", value: "published" },
+    { label: "Inactive", value: "draft" },
+    { label: "Archived", value: "archived" },
+  ];
 
   return (
     <div>
+      <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Status">
+        {tabs.map((t) => {
+          const on = query.status === t.value;
+          return (
+            <button
+              key={t.value || "all"}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              onClick={() => go({ status: t.value })}
+              className={`shrink-0 rounded-lg px-4 py-1.5 text-sm font-semibold transition ${on ? "bg-background text-[var(--bn-admin-orange)] shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative min-w-[220px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder={`Search ${terminology.catalog.toLowerCase()} (press Enter)...`}
+            placeholder={`Search ${terminology.catalog.toLowerCase()} (press Enter)`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") go({ q: search.trim() }); }}
-            className="w-full rounded-lg border bg-background py-2.5 pl-9 pr-3 text-sm"
+            className={`${field} w-full pl-10 pr-3`}
           />
         </div>
-        <select
-          value={query.categoryId}
-          onChange={(e) => go({ category: e.target.value })}
-          className="rounded-lg border bg-background px-3 py-2.5 text-sm"
-        >
-          <option value="">All Categories</option>
+        <select value={query.categoryId} onChange={(e) => go({ category: e.target.value })} className={field}>
+          <option value="">All categories</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
-        <select
-          value={query.status}
-          onChange={(e) => go({ status: e.target.value })}
-          className="rounded-lg border bg-background px-3 py-2.5 text-sm"
-        >
-          <option value="">All Status</option>
-          <option value="published">Active</option>
-          <option value="archived">Archived</option>
-          <option value="draft">Inactive</option>
-        </select>
-        <select
-          value={query.availability}
-          onChange={(e) => go({ avail: e.target.value })}
-          className="rounded-lg border bg-background px-3 py-2.5 text-sm"
-        >
-          <option value="">All Availability</option>
+        <select value={query.availability} onChange={(e) => go({ avail: e.target.value })} className={field}>
+          <option value="">All availability</option>
           <option value="available">Available</option>
-          <option value="low">Low Stock</option>
-          <option value="out">Out of Stock</option>
+          <option value="low">Low stock</option>
+          <option value="out">Out of stock</option>
         </select>
-        <button
-          type="button"
-          onClick={() => { setSearch(""); router.push(pathname); }}
-          className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-[var(--bn-admin-surface)]"
-        >
-          <SlidersHorizontal className="h-4 w-4" /> Filter
-        </button>
+        {filtering && (
+          <button
+            type="button"
+            onClick={() => { setSearch(""); router.push(pathname); }}
+            className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-[var(--bn-admin-orange)] transition hover:bg-[var(--bn-admin-orange-soft)]"
+          >
+            <RotateCcw className="h-4 w-4" /> Reset
+          </button>
+        )}
       </div>
 
       {visibleSelected.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border bg-muted/30 p-3">
-          <span className="text-xs font-medium text-muted-foreground">{selectedLabel}</span>
+        <div className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-orange)_30%,transparent)] bg-[var(--bn-admin-orange-soft)] p-4">
+          <span className="self-center rounded-full bg-[var(--bn-admin-orange)] px-3 py-1 text-xs font-bold text-white">{selectedLabel}</span>
 
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs font-medium">
             Price
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="Unchanged"
-              value={priceInput}
-              onChange={(e) => setPriceInput(e.target.value)}
-              className="w-28 rounded-md border px-2 py-1 text-sm"
-            />
+            <input type="number" min="0" step="0.01" placeholder="Unchanged" value={priceInput} onChange={(e) => setPriceInput(e.target.value)} className="h-9 w-28 rounded-lg border bg-background px-2 text-sm" />
           </label>
 
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs font-medium">
             Stock
-            <input
-              type="number"
-              min="0"
-              step="1"
-              placeholder="Unchanged"
-              value={quantityInput}
-              onChange={(e) => setQuantityInput(e.target.value)}
-              className="w-24 rounded-md border px-2 py-1 text-sm"
-            />
+            <input type="number" min="0" step="1" placeholder="Unchanged" value={quantityInput} onChange={(e) => setQuantityInput(e.target.value)} className="h-9 w-24 rounded-lg border bg-background px-2 text-sm" />
           </label>
 
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs font-medium">
             Category
-            <select
-              value={categoryInput}
-              onChange={(e) => setCategoryInput(e.target.value)}
-              className="w-40 rounded-md border px-2 py-1 text-sm"
-            >
+            <select value={categoryInput} onChange={(e) => setCategoryInput(e.target.value)} className="h-9 w-40 rounded-lg border bg-background px-2 text-sm">
               <option value="">Unchanged</option>
               <option value="__none__">No category</option>
               {categories.map((c) => (
@@ -259,13 +251,9 @@ export function ProductsTable({
             </select>
           </label>
 
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs font-medium">
             Status
-            <select
-              value={publishInput}
-              onChange={(e) => setPublishInput(e.target.value as typeof publishInput)}
-              className="w-32 rounded-md border px-2 py-1 text-sm"
-            >
+            <select value={publishInput} onChange={(e) => setPublishInput(e.target.value as typeof publishInput)} className="h-9 w-32 rounded-lg border bg-background px-2 text-sm">
               <option value="">Unchanged</option>
               <option value="publish">Published</option>
               <option value="unpublish">Draft</option>
@@ -275,82 +263,81 @@ export function ProductsTable({
           <button
             onClick={applyBulkEdit}
             disabled={isSaving || !hasChanges}
-            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            className="h-9 rounded-lg bg-[var(--bn-admin-orange)] px-4 text-sm font-bold text-white transition hover:bg-[var(--bn-admin-orange-dark)] disabled:opacity-50"
           >
             {isSaving ? "Applying…" : "Apply to selected"}
           </button>
           <button
             onClick={bulkDelete}
             disabled={isSaving}
-            className="rounded-md border border-destructive/40 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/5 disabled:opacity-50"
+            className="h-9 rounded-lg border border-destructive/40 bg-background px-4 text-sm font-semibold text-destructive transition hover:bg-destructive/5 disabled:opacity-50"
           >
             Delete selected
           </button>
-          <button onClick={() => setSelected(new Set())} className="text-xs text-muted-foreground hover:underline">
+          <button onClick={() => setSelected(new Set())} className="h-9 px-2 text-sm font-medium text-muted-foreground hover:underline">
             Clear
           </button>
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border bg-background">
-        <table className="min-w-[640px] w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+      <div className="overflow-x-auto rounded-2xl border bg-background">
+        <table className="w-full min-w-[720px] text-sm">
+          <thead className="border-b bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
             <tr>
-              <th className="w-10 px-4 py-2">
-                <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+              <th className="w-10 px-4 py-3">
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all on this page" className="h-4 w-4 accent-[var(--bn-admin-orange)]" />
               </th>
-              <th className="px-4 py-2">{terminology.catalogSingular}</th>
-              <th className="px-4 py-2">Category</th>
-              <th className="px-4 py-2">Price</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2">Availability</th>
-              <th className="px-4 py-2">Orders</th>
-              <th className="sticky right-0 bg-muted px-4 py-2"></th>
+              <th className="px-3 py-3">{terminology.catalogSingular}</th>
+              <th className="px-3 py-3">Price</th>
+              <th className="px-3 py-3">Status</th>
+              <th className="px-3 py-3">Availability</th>
+              <th className="px-3 py-3 text-right">Orders</th>
+              <th className="sticky right-0 bg-muted px-4 py-3"></th>
             </tr>
           </thead>
           <tbody>
             {paged.map((p) => {
               const availability = availabilityOf(p);
+              const live = p.isPublished && !p.archived;
+              const isSel = selected.has(p.id);
               return (
-                <tr key={p.id} className="border-b last:border-0">
+                <tr key={p.id} className={`group border-b transition-colors last:border-0 ${isSel ? "bg-[var(--bn-admin-orange-soft)]" : "hover:bg-muted/30"}`}>
                   <td className="px-4 py-3">
-                    <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} />
+                    <input type="checkbox" checked={isSel} onChange={() => toggleOne(p.id)} aria-label={`Select ${p.name}`} className="h-4 w-4 accent-[var(--bn-admin-orange)]" />
                   </td>
-                  <td className="flex items-center gap-3 px-4 py-3">
-                    {p.images[0] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.images[0]} alt="" className="h-9 w-9 rounded object-cover" />
-                    ) : (
-                      <div className="h-9 w-9 rounded bg-muted" />
-                    )}
-                    <span className="font-medium">{p.name}</span>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-3.5">
+                      {p.images[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.images[0]} alt="" className="h-12 w-12 shrink-0 rounded-xl border object-cover" />
+                      ) : (
+                        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground"><PackageOpen className="h-5 w-5" /></div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{p.name}</p>
+                        <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-foreground"><Tag className="h-3 w-3" />{p.category?.name ?? "No category"}</p>
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{p.category?.name ?? "—"}</td>
-                  <td className="px-4 py-3">{p.currency} {formatNumber(Number(p.price))}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs ${
-                        p.isPublished && !p.archived ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : "bg-muted text-muted-foreground"
-                      }`}
-                    >
+                  <td className="whitespace-nowrap px-3 py-3 font-bold tabular-nums">{p.currency} {formatNumber(Number(p.price))}</td>
+                  <td className="px-3 py-3">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${live ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${live ? "bg-emerald-500" : "bg-muted-foreground/50"}`} />
                       {p.archived ? "Archived" : p.isPublished ? "Active" : "Inactive"}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-xs ${
-                        availability === "out"
-                          ? "bg-[var(--bn-admin-danger-soft)] text-[var(--bn-admin-danger)]"
-                          : availability === "low"
-                            ? "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]"
-                            : "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]"
+                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        availability === "out" ? "bg-red-50 text-red-600" : availability === "low" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
                       }`}
                     >
-                      {availability === "out" ? "Out of Stock" : availability === "low" ? "Low Stock" : "Available"}
+                      {availability === "out" ? "Out of stock" : availability === "low" ? "Low stock" : "Available"}
+                      {p.inventory && availability !== "out" ? ` · ${formatNumber(p.inventory.quantity)}` : ""}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{p.orders}</td>
-                  <td className="sticky right-0 bg-background px-4 py-3 text-right shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]">
+                  <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">{p.orders}</td>
+                  <td className={`sticky right-0 px-4 py-3 text-right shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] ${isSel ? "bg-[var(--bn-admin-orange-soft)]" : "bg-background group-hover:bg-muted/30"}`}>
                     <ProductRowActions storeSlug={storeSlug} productId={p.id} productName={p.name} isPublished={p.isPublished} archived={p.archived} />
                   </td>
                 </tr>
@@ -358,10 +345,22 @@ export function ProductsTable({
             })}
             {paged.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
-                  {pagination.total === 0 && !query.q && !query.categoryId && !query.status && !query.availability
-                    ? `No ${terminology.catalog.toLowerCase()} yet. Add your first one to get your storefront started.`
-                    : `No ${terminology.catalog.toLowerCase()} match your filters.`}
+                <td colSpan={7} className="px-4 py-14 text-center">
+                  <span className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]"><PackageOpen className="h-7 w-7" /></span>
+                  {filtering ? (
+                    <>
+                      <p className="font-semibold">No {terminology.catalog.toLowerCase()} match your filters</p>
+                      <button type="button" onClick={() => { setSearch(""); router.push(pathname); }} className="mt-3 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-muted/60"><RotateCcw className="h-4 w-4" />Clear filters</button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold">No {terminology.catalog.toLowerCase()} yet</p>
+                      <p className="mt-1 text-sm text-muted-foreground">Add your first {terminology.catalogSingular.toLowerCase()} to get your storefront started.</p>
+                      {addHref && (
+                        <Link href={addHref} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[var(--bn-admin-orange)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--bn-admin-orange-dark)]"><Plus className="h-4 w-4" />Add {terminology.catalogSingular.toLowerCase()}</Link>
+                      )}
+                    </>
+                  )}
                 </td>
               </tr>
             )}
@@ -369,17 +368,12 @@ export function ProductsTable({
         </table>
 
         {pagination.total > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-background px-4 py-3 text-xs text-muted-foreground">
-            <span>Showing {rangeStart} to {rangeEnd} of {pagination.total} items</span>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-background px-4 py-3 text-sm text-muted-foreground">
+            <span>Showing {rangeStart}–{rangeEnd} of {pagination.total}</span>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  disabled={currentPage <= 1}
-                  onClick={() => go({ page: Math.max(1, currentPage - 1) })}
-                  className="rounded-md border px-2 py-1 disabled:opacity-40"
-                >
-                  ‹
+                <button type="button" aria-label="Previous page" disabled={currentPage <= 1} onClick={() => go({ page: Math.max(1, currentPage - 1) })} className="grid h-8 w-8 place-items-center rounded-lg border transition hover:bg-muted/60 disabled:opacity-40">
+                  <ChevronLeft className="h-4 w-4" />
                 </button>
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter((n) => n === 1 || n === totalPages || Math.abs(n - currentPage) <= 1)
@@ -395,27 +389,19 @@ export function ProductsTable({
                       <button
                         key={n}
                         type="button"
+                        aria-current={n === currentPage ? "page" : undefined}
                         onClick={() => go({ page: n })}
-                        className={`rounded-md border px-2.5 py-1 ${n === currentPage ? "border-primary bg-primary/10 font-semibold text-primary" : ""}`}
+                        className={`h-8 min-w-8 rounded-lg border px-2 text-sm transition ${n === currentPage ? "border-[var(--bn-admin-orange)] bg-[var(--bn-admin-orange)] font-bold text-white" : "hover:bg-muted/60"}`}
                       >
                         {n}
                       </button>
                     )
                   )}
-                <button
-                  type="button"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => go({ page: Math.min(totalPages, currentPage + 1) })}
-                  className="rounded-md border px-2 py-1 disabled:opacity-40"
-                >
-                  ›
+                <button type="button" aria-label="Next page" disabled={currentPage >= totalPages} onClick={() => go({ page: Math.min(totalPages, currentPage + 1) })} className="grid h-8 w-8 place-items-center rounded-lg border transition hover:bg-muted/60 disabled:opacity-40">
+                  <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
-              <select
-                value={pageSize}
-                onChange={(e) => go({ size: Number(e.target.value) })}
-                className="rounded-md border px-2 py-1"
-              >
+              <select value={pageSize} onChange={(e) => go({ size: Number(e.target.value) })} className="h-8 rounded-lg border bg-background px-2 text-sm">
                 {PAGE_SIZE_OPTIONS.map((n) => (
                   <option key={n} value={n}>{n} per page</option>
                 ))}

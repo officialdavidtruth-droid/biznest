@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { exportProductsCsv, importProductsCsv, type ImportSummary } from "@/lib/actions/bulk";
 import { toast } from "sonner";
+import { Download, Upload } from "lucide-react";
 
 export function BulkCsvPanel({ storeSlug }: { storeSlug: string }) {
   const router = useRouter();
@@ -59,28 +60,28 @@ export function BulkCsvPanel({ storeSlug }: { storeSlug: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col items-end gap-3">
       <div className="flex items-center gap-2">
         <button
           onClick={handleExport}
           disabled={isExporting}
-          className="rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl border bg-background px-3.5 py-2 text-sm font-semibold shadow-sm transition hover:bg-muted/60 disabled:opacity-50"
         >
-          {isExporting ? "Exporting…" : "Export CSV"}
+          <Download className="h-4 w-4" />{isExporting ? "Exporting…" : "Export CSV"}
         </button>
 
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={isImporting}
-          className="rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl border bg-background px-3.5 py-2 text-sm font-semibold shadow-sm transition hover:bg-muted/60 disabled:opacity-50"
         >
-          {isImporting ? "Importing…" : "Import CSV"}
+          <Upload className="h-4 w-4" />{isImporting ? "Importing…" : "Import CSV"}
         </button>
         <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFileChosen} />
       </div>
 
       {summary && (
-        <div className="rounded-md border bg-muted/30 p-3 text-xs">
+        <div className="w-full rounded-xl border bg-muted/30 p-3 text-xs">
           <div className="mb-2 font-medium">
             {summary.created} created · {summary.updated} updated · {summary.errors} errors
           </div>
