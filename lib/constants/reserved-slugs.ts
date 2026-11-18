@@ -106,6 +106,7 @@ export const RESERVED_SLUGS = new Set([
   "checkout",
   "cart",
   "pricing",
+  "domain-not-connected",
   "about",
   "help",
   "support",

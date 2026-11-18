@@ -54,6 +54,9 @@ const PLATFORM_ADMIN_PATTERN = /^\/admin/;
 const AUTH_PATHS = ["/login", "/register", "/join", "/forgot-password", "/reset-password"];
 
 const ROOT_DOMAIN = "biznest.space";
+// Domain lookups always go to the platform host. Calling the vendor's own domain back from the edge is
+// unreliable (it can fail while the domain is still settling) and used to fall through to BizNest's own homepage.
+const RESOLVER_ORIGIN = `https://www.${ROOT_DOMAIN}`;
 const SUPAADMIN_HOST = `supaadmin.${ROOT_DOMAIN}`;
 
 // Hosts that are BizNest itself, not a vendor's custom domain.
@@ -123,7 +126,7 @@ async function resolveCustomDomain(host: string, origin: string): Promise<string
   }
 
   try {
-    const res = await fetch(new URL(`/api/resolve-domain?host=${host}`, origin));
+    const res = await fetch(new URL(`/api/resolve-domain?host=${encodeURIComponent(host)}`, process.env.NODE_ENV === "production" ? RESOLVER_ORIGIN : origin), { cache: "no-store" });
     if (!res.ok) {
       // Don't cache failures — a transient resolver error shouldn't lock a
       // legitimate custom domain out for the full TTL.
@@ -165,6 +168,11 @@ export default auth(async (req) => {
   // keeps working too, unchanged, for anyone with it bookmarked.
   if (host === SUPAADMIN_HOST && rawPathname === "/") {
     return NextResponse.redirect(new URL("/supaadmin", req.nextUrl.origin));
+  }
+
+  // A vendor's own domain serves their storefront and nothing else: never BizNest's admin panel.
+  if (!isPlatformHost(host) && (rawPathname === "/supaadmin" || rawPathname.startsWith("/supaadmin/"))) {
+    return NextResponse.rewrite(new URL("/domain-not-connected", req.nextUrl.origin));
   }
 
   // /supaadmin is gated entirely separately from everything else on this
@@ -223,6 +231,10 @@ export default auth(async (req) => {
     // one store — the whole path belongs to it, unlike the platform host
     // above where only the first segment is the slug.
     slug = await resolveCustomDomain(host, req.nextUrl.origin);
+    if (!slug) {
+      // Unknown or not-yet-resolvable domain: say so, instead of showing BizNest's own homepage on someone else's domain.
+      return NextResponse.rewrite(new URL("/domain-not-connected", req.nextUrl.origin));
+    }
     if (slug) {
       // Browsers (and Safari, bookmarks, search results) request /favicon.ico implicitly,
       // ignoring <link rel="icon">. Serve the store's own logo as that icon.
