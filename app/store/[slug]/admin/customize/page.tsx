@@ -1,3 +1,4 @@
+import { readTextOverrides } from "@/lib/storefront/text-overrides";
 import { ownerPageIntro } from "@/lib/storefront/page-intro";
 import { ownerPageBody } from "@/lib/storefront/page-registry";
 import { ownerPageBlocks } from "@/lib/storefront/page-blocks";
@@ -67,6 +68,7 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
       templateHasOwnHomepage={resolveHomeRenderer(store.template?.name, { businessCategory: store.business?.category, storeBusinessType: store.businessType }).kind !== "builder"}
       homeKind={resolveHomeRenderer(store.template?.name, { businessCategory: store.business?.category, storeBusinessType: store.businessType }).kind}
       builderPublished={!!getSavedBuilder(store.sectionOverrides)}
+      textOverrides={readTextOverrides(store.storefrontConfig)}
       catalogOptions={catalogOptions}
       systemSections={readAllSystemSections(store.sectionOverrides)}
       systemSupport={systemPageSupport({ templateName: store.template?.name, businessCategory: store.business?.category })}

@@ -16,6 +16,8 @@ import { WhatsAppChatButton } from "@/components/storefront/whatsapp-chat-button
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { NO_INDEX } from "@/lib/seo";
 import { isStoreLocked } from "@/lib/billing/store-lock";
+import { StoreTextOverrides } from "@/components/storefront/store-text-overrides";
+import { readTextOverrides } from "@/lib/storefront/text-overrides";
 import { PoweredByBizNest } from "@/components/storefront/powered-by-biznest";
 import { showBizNestBranding } from "@/lib/branding";
 import { InstallStoreApp } from "@/components/storefront/install-store-app";
@@ -274,6 +276,7 @@ export default async function StoreLayout({
       )}
       {pushEligible && <OrderPushPrompt slug={slug} base={pwaBase} />}
       {chatHref && exists && <WhatsAppChatButton href={chatHref} storeName={exists.name} />}
+      {!isAdminRoute && !!exists && <StoreTextOverrides overrides={readTextOverrides(exists.storefrontConfig)} />}
       {showPromo && promo && promoPalette && <PromoPopup slug={slug} config={promo} palette={promoPalette} />}
     </>
   );

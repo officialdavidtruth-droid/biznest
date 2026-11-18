@@ -8,6 +8,8 @@ import {
   ArrowUp, ArrowDown, RotateCw, PenSquare, FileText, Trash2, Eye, EyeOff, Plus, ChevronDown, Menu as MenuIcon, FolderTree,
 } from "lucide-react";
 import { saveStorePage, toggleStorePagePublished, deleteStorePage } from "@/lib/actions/pages";
+import { saveTextOverride } from "@/lib/actions/text-overrides";
+import type { TextOverrides } from "@/lib/storefront/text-overrides";
 import { SUGGESTED_PAGE_SLUGS, SUGGESTED_PAGE_TITLES } from "@/lib/actions/pages-constants";
 import type { TemplateTheme } from "@/lib/template-themes";
 import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
@@ -33,7 +35,7 @@ type PreviewSection = { key: string; label: string; hidden: boolean };
 type Device = "desktop" | "tablet" | "mobile";
 const DEVICE_WIDTH: Record<Device, string> = { desktop: "100%", tablet: "768px", mobile: "390px" };
 
-type Panel = "sections" | "arrange" | "content" | "design" | "seo" | "pages" | null;
+type Panel = "sections" | "arrange" | "content" | "design" | "seo" | "pages" | "text" | null;
 
 /**
  * A WordPress-Customizer-style editor for a store's already-chosen template:
@@ -69,6 +71,7 @@ export function CustomizerClient({
   templateHasOwnHomepage = false,
   homeKind = "builder",
   builderPublished = false,
+  textOverrides: initialTextOverrides = {},
 }: {
   slug: string;
   storeName: string;
@@ -97,6 +100,8 @@ export function CustomizerClient({
   homeKind?: "legacy" | "screenshot" | "hotel" | "example" | "builder";
   /** True when a visual-builder layout has been published for this store (it replaces the template's own homepage). */
   builderPublished?: boolean;
+  /** The owner's saved wording changes (click any text in the preview). */
+  textOverrides?: TextOverrides;
 }) {
   const [panel, setPanel] = useState<Panel>(null);
   // Below the lg breakpoint the controls and the preview cannot sit side by side, so show one at a time.
@@ -117,6 +122,10 @@ export function CustomizerClient({
   const [seoDescriptionState, setSeoDescriptionState] = useState(seoDescription);
   const experience = getBusinessExperience(businessCategory, { sellsProducts, offersServices });
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
+  // Click-any-text editing: the text picked in the preview, the saved changes, and whether clicking edits (vs. following links).
+  const [textEdit, setTextEdit] = useState<{ original: string; current: string } | null>(null);
+  const [savedTexts, setSavedTexts] = useState<TextOverrides>(initialTextOverrides);
+  const [clickEdit, setClickEdit] = useState(true);
   // Set when a click in the preview asks for a specific field (title, heading, content...) to be opened and focused.
   const [focusRequest, setFocusRequest] = useState<{ page: string; field: string; n: number } | null>(null);
   // Latest unsaved text per page, shown live in the preview as the owner types (see components/storefront/preview-editable.tsx).
@@ -230,6 +239,14 @@ export function CustomizerClient({
     pushPreview(builder);
   }, [builder]);
 
+  function sendClickEditMode(on: boolean) {
+    iframeRef.current?.contentWindow?.postMessage({ type: "BIZNEST_TEXT_EDIT_MODE", on }, window.location.origin);
+  }
+  function pushTextDraft(original: string, value: string) {
+    iframeRef.current?.contentWindow?.postMessage({ type: "BIZNEST_TEXT_DRAFT", original, value }, window.location.origin);
+  }
+  useEffect(() => { sendClickEditMode(clickEdit); }, [clickEdit]);
+
   function pushPageDraft(page: string, fields?: Record<string, string>) {
     if (fields) pageDraftsRef.current[page] = fields;
     const draft = pageDraftsRef.current[page];
@@ -255,6 +272,12 @@ export function CustomizerClient({
         return;
       }
       // The preview asks for the text being edited for its page (it just loaded or reloaded).
+      if (event.data?.type === "BIZNEST_CUSTOMIZER_EDIT_TEXT" && typeof event.data.original === "string") {
+        setTextEdit({ original: event.data.original, current: typeof event.data.current === "string" ? event.data.current : event.data.original });
+        setPanel("text");
+        setMobileView("edit");
+        return;
+      }
       if (event.data?.type === "BIZNEST_PAGE_DRAFT_REQUEST" && typeof event.data.page === "string") {
         pushPageDraft(event.data.page);
         return;
@@ -533,6 +556,13 @@ export function CustomizerClient({
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
             <button
+              onClick={() => { setPanel("text"); setMobileView("preview"); }}
+              className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
+            >
+              <span className="flex items-center gap-2"><PenSquare className="h-4 w-4" /> Click any text to edit it</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <button
               onClick={() => setPanel(inTemplateMode ? "arrange" : "sections")}
               className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
             >
@@ -677,6 +707,17 @@ export function CustomizerClient({
               </div>
             )}
 
+            {panel === "text" && (
+              <TextEditPanel
+                slug={slug}
+                edit={textEdit}
+                saved={savedTexts}
+                onDraft={pushTextDraft}
+                onSaved={(next) => { setSavedTexts(next); refreshPreview(); }}
+                onPick={(original) => setTextEdit({ original, current: savedTexts[original] ?? original })}
+              />
+            )}
+
             {panel === "seo" && (
               <div className="flex-1 overflow-y-auto p-4">
                 <p className="mb-3 text-xs text-muted-foreground">Control the search title and description used for your public store. These are saved to the real Store record.</p>
@@ -764,6 +805,16 @@ export function CustomizerClient({
           </label>
 
           <button
+            type="button"
+            onClick={() => setClickEdit((v) => !v)}
+            aria-pressed={clickEdit}
+            title={clickEdit ? "Clicking text in the preview edits it. Turn off to follow links." : "Turn on to click any text in the preview and edit it."}
+            className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs ${clickEdit ? "border-green-600 bg-green-50 text-green-800" : "border-border text-muted-foreground hover:bg-muted"}`}
+          >
+            <PenSquare className="h-3.5 w-3.5" /> Click to edit: {clickEdit ? "On" : "Off"}
+          </button>
+
+          <button
             onClick={refreshPreview}
             className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted"
           >
@@ -776,7 +827,7 @@ export function CustomizerClient({
             key={previewKey}
             ref={iframeRef}
             src={previewUrl}
-            onLoad={() => { previewReadyRef.current = true; pushPreview(builderRef.current); }}
+            onLoad={() => { previewReadyRef.current = true; pushPreview(builderRef.current); sendClickEditMode(clickEdit); }}
             title="Live website preview"
             className="h-full min-h-[900px] rounded-lg border border-border bg-background shadow-sm transition-[width] duration-200"
             style={{ width: DEVICE_WIDTH[device], maxWidth: "100%" }}
@@ -1380,6 +1431,77 @@ function PageEditor({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+
+/** "Change this text": opened by clicking any text in the preview. Typing shows instantly; Save keeps it on the live store. */
+function TextEditPanel({
+  slug, edit, saved, onDraft, onSaved, onPick,
+}: {
+  slug: string;
+  edit: { original: string; current: string } | null;
+  saved: TextOverrides;
+  onDraft: (original: string, value: string) => void;
+  onSaved: (next: TextOverrides) => void;
+  onPick: (original: string) => void;
+}) {
+  const [value, setValue] = useState(edit?.current ?? "");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setValue(edit?.current ?? ""); }, [edit?.original, edit?.current]);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => { if (edit) window.setTimeout(() => inputRef.current?.focus(), 150); }, [edit?.original]);
+  const savedList = Object.entries(saved);
+
+  async function commit(next: string) {
+    if (!edit) return;
+    setBusy(true);
+    const r = await saveTextOverride(slug, edit.original, next);
+    setBusy(false);
+    if (!r.success) { toast.error(r.error); return; }
+    toast.success(next.trim() && next.trim() !== edit.original ? "Text saved" : "Back to the original text");
+    onSaved(r.data);
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4">
+      {edit ? (
+        <div className="rounded-md border border-border p-3">
+          <p className="text-xs font-semibold">Change this text</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Original: <span className="text-foreground">{edit.original}</span></p>
+          <textarea
+            ref={inputRef}
+            value={value}
+            rows={Math.min(8, Math.max(2, Math.ceil(value.length / 34)))}
+            onChange={(e) => { setValue(e.target.value); onDraft(edit.original, e.target.value); }}
+            className="mt-2 w-full resize-y rounded-md border border-input bg-background px-2.5 py-1.5 text-sm"
+          />
+          <p className="mt-1 text-[10px] text-muted-foreground">Shows in the preview as you type. It changes every place on your store that says exactly this. Names and prices of products are edited under Products.</p>
+          <div className="mt-2 flex gap-2">
+            <button type="button" disabled={busy} onClick={() => commit(value)} className="flex-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy ? "Saving…" : "Save"}</button>
+            <button type="button" disabled={busy} onClick={() => { setValue(edit.original); onDraft(edit.original, ""); commit(""); }} className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50">Reset</button>
+          </div>
+        </div>
+      ) : (
+        <p className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">Click any text in the preview to change it. Turn "Click to edit" off above if you want to follow links instead.</p>
+      )}
+
+      {savedList.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-1.5 text-xs font-semibold">Texts you've changed ({savedList.length})</p>
+          <ul className="space-y-1.5">
+            {savedList.map(([orig, now]) => (
+              <li key={orig}>
+                <button type="button" onClick={() => onPick(orig)} className="w-full rounded-md border border-border px-2.5 py-2 text-left text-xs hover:bg-muted">
+                  <span className="block truncate text-muted-foreground line-through">{orig}</span>
+                  <span className="block truncate font-medium">{now}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
