@@ -236,6 +236,17 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
                     </li>
                     <li><b>3. Save, wait, then press Re-check status.</b> It usually works in 5–30 minutes, but can take up to 24 hours. The status changes from PENDING to VERIFIED.</li>
                   </ol>
+                  <details className="mt-3 rounded-md border bg-background p-3">
+                    <summary className="cursor-pointer font-semibold">Where do I click? Steps for common hosts</summary>
+                    <ul className="mt-2 space-y-2 text-muted-foreground">
+                      <li><b className="text-foreground">Namecheap:</b> Domain List → Manage → Advanced DNS → Add New Record.</li>
+                      <li><b className="text-foreground">GoDaddy:</b> My Products → DNS next to your domain → Add New Record.</li>
+                      <li><b className="text-foreground">Cloudflare:</b> select the domain → DNS → Records → Add record. Set Proxy status to "DNS only" (grey cloud).</li>
+                      <li><b className="text-foreground">Whogohost / Qservers / Web4Africa / other Nigerian hosts:</b> log in → Domains → Manage DNS (or DNS Zone Editor in cPanel) → Add Record.</li>
+                      <li><b className="text-foreground">Domain is also hosting a website (cPanel, WordPress, Wix, etc.):</b> the DNS record lives at your <i>domain registrar</i> or nameserver provider, not inside the website builder. Changing it will take that website offline.</li>
+                      <li>Can't find it? Ask your host's support: "Please add an {dns.recordType} record for {dns.host} pointing to {dns.value}."</li>
+                    </ul>
+                  </details>
                   <p className="mt-3 rounded-md bg-[var(--bn-admin-orange-soft)] p-2.5 text-[var(--bn-admin-orange-dark)]">
                     Heads up: if this domain already shows another website, that site will switch to your store as soon as the record changes.
                     To keep it, press Remove domain and use a different one (a subdomain like <span className="font-mono">shop.{store.customDomain}</span> works well).
