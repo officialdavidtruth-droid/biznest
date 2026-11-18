@@ -50,7 +50,8 @@ export default async function SelectPlanPage({
       <PlanPicker
         slug={store.slug}
         plans={plans.map((p) => ({ id: p.id, name: p.name, price: Number(p.price), commissionRate: Number(p.commissionRate), features: p.features }))}
-        trialPlanId={trialSetting.enabled ? trialSetting.planId : null}
+        // A store that already had its trial (even one that has ended) is charged straight away, so don't promise it a free one.
+        trialPlanId={trialSetting.enabled && !store.trialEndsAt ? trialSetting.planId : null}
         trialDays={trialSetting.days}
       />
     </div>
