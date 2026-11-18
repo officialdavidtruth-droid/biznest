@@ -1,3 +1,4 @@
+import { ownerPageIntro } from "@/lib/storefront/page-intro";
 import { ownerPageBody } from "@/lib/storefront/page-registry";
 import { ownerPageBlocks } from "@/lib/storefront/page-blocks";
 import { loadCatalogOptions } from "@/lib/storefront/page-block-catalog";
@@ -79,6 +80,7 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
           title: p.title,
           body: ownerPageBody(p.content) ?? "",
           blocks: ownerPageBlocks(p.content),
+          intro: ownerPageIntro(p.content),
           isPublished: p.isPublished,
         }))}
     />

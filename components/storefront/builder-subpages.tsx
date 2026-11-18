@@ -13,6 +13,8 @@ import { BuilderFooter, BuilderHeader } from "@/components/storefront/builder-re
 import { ContactEnquiryForm } from "@/components/storefront/contact-enquiry-form";
 import { parseBlogPosts, parseGalleryBody } from "@/lib/storefront/owner-page-format";
 import { PageBlocks } from "@/components/storefront/page-blocks";
+import { Editable, EditRegion } from "@/components/storefront/preview-editable";
+import type { PageIntro } from "@/lib/storefront/page-intro";
 import type { PageBlock } from "@/lib/storefront/page-blocks";
 import type { BlockCatalog } from "@/lib/storefront/page-block-catalog";
 
@@ -28,7 +30,7 @@ export type SubpageData = {
 };
 export type SubpageKind = "about" | "contact" | "categories" | "gallery" | "blog";
 /** The owner's own text for this page (Customize > Pages). When present it replaces the page's default copy. */
-export type OwnerContent = { title: string; body: string; blocks?: PageBlock[]; catalog?: BlockCatalog };
+export type OwnerContent = { title: string; body: string; blocks?: PageBlock[]; catalog?: BlockCatalog; intro?: PageIntro };
 
 const COPY: Record<SubpageKind, { title: string; subtitle: string }> = {
   about: { title: "About us", subtitle: "Who we are and what we stand for." },
@@ -58,7 +60,11 @@ export function BuilderSubpage({ kind, store, design: designIn, data, owner, ski
     { label: "About", href: `${base}/about` },
     { label: "Contact", href: `${base}/contact` },
   ];
-  const copy = owner ? { ...COPY[kind], title: owner.title, subtitle: kind === "about" || kind === "contact" ? COPY[kind].subtitle : "" } : COPY[kind];
+  const copy = owner ? { ...COPY[kind], title: owner.title, subtitle: kind === "about" || kind === "contact" ? owner.intro?.subtitle || COPY[kind].subtitle : "" } : COPY[kind];
+  const intro = owner?.intro ?? {};
+  // Click-to-edit only exists for the pages the owner writes in Customize > Pages.
+  const editable = kind === "about" || kind === "contact" || kind === "gallery" || kind === "blog";
+  const T = (field: string, value: string) => (editable ? <Editable page={kind} field={field} value={value} /> : <>{value}</>);
   const rad = skin ? RADIUS_PX[skin.radius] : d.radius;
   const card: React.CSSProperties = (() => {
     switch (skin?.surface) {
@@ -88,11 +94,13 @@ export function BuilderSubpage({ kind, store, design: designIn, data, owner, ski
       <>
         <div className="bn-grid" style={{ gridTemplateColumns: !data.storyImage || gal === "stacked" ? "1fr" : gal === "wide" ? "1.5fr 1fr" : gal === "tall" ? "1fr 1fr" : "1.1fr .9fr", alignItems: "center", gap }}>
           <div>
-            <small style={{ color: d.accent, fontWeight: 800, letterSpacing: ".14em", textTransform: "uppercase" }}>Our story</small>
-            <h2 style={{ fontFamily: d.headingFont, fontSize: 34, lineHeight: 1.15, margin: "10px 0 16px" }}>Built around what matters</h2>
-            {owner?.blocks?.length
-              ? <PageBlocks blocks={owner.blocks} catalog={owner.catalog} slug={store.slug} tokens={{ text: d.muted, accent: d.accent, primary: d.primary, line, radius: d.radius, headingFont: d.headingFont }} />
-              : <p style={{ color: d.muted, lineHeight: 1.8, fontSize: 16, whiteSpace: "pre-line" }}>{desc}</p>}
+            <small style={{ color: d.accent, fontWeight: 800, letterSpacing: ".14em", textTransform: "uppercase" }}>{T("eyebrow", intro.eyebrow || "Our story")}</small>
+            <h2 style={{ fontFamily: d.headingFont, fontSize: 34, lineHeight: 1.15, margin: "10px 0 16px" }}>{T("heading", intro.heading || "Built around what matters")}</h2>
+            <EditRegion page={kind} field="content">
+              {owner?.blocks?.length
+                ? <PageBlocks blocks={owner.blocks} catalog={owner.catalog} slug={store.slug} tokens={{ text: d.muted, accent: d.accent, primary: d.primary, line, radius: d.radius, headingFont: d.headingFont }} />
+                : <p style={{ color: d.muted, lineHeight: 1.8, fontSize: 16, whiteSpace: "pre-line" }}>{desc}</p>}
+            </EditRegion>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24 }}>
               <Link href={`${base}/catalog`} style={btn(true)}>{isService ? "See our services" : "Shop now"}</Link>
               <Link href={`${base}/contact`} style={btn(false)}>Contact us</Link>
@@ -231,10 +239,10 @@ export function BuilderSubpage({ kind, store, design: designIn, data, owner, ski
           <section style={{ background: solid ? d.primary : hdr === "plain" ? d.background : d.surface, borderBottom: hdr === "plain" ? "none" : hdr === "split" ? `4px solid ${d.accent}` : `1px solid ${line}`, textAlign: centred ? "center" : undefined }}>
             <div className="bn-wrap" style={{ padding: hdr === "plain" ? "72px 0 12px" : hdr === "split" ? "26px 0 24px" : "44px 0 34px" }}>
               <nav aria-label="Breadcrumb" style={{ fontSize: 13, color: mu, marginBottom: 14 }}>
-                <Link href={base}>Home</Link> / <span style={{ color: fg }}>{copy.title}</span>
+                <Link href={base}>Home</Link> / <span style={{ color: fg }}>{T("title", copy.title)}</span>
               </nav>
-              <h1 style={{ fontFamily: d.headingFont, fontSize: hdr === "plain" ? 56 : 40, lineHeight: 1.1, margin: centred ? "0 auto" : 0, color: fg, fontWeight: titleWeight, letterSpacing: titleWeight === 300 ? 0 : undefined }}>{kind === "categories" && isService ? "Services" : copy.title}</h1>
-              {copy.subtitle && <p style={{ color: mu, margin: centred ? "10px auto 0" : "10px 0 0", maxWidth: 640 }}>{copy.subtitle}</p>}
+              <h1 style={{ fontFamily: d.headingFont, fontSize: hdr === "plain" ? 56 : 40, lineHeight: 1.1, margin: centred ? "0 auto" : 0, color: fg, fontWeight: titleWeight, letterSpacing: titleWeight === 300 ? 0 : undefined }}>{kind === "categories" && isService ? "Services" : T("title", copy.title)}</h1>
+              {(copy.subtitle || kind === "about" || kind === "contact") && <p style={{ color: mu, margin: centred ? "10px auto 0" : "10px 0 0", maxWidth: 640 }}>{kind === "about" || kind === "contact" ? T("subtitle", copy.subtitle) : copy.subtitle}</p>}
             </div>
           </section>
         );

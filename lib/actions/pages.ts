@@ -7,6 +7,7 @@ import { RESERVED_PAGE_SLUGS, type PageContent } from "@/lib/actions/pages-const
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { isPlaceholderContent, ownerPageBody } from "@/lib/storefront/page-registry";
 import { blocksToPlainText, pageUsesBlocks, sanitizeBlocks } from "@/lib/storefront/page-blocks";
+import { INTRO_PAGES, sanitizeIntro } from "@/lib/storefront/page-intro";
 
 const PAGE_TITLE_MAX = 120;
 const PAGE_BODY_MAX = 20000;
@@ -61,7 +62,12 @@ export async function saveStorePage(slug: string, formData: FormData): Promise<A
   if (body.length > PAGE_BODY_MAX) return { success: false, error: `This page is too long (max ${PAGE_BODY_MAX.toLocaleString("en")} characters of text). Split it into two pages.` };
   if (!body && blocks.length === 0) return { success: false, error: "Add something to this page before saving it." };
 
-  const content: PageContent = blocks.length > 0 ? { body, blocks } : { body };
+  let intro = {};
+  if (INTRO_PAGES.has(pageSlug)) {
+    try { intro = sanitizeIntro(JSON.parse(String(formData.get("intro") ?? "{}"))); } catch { /* ignore a malformed intro; the page itself still saves */ }
+  }
+  const hasIntro = Object.keys(intro).length > 0;
+  const content: PageContent = { body, ...(blocks.length > 0 ? { blocks } : {}), ...(hasIntro ? { intro } : {}) };
 
   // Template editors (hotel sections, events, template galleries) keep their own content in this table under
   // plain slugs. Never overwrite one with a text page.

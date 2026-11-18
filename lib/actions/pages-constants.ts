@@ -1,6 +1,6 @@
 import { CONTENT_PAGES } from "@/lib/storefront/page-registry";
 
-export type PageContent = { body: string; blocks?: import("@/lib/storefront/page-blocks").PageBlock[] };
+export type PageContent = { body: string; blocks?: import("@/lib/storefront/page-blocks").PageBlock[]; intro?: import("@/lib/storefront/page-intro").PageIntro };
 
 // The starter set offered in the "Pages" panel. Defined once in lib/storefront/page-registry.ts.
 // A vendor can also add a custom one with any slug.

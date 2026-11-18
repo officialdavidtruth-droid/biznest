@@ -1,5 +1,6 @@
 "use client";
 
+import { INTRO_PAGES, type PageIntro } from "@/lib/storefront/page-intro";
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { toast } from "sonner";
 import {
@@ -25,7 +26,7 @@ import { PageBlockEditor } from "@/components/dashboard/page-block-editor";
 import { blocksToPlainText, legacyTextToBlocks, pageUsesBlocks, type PageBlock } from "@/lib/storefront/page-blocks";
 import { buildIndustryHomepage, getBusinessExperience } from "@/lib/business-experience";
 
-export type StorePageRow = { id: string; slug: string; title: string; body: string; blocks: PageBlock[]; isPublished: boolean };
+export type StorePageRow = { id: string; slug: string; title: string; body: string; blocks: PageBlock[]; intro?: PageIntro; isPublished: boolean };
 const rowHasContent = (p: StorePageRow) => p.body.trim() !== "" || p.blocks.length > 0;
 
 type PreviewSection = { key: string; label: string; hidden: boolean };
@@ -116,6 +117,10 @@ export function CustomizerClient({
   const [seoDescriptionState, setSeoDescriptionState] = useState(seoDescription);
   const experience = getBusinessExperience(businessCategory, { sellsProducts, offersServices });
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
+  // Set when a click in the preview asks for a specific field (title, heading, content...) to be opened and focused.
+  const [focusRequest, setFocusRequest] = useState<{ page: string; field: string; n: number } | null>(null);
+  // Latest unsaved text per page, shown live in the preview as the owner types (see components/storefront/preview-editable.tsx).
+  const pageDraftsRef = useRef<Record<string, Record<string, string>>>({});
   // Which page of the store the preview shows ("" = homepage), like the page picker in Shopify's theme editor.
   const [previewPath, setPreviewPath] = useState("");
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -225,6 +230,13 @@ export function CustomizerClient({
     pushPreview(builder);
   }, [builder]);
 
+  function pushPageDraft(page: string, fields?: Record<string, string>) {
+    if (fields) pageDraftsRef.current[page] = fields;
+    const draft = pageDraftsRef.current[page];
+    if (!draft) return;
+    iframeRef.current?.contentWindow?.postMessage({ type: "BIZNEST_PAGE_DRAFT", page, fields: draft }, window.location.origin);
+  }
+
   function pushSystemDraft(page?: SystemPageKey) {
     const draft = systemDraftRef.current;
     if (!draft || (page && draft.page !== page)) return;
@@ -240,6 +252,19 @@ export function CustomizerClient({
         setPreviewSections(list);
         // The iframe reloaded while an unsaved arrangement was open: put the draft back on the new page.
         if (arrangeRef.current) iframeRef.current?.contentWindow?.postMessage({ type: "BIZNEST_TEMPLATE_ARRANGE", ...arrangeRef.current }, window.location.origin);
+        return;
+      }
+      // The preview asks for the text being edited for its page (it just loaded or reloaded).
+      if (event.data?.type === "BIZNEST_PAGE_DRAFT_REQUEST" && typeof event.data.page === "string") {
+        pushPageDraft(event.data.page);
+        return;
+      }
+      // Clicking text on an inner page (About, Contact...) opens that page's editor on the clicked field.
+      if (event.data?.type === "BIZNEST_CUSTOMIZER_EDIT_FIELD" && typeof event.data.page === "string" && typeof event.data.field === "string") {
+        setEditingSlug(event.data.page);
+        setFocusRequest({ page: event.data.page, field: event.data.field, n: Date.now() });
+        setPanel("pages");
+        setMobileView("edit");
         return;
       }
       if (event.data?.type === "BIZNEST_SYSTEM_PREVIEW_READY") {
@@ -690,6 +715,8 @@ export function CustomizerClient({
                 setPages={setPages}
                 editingSlug={editingSlug}
                 setEditingSlug={setEditingSlug}
+                focusRequest={focusRequest}
+                onPageDraft={pushPageDraft}
                 onSaved={refreshPreview}
               />
             )}
@@ -1017,6 +1044,8 @@ function PagesPanel({
   setPages,
   editingSlug,
   setEditingSlug,
+  focusRequest,
+  onPageDraft,
   onSaved,
 }: {
   slug: string;
@@ -1030,6 +1059,8 @@ function PagesPanel({
   setPages: Dispatch<SetStateAction<StorePageRow[]>>;
   editingSlug: string | null;
   setEditingSlug: (s: string | null) => void;
+  focusRequest: { page: string; field: string; n: number } | null;
+  onPageDraft: (page: string, fields: Record<string, string>) => void;
   onSaved: () => void;
 }) {
   const [addingCustom, setAddingCustom] = useState(false);
@@ -1123,6 +1154,8 @@ function PagesPanel({
                 pageSlug={row.slug}
                 initial={row.page}
                 catalogOptions={catalogOptions}
+                focusRequest={focusRequest?.page === row.slug ? focusRequest : null}
+                onDraft={onPageDraft}
                 onSaved={(row2) => {
                   upsertLocal(row2);
                   onSaved();
@@ -1170,6 +1203,8 @@ function PageEditor({
   initial,
   allowSlugEdit,
   catalogOptions,
+  focusRequest,
+  onDraft,
   onSaved,
   onTogglePublished,
   onDelete,
@@ -1179,6 +1214,8 @@ function PageEditor({
   initial: StorePageRow | null;
   allowSlugEdit?: boolean;
   catalogOptions?: CatalogOptions;
+  focusRequest?: { page: string; field: string; n: number } | null;
+  onDraft?: (page: string, fields: Record<string, string>) => void;
   onSaved: (row: StorePageRow) => void;
   onTogglePublished?: () => void;
   onDelete?: () => void;
@@ -1191,6 +1228,26 @@ function PageEditor({
   const blockMode = pageUsesBlocks(allowSlugEdit ? customSlug || "custom" : pageSlug);
   const [isPublished, setIsPublished] = useState(initial?.isPublished ?? true);
   const [isSaving, setIsSaving] = useState(false);
+  const hasIntro = INTRO_PAGES.has(pageSlug);
+  const [intro, setIntro] = useState<PageIntro>(initial?.intro ?? {});
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Live preview: send the text being typed to the preview as it changes.
+  useEffect(() => {
+    if (!onDraft || allowSlugEdit || !pageSlug) return;
+    onDraft(pageSlug, { title, eyebrow: intro.eyebrow ?? "", heading: intro.heading ?? "", subtitle: intro.subtitle ?? "" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, intro.eyebrow, intro.heading, intro.subtitle]);
+
+  // A click on text in the preview opens this editor on that field.
+  useEffect(() => {
+    if (!focusRequest) return;
+    const el = rootRef.current?.querySelector<HTMLElement>(`[data-edit-field="${focusRequest.field}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const input = el.matches("input,textarea") ? el : el.querySelector<HTMLElement>("input,textarea");
+    window.setTimeout(() => input?.focus({ preventScroll: true }), 250);
+  }, [focusRequest?.n]);
 
   async function handleSave() {
     const effectiveSlug = allowSlugEdit ? customSlug : pageSlug;
@@ -1203,6 +1260,7 @@ function PageEditor({
       const formData = new FormData();
       formData.set("pageSlug", effectiveSlug);
       formData.set("title", title);
+      if (hasIntro) formData.set("intro", JSON.stringify(intro));
       if (blockMode) formData.set("blocks", JSON.stringify(blocks));
       else formData.set("body", body);
       if (isPublished) formData.set("isPublished", "on");
@@ -1220,6 +1278,7 @@ function PageEditor({
         title,
         body: blockMode ? blocksToPlainText(blocks) : body,
         blocks: blockMode ? blocks : [],
+        intro: hasIntro ? intro : undefined,
         isPublished,
       });
     } catch {
@@ -1230,7 +1289,7 @@ function PageEditor({
   }
 
   return (
-    <div className="space-y-2.5 border-t border-border p-3">
+    <div ref={rootRef} className="space-y-2.5 border-t border-border p-3">
       {allowSlugEdit && (
         <label className="block text-xs">
           <span className="mb-1 block text-muted-foreground">URL slug</span>
@@ -1245,12 +1304,32 @@ function PageEditor({
       <label className="block text-xs">
         <span className="mb-1 block text-muted-foreground">Title</span>
         <input
+          data-edit-field="title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm"
         />
       </label>
-      <div className="block text-xs">
+      {hasIntro && (
+        <>
+          {([
+            ["subtitle", "Sub-title (under the page title)", pageSlug === "about" ? "Who we are and what we stand for." : "Questions, orders or special requests? We'd love to hear from you."],
+            ...(pageSlug === "about" ? [["eyebrow", "Small label", "Our story"], ["heading", "Heading above the text", "Built around what matters"]] : []),
+          ] as [keyof PageIntro, string, string][]).map(([key, label, placeholder]) => (
+            <label key={key} className="block text-xs">
+              <span className="mb-1 block text-muted-foreground">{label}</span>
+              <input
+                data-edit-field={key}
+                value={intro[key] ?? ""}
+                onChange={(e) => setIntro((prev) => ({ ...prev, [key]: e.target.value }))}
+                placeholder={placeholder}
+                className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm"
+              />
+            </label>
+          ))}
+        </>
+      )}
+      <div data-edit-field="content" className="block text-xs">
         <span className="mb-1 block text-muted-foreground">Content</span>
         {blockMode ? (
           <PageBlockEditor blocks={blocks} onChange={setBlocks} ImageField={ImageField} catalog={catalogOptions} />
