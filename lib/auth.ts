@@ -244,7 +244,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
           throw err;
         }
-        if (!user?.passwordHash) return null;
+        if (!user) {
+          void logWarn("AUTH", "Login failed: no account found for that email", { storeContext: Boolean(credentials?.storeSlug) });
+          return null;
+        }
+        if (!user.passwordHash) {
+          // The account exists but has no password (created by Google sign-in, guest checkout or the official account).
+          void logWarn("AUTH", "Login failed: the matching account has no password set", { userId: user.id, role: user.role, customerScope: Boolean(user.customerScopeStoreId) });
+          return null;
+        }
 
         if (user.lockedUntil && user.lockedUntil > new Date()) {
           void logWarn("AUTH", "Login attempt on locked account", { userId: user.id });
