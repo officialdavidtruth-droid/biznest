@@ -13,16 +13,25 @@ export type PlanFeatures = { templateTier?: number; staff?: number; growthTools?
 
 const tierOf = (f: PlanFeatures): number | null => (typeof f?.templateTier === "number" ? f.templateTier : null);
 
-/** 1 = Starters, 2 = Entrepreneurship, 3 = Business Mogul; null when the plan has no templateTier (fails open). */
-export function planRankOf(f: PlanFeatures): 1 | 2 | 3 | null {
+/**
+ * 1 = Starters, 2 = Entrepreneurship, 3 = Business Mogul. The plan's name decides when it is one of the three
+ * (the stored templateTier numbers have drifted on the live database); otherwise the templateTier does, and
+ * null (fails open) when the plan has neither.
+ */
+export function planRankOf(f: PlanFeatures, name?: string | null): 1 | 2 | 3 | null {
+  if (name) {
+    if (/mogul/i.test(name)) return 3;
+    if (/entrepreneur/i.test(name)) return 2;
+    if (/starter/i.test(name)) return 1;
+  }
   const tier = tierOf(f);
   if (tier === null) return null;
   return tier <= 1 ? 1 : tier === 2 ? 2 : 3;
 }
 
-export function staffLimitFor(f: PlanFeatures): number {
+export function staffLimitFor(f: PlanFeatures, name?: string | null): number {
   if (typeof f?.staff === "number") return f.staff;
-  const rank = planRankOf(f);
+  const rank = planRankOf(f, name);
   if (rank === null) return 20;
   return rank === 1 ? 1 : rank === 2 ? 3 : 20;
 }
@@ -41,8 +50,8 @@ export type PlanCapability = keyof typeof PLAN_CAPABILITIES;
 
 const RANK_NAME = { 1: "Starters", 2: "Entrepreneurship", 3: "Business Mogul" } as const;
 
-export function planAllows(f: PlanFeatures, capability: PlanCapability): boolean {
-  const rank = planRankOf(f);
+export function planAllows(f: PlanFeatures, capability: PlanCapability, name?: string | null): boolean {
+  const rank = planRankOf(f, name);
   return rank === null || rank >= PLAN_CAPABILITIES[capability];
 }
 
@@ -51,9 +60,9 @@ export function minPlanNameFor(capability: PlanCapability): string {
   return RANK_NAME[PLAN_CAPABILITIES[capability]];
 }
 
-export function growthToolsAllowed(f: PlanFeatures): boolean {
+export function growthToolsAllowed(f: PlanFeatures, name?: string | null): boolean {
   if (typeof f?.growthTools === "boolean") return f.growthTools;
-  const rank = planRankOf(f);
+  const rank = planRankOf(f, name);
   return rank === null || rank >= 3;
 }
 

@@ -14,7 +14,7 @@ export async function growthToolsGate(slug: string, toolName: string): Promise<P
   if (role === "PLATFORM_ADMIN" || role === "SUPPORT_MODERATOR") return { ok: true };
   const store = await prisma.store.findUnique({ where: { slug }, select: { subscription: { select: { name: true, features: true } } } });
   if (!store?.subscription) return { ok: true }; // the dashboard's own plan gate handles stores with no plan
-  if (growthToolsAllowed(store.subscription.features as PlanFeatures)) return { ok: true };
+  if (growthToolsAllowed(store.subscription.features as PlanFeatures, store.subscription.name)) return { ok: true };
   return { ok: false, message: `${toolName} isn't part of the ${store.subscription.name} plan. Upgrade your plan to use it.` };
 }
 
@@ -41,6 +41,6 @@ export async function planGate(where: { slug: string } | { storeId: string }, ca
     select: { subscription: { select: { name: true, features: true } } },
   });
   if (!store?.subscription) return { ok: true };
-  if (planAllows(store.subscription.features as PlanFeatures, capability)) return { ok: true };
+  if (planAllows(store.subscription.features as PlanFeatures, capability, store.subscription.name)) return { ok: true };
   return { ok: false, message: `${CAPABILITY_LABEL[capability]} isn't part of the ${store.subscription.name} plan. Upgrade to ${minPlanNameFor(capability)} or above to use it.` };
 }

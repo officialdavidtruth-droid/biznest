@@ -202,7 +202,7 @@ export async function inviteStaffMember(
 
   // The plan decides how many staff accounts a store may have (never more than the platform-wide cap).
   const plan = await prisma.store.findUnique({ where: { id: store.id }, select: { subscription: { select: { name: true, features: true } } } });
-  const planLimit = staffLimitFor(plan?.subscription?.features as PlanFeatures);
+  const planLimit = staffLimitFor(plan?.subscription?.features as PlanFeatures, plan?.subscription?.name);
   const staffCap = planLimit === -1 ? MAX_STAFF_PER_STORE : Math.min(planLimit, MAX_STAFF_PER_STORE);
 
   // Cap check, account and staff row are one Serializable transaction so

@@ -22,7 +22,7 @@ type Limits = PlanFeatures & { products?: number; services?: number; customDomai
 /** Cheapest first; the rank is the plan's tier (1 Starters, 2 Entrepreneurship, 3 Business Mogul), falling back to its position. */
 export function rankedPlans<T extends ComparablePlan>(plans: T[]): Array<T & { rank: 1 | 2 | 3 }> {
   const sorted = [...plans].sort((a, b) => a.price - b.price);
-  return sorted.map((plan, index) => ({ ...plan, rank: planRankOf(plan.features as PlanFeatures) ?? (Math.min(index + 1, 3) as 1 | 2 | 3) }));
+  return sorted.map((plan, index) => ({ ...plan, rank: planRankOf(plan.features as PlanFeatures, plan.name) ?? (Math.min(index + 1, 3) as 1 | 2 | 3) }));
 }
 
 const count = (n: number | undefined) => (n === -1 ? "Unlimited" : String(n ?? 0));
@@ -40,7 +40,7 @@ export function buildComparison(plans: ComparablePlan[]): ComparisonGroup[] {
         { label: "Products", cells: each((_, f) => count(f.products)) },
         { label: "Services", cells: each((_, f) => count(f.services)) },
         { label: "Commission on your sales", cells: each((p) => (p.commissionRate === 0 ? "None" : `${p.commissionRate}%`)) },
-        { label: "Staff accounts", cells: each((_, f) => count(staffLimitFor(f))) },
+        { label: "Staff accounts", cells: each((p, f) => count(staffLimitFor(f, p.name))) },
         { label: "Your own domain name", cells: each((_, f) => Boolean(f.customDomain)) },
       ],
     },

@@ -39,7 +39,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
 
   const features = store.subscription?.features as { customDomain?: boolean } | null;
   const domainUnlocked = Boolean(features?.customDomain);
-  const webhooksUnlocked = planAllows(store.subscription?.features as PlanFeatures, "webhooks");
+  const webhooksUnlocked = planAllows(store.subscription?.features as PlanFeatures, "webhooks", store.subscription?.name);
 
   const [webhookEndpoints, webhookEventOptions] = await Promise.all([
     listWebhookEndpoints(slug),
