@@ -489,7 +489,7 @@ export function PosRegister({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-3">
           {visible.map((item) => {
             const outOfStock = !item.hasVariants && item.quantity !== null && item.quantity <= 0;
             const lowStock = !item.hasVariants && item.quantity !== null && item.quantity > 0 && item.quantity <= 5;
