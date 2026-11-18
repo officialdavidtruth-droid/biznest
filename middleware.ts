@@ -243,7 +243,10 @@ export default auth(async (req) => {
     // platform host. On the store's own domain that would double up into a page that doesn't exist, so send the
     // visitor to the clean path (/store/<slug>/account -> /account).
     // Covers both link styles used around the app: /store/<slug>/... and the short /<slug>/...
-    for (const ownPrefix of [`/store/${slug}`, `/${slug}`]) {
+    // The short form is skipped for a store whose slug is also one of its own page names (e.g. "rooms"), where it would be ambiguous.
+    const STOREFRONT_PAGE_NAMES = new Set(["catalog", "rooms", "products", "services", "book", "booking", "gallery", "shop", "offers", "explore", "dining", "amenities", "experiences", "login", "register", "orders", "wishlist"]);
+    const prefixes = STOREFRONT_PAGE_NAMES.has(slug) ? [`/store/${slug}`] : [`/store/${slug}`, `/${slug}`];
+    for (const ownPrefix of prefixes) {
       if (rawPathname === ownPrefix || rawPathname.startsWith(`${ownPrefix}/`)) {
         return NextResponse.redirect(new URL(`${rawPathname.slice(ownPrefix.length) || "/"}${req.nextUrl.search}`, origin));
       }
