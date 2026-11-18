@@ -65,18 +65,30 @@ export function CategoryManager({
   const [tab, setTab] = useState<StatusFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(initialCategories.find((c) => !c.parentId)?.id ?? null);
   const [formOpen, setFormOpen] = useState<null | "new" | string>(null);
+  const [newParentId, setNewParentId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const top = useMemo(() => categories.filter((c) => !c.parentId), [categories]);
   const children = (id: string) => categories.filter((c) => c.parentId === id);
   const itemsFor = (c: Category) => (itemCounts[c.id] ?? 0) + children(c.id).reduce((sum, s) => sum + (itemCounts[s.id] ?? 0), 0);
 
+  // Rows for the table: each top-level category followed by its subcategories (indented).
+  // A parent stays visible if it or any of its subcategories match the search/status filter.
   const filtered = useMemo(() => {
-    return top
-      .filter((c) => (tab === "all" ? true : tab === "active" ? c.isActive : !c.isActive))
-      .filter((c) => (search.trim() ? c.name.toLowerCase().includes(search.trim().toLowerCase()) : true))
-      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
-  }, [top, tab, search]);
+    const bySort = (a: Category, b: Category) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name);
+    const q = search.trim().toLowerCase();
+    const passes = (c: Category) =>
+      (tab === "all" ? true : tab === "active" ? c.isActive : !c.isActive) && (q ? c.name.toLowerCase().includes(q) : true);
+    const rows: Array<{ c: Category; depth: 0 | 1 }> = [];
+    for (const parent of [...top].sort(bySort)) {
+      const subs = categories.filter((x) => x.parentId === parent.id).sort(bySort);
+      const matchingSubs = subs.filter(passes);
+      if (!passes(parent) && matchingSubs.length === 0) continue;
+      rows.push({ c: parent, depth: 0 });
+      for (const sub of passes(parent) && !q && tab === "all" ? subs : matchingSubs) rows.push({ c: sub, depth: 1 });
+    }
+    return rows;
+  }, [top, categories, tab, search]);
 
   const selected = categories.find((c) => c.id === selectedId) ?? null;
   const totalItems = top.reduce((sum, c) => sum + itemsFor(c), 0);
@@ -93,7 +105,7 @@ export function CategoryManager({
   async function move(c: Category, direction: "up" | "down") {
     const r = await reorderCategory(slug, c.id, direction);
     if (!r.success) return toast.error(r.error);
-    const siblings = top.filter((x) => x.parentId === c.parentId).sort((a, b) => a.sortOrder - b.sortOrder);
+    const siblings = categories.filter((x) => (x.parentId ?? null) === (c.parentId ?? null)).sort((a, b) => a.sortOrder - b.sortOrder);
     const idx = siblings.findIndex((x) => x.id === c.id);
     const targetIdx = direction === "up" ? idx - 1 : idx + 1;
     if (targetIdx < 0 || targetIdx >= siblings.length) return;
@@ -179,18 +191,19 @@ export function CategoryManager({
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((c) => (
+                  {filtered.map(({ c, depth }) => (
                     <tr
                       key={c.id}
                       onClick={() => setSelectedId(c.id)}
                       className={`cursor-pointer border-b last:border-0 hover:bg-[var(--bn-admin-surface)] ${selectedId === c.id ? "bg-primary/5" : ""}`}
                     >
                       <td className="py-3 pr-3">
-                        <div className="flex items-center gap-3">
+                        <div className={`flex items-center gap-3 ${depth ? "pl-8" : ""}`}>
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
                             <FolderTree className="h-4 w-4 text-muted-foreground" />
                           </div>
                           <span className="font-medium">{c.name}</span>
+                          {depth === 1 && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">Sub</span>}
                         </div>
                       </td>
                       <td className="max-w-[220px] truncate py-3 pr-3 text-muted-foreground">{c.description || "—"}</td>
@@ -281,6 +294,29 @@ export function CategoryManager({
                     </div>
                   );
                 })()}
+                {!selected.parentId && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">Subcategories ({children(selected.id).length})</p>
+                    {children(selected.id).length > 0 && (
+                      <ul className="space-y-1">
+                        {children(selected.id).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)).map((s) => (
+                          <li key={s.id}>
+                            <button onClick={() => setSelectedId(s.id)} className="flex w-full items-center justify-between rounded-lg border px-2.5 py-1.5 text-left text-sm hover:bg-muted">
+                              <span className="truncate">{s.name}</span>
+                              <span className="text-xs text-muted-foreground">{itemCounts[s.id] ?? 0}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <button
+                      onClick={() => { setNewParentId(selected.id); setFormOpen("new"); }}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm font-medium hover:bg-muted"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add subcategory
+                    </button>
+                  </div>
+                )}
                 <button
                   onClick={() => setFormOpen(selected.id)}
                   className="flex w-full items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted"
@@ -296,7 +332,7 @@ export function CategoryManager({
           <div className="rounded-xl border bg-background p-4 shadow-sm">
             <h2 className="mb-3 text-sm font-semibold">Quick Actions</h2>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setFormOpen("new")} className="flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs font-medium hover:bg-muted">
+              <button onClick={() => { setNewParentId(null); setFormOpen("new"); }} className="flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs font-medium hover:bg-muted">
                 <Plus className="h-4 w-4" /> Add {terminology.category}
               </button>
               <button
@@ -322,6 +358,7 @@ export function CategoryManager({
           terminology={terminology}
           businessCategory={businessCategory}
           topCategories={top}
+          defaultParentId={formOpen === "new" ? newParentId : null}
           category={formOpen === "new" ? null : categories.find((c) => c.id === formOpen) ?? null}
           saving={savingId === formOpen}
           onClose={() => setFormOpen(null)}
@@ -342,6 +379,7 @@ function CategoryFormModal({
   terminology,
   businessCategory,
   topCategories,
+  defaultParentId,
   category,
   onClose,
   onSaved,
@@ -352,6 +390,7 @@ function CategoryFormModal({
   terminology: BusinessTerminology;
   businessCategory?: string | null;
   topCategories: Category[];
+  defaultParentId?: string | null;
   category: Category | null;
   onClose: () => void;
   onSaved: (c: Category, isNew: boolean) => void;
@@ -360,8 +399,9 @@ function CategoryFormModal({
 }) {
   const [name, setName] = useState(category?.name ?? "");
   const [description, setDescription] = useState(category?.description ?? "");
-  const [type, setType] = useState<"PRODUCT" | "SERVICE">(category?.type ?? "PRODUCT");
-  const [parentId, setParentId] = useState(category?.parentId ?? "");
+  const defaultParent = defaultParentId ? topCategories.find((c) => c.id === defaultParentId) : undefined;
+  const [type, setType] = useState<"PRODUCT" | "SERVICE">(category?.type ?? defaultParent?.type ?? "PRODUCT");
+  const [parentId, setParentId] = useState(category?.parentId ?? defaultParent?.id ?? "");
   const [address, setAddress] = useState(category?.slug ?? "");
 
   async function save() {
@@ -444,7 +484,7 @@ function CategoryFormModal({
           {!category && (
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Type</label>
-              <select value={type} onChange={(e) => setType(e.target.value as any)} className="h-10 w-full rounded-lg border bg-background px-3 text-sm">
+              <select value={type} onChange={(e) => { setType(e.target.value as "PRODUCT" | "SERVICE"); setParentId(""); }} className="h-10 w-full rounded-lg border bg-background px-3 text-sm">
                 <option value="PRODUCT">{terminology.catalogSingular}</option>
                 <option value="SERVICE">Service</option>
               </select>
