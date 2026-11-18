@@ -204,17 +204,31 @@ export async function updateService(slug: string, serviceId: string, input: Serv
   return { success: true, data: { id: serviceId } };
 }
 
-export async function deleteService(slug: string, serviceId: string): Promise<ActionResult> {
+export async function deleteService(slug: string, serviceId: string): Promise<ActionResult<{ archived: boolean }>> {
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
 
   const existing = await prisma.service.findFirst({ where: { id: serviceId, storeId: access.store.id } });
   if (!existing) return { success: false, error: "Service not found." };
 
+  // Bookings cascade from the service and order lines would lose their link, so a service with history is taken
+  // off the storefront instead of being erased (same rule as products).
+  const [bookings, orderLines] = await Promise.all([
+    prisma.booking.count({ where: { serviceId } }),
+    prisma.orderItem.count({ where: { serviceId } }),
+  ]);
+  if (bookings + orderLines > 0) {
+    await prisma.service.update({ where: { id: serviceId }, data: { isPublished: false, isBookable: false } });
+    revalidatePath(`/store/${slug}/admin/services`);
+    revalidatePath(`/store/${slug}`);
+    return { success: true, data: { archived: true } };
+  }
+
   await prisma.service.delete({ where: { id: serviceId } });
 
   revalidatePath(`/store/${slug}/admin/services`);
-  return { success: true, data: undefined };
+  revalidatePath(`/store/${slug}`);
+  return { success: true, data: { archived: false } };
 }
 
 export async function updateServiceAvailabilityForm(slug: string, serviceId: string, formData: FormData): Promise<ActionResult> {

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { ProductRowActions } from "@/components/dashboard/product-row-actions";
 import { bulkUpdateProducts } from "@/lib/actions/bulk";
+import { deleteProduct } from "@/lib/actions/product";
 import type { BusinessTerminology } from "@/lib/business-terminology";
 import { formatNumber } from "@/lib/i18n/locale";
 
@@ -102,6 +103,24 @@ export function ProductsTable({
       else next.add(id);
       return next;
     });
+  }
+
+  async function bulkDelete() {
+    if (visibleSelected.length === 0) return;
+    if (!window.confirm(`Delete ${visibleSelected.length} selected? Anything with orders or stock history is archived instead of deleted.`)) return;
+    setIsSaving(true);
+    let deleted = 0, archived = 0, failed = 0;
+    for (const row of visibleSelected) {
+      const r = await deleteProduct(storeSlug, row.id);
+      if (!r.success) failed++;
+      else if (r.data?.archived) archived++;
+      else deleted++;
+    }
+    setIsSaving(false);
+    setSelected(new Set());
+    const parts = [deleted && `${deleted} deleted`, archived && `${archived} archived`, failed && `${failed} failed`].filter(Boolean);
+    (failed ? toast.error : toast.success)(parts.join(", ") || "Nothing changed");
+    router.refresh();
   }
 
   const hasChanges = priceInput.trim() !== "" || quantityInput.trim() !== "" || categoryInput !== "" || publishInput !== "";
@@ -260,6 +279,13 @@ export function ProductsTable({
           >
             {isSaving ? "Applying…" : "Apply to selected"}
           </button>
+          <button
+            onClick={bulkDelete}
+            disabled={isSaving}
+            className="rounded-md border border-destructive/40 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/5 disabled:opacity-50"
+          >
+            Delete selected
+          </button>
           <button onClick={() => setSelected(new Set())} className="text-xs text-muted-foreground hover:underline">
             Clear
           </button>
@@ -279,7 +305,7 @@ export function ProductsTable({
               <th className="px-4 py-2">Status</th>
               <th className="px-4 py-2">Availability</th>
               <th className="px-4 py-2">Orders</th>
-              <th className="px-4 py-2"></th>
+              <th className="sticky right-0 bg-muted px-4 py-2"></th>
             </tr>
           </thead>
           <tbody>
@@ -324,7 +350,7 @@ export function ProductsTable({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{p.orders}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="sticky right-0 bg-background px-4 py-3 text-right shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]">
                     <ProductRowActions storeSlug={storeSlug} productId={p.id} productName={p.name} isPublished={p.isPublished} archived={p.archived} />
                   </td>
                 </tr>

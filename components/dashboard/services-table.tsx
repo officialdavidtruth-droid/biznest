@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { deleteService } from "@/lib/actions/service";
 import { ListToolbar, ListPagination } from "@/components/dashboard/list-toolbar";
 import type { BusinessTerminology } from "@/lib/business-terminology";
 import { formatNumber } from "@/lib/i18n/locale";
@@ -17,6 +20,8 @@ type ServiceRow = {
 };
 
 export function ServicesTable({ storeSlug, services, terminology }: { storeSlug: string; services: ServiceRow[]; terminology: BusinessTerminology }) {
+  const router = useRouter();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | "published" | "draft">("");
   const [page, setPage] = useState(1);
@@ -55,7 +60,7 @@ export function ServicesTable({ storeSlug, services, terminology }: { storeSlug:
               <th className="px-4 py-2">Price</th>
               <th className="px-4 py-2">Booking</th>
               <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2"></th>
+              <th className="sticky right-0 bg-muted px-4 py-2"></th>
             </tr>
           </thead>
           <tbody>
@@ -69,8 +74,26 @@ export function ServicesTable({ storeSlug, services, terminology }: { storeSlug:
                     {s.isPublished ? "Active" : "Inactive"}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right">
-                  <Link href={`/${storeSlug}/admin/services/${s.id}/edit`} className="text-xs font-medium text-primary hover:underline">Edit</Link>
+                <td className="sticky right-0 bg-background px-4 py-3 text-right shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]">
+                  <div className="flex items-center justify-end gap-3">
+                    <Link href={`/${storeSlug}/admin/services/${s.id}/edit`} className="text-xs font-medium text-primary hover:underline">Edit</Link>
+                    <button
+                      type="button"
+                      disabled={deletingId === s.id}
+                      onClick={async () => {
+                        if (!window.confirm(`Delete "${s.name}"? This can't be undone.`)) return;
+                        setDeletingId(s.id);
+                        const r = await deleteService(storeSlug, s.id);
+                        setDeletingId(null);
+                        if (!r.success) return toast.error(r.error);
+                        toast.success(r.data?.archived ? "Has bookings or orders, so it was made inactive instead of deleted." : "Deleted");
+                        router.refresh();
+                      }}
+                      className="text-xs font-medium text-destructive hover:underline disabled:opacity-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
 import { createCategory, deleteCategory, renameCategory, reorderCategory, setCategoryActive } from "@/lib/actions/category";
-import { deleteBlockReason, type SimpleCategoryRow } from "@/lib/storefront/simple-categories";
+import { type SimpleCategoryRow } from "@/lib/storefront/simple-categories";
 
 type Props = {
   slug: string;
@@ -80,9 +80,8 @@ export function SimpleCategoryList({ slug, initialRows, canEdit, singular, offer
   }
 
   function remove(row: SimpleCategoryRow) {
-    const blocked = deleteBlockReason(row);
-    if (blocked) { toast.error(blocked); return; }
-    if (!window.confirm(`Delete “${row.name}”? This can't be undone.`)) return;
+    const extra = [row.subcategoryCount > 0 && "its subcategories will be deleted too", row.itemCount > 0 && "its items will be kept with no category"].filter(Boolean).join(" and ");
+    if (!window.confirm(`Delete “${row.name}”?${extra ? ` Note: ${extra}.` : ""} This can't be undone.`)) return;
     run(() => deleteCategory(slug, row.id), () => {
       setRows((rs) => rs.filter((x) => x.id !== row.id));
       toast.success("Deleted.");

@@ -108,10 +108,10 @@ export function CategoryManager({
   }
 
   async function remove(c: Category) {
-    if (!window.confirm(`Delete "${c.name}"? This can't be undone.`)) return;
+    if (!window.confirm(`Delete "${c.name}"? Its subcategories are deleted too; products and services in it are kept with no category. This can't be undone.`)) return;
     const r = await deleteCategory(slug, c.id);
     if (!r.success) return toast.error(r.error);
-    setCategories((v) => v.filter((x) => x.id !== c.id));
+    setCategories((v) => v.filter((x) => x.id !== c.id && x.parentId !== c.id));
     if (selectedId === c.id) setSelectedId(top.find((x) => x.id !== c.id)?.id ?? null);
     toast.success(`${terminology.category} deleted`);
   }

@@ -128,25 +128,27 @@ export async function updateCategory(slug: string, id: string, input: { name: st
 export async function deleteCategory(slug: string, id: string): Promise<ActionResult> {
   const a = await assertMenuEditor(slug);
   if (!a.success) return { success: false, error: a.error };
-  const row = await prisma.category.findFirst({ where: { id, storeId: a.store.id }, include: { children: true } });
+  const row = await prisma.category.findFirst({ where: { id, storeId: a.store.id } });
   if (!row) return { success: false, error: "Category not found." };
-  const [products, services] = await Promise.all([
-    prisma.product.count({ where: { storeId: a.store.id, categoryId: id } }),
-    prisma.service.count({ where: { storeId: a.store.id, categoryId: id } }),
-  ]);
-  if (products || services) return { success: false, error: "Move or uncategorize its listings before deleting this category." };
-  if (row.children.length) return { success: false, error: "Delete or move its subcategories first." };
-  // Menu links to this category would 404, so remove them with it (WordPress does the same). A removed link's
+  // Deleting a category removes it and its subcategories. Products and services in them are kept and simply
+  // end up with no category, so nothing the owner sells is ever deleted by removing a category.
+  const doomed = [id, ...(await prisma.category.findMany({ where: { storeId: a.store.id, parentId: id }, select: { id: true } })).map((c) => c.id)];
+  // Menu links to these categories would 404, so remove them with it (WordPress does the same). A removed link's
   // dropdown children are kept: they move up to the level the removed link was on.
   await prisma.$transaction(async (tx) => {
-    const links = await tx.storeMenuItem.findMany({ where: { storeId: a.store.id, linkType: "CATEGORY", target: id }, select: { id: true, parentId: true } });
+    await tx.product.updateMany({ where: { storeId: a.store.id, categoryId: { in: doomed } }, data: { categoryId: null } });
+    await tx.service.updateMany({ where: { storeId: a.store.id, categoryId: { in: doomed } }, data: { categoryId: null } });
+    const links = await tx.storeMenuItem.findMany({ where: { storeId: a.store.id, linkType: "CATEGORY", target: { in: doomed } }, select: { id: true, parentId: true } });
     for (const link of links) {
       await tx.storeMenuItem.updateMany({ where: { storeId: a.store.id, parentId: link.id }, data: { parentId: link.parentId } });
       await tx.storeMenuItem.delete({ where: { id: link.id } });
     }
+    await tx.category.deleteMany({ where: { storeId: a.store.id, parentId: id } });
     await tx.category.delete({ where: { id } });
   });
   revalidatePath(`/store/${slug}/admin/categories`);
+  revalidatePath(`/store/${slug}/admin/products`);
+  revalidatePath(`/store/${slug}/admin/services`);
   revalidatePath(`/store/${slug}`, "layout"); // the header menu lives in the store layout
   return { success: true, data: undefined };
 }
