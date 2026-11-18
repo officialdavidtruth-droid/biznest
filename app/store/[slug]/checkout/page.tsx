@@ -4,9 +4,10 @@ import { usesTemplateChromeFor } from "@/lib/storefront/template-chrome";
 import { usesGrandeurSkin } from "@/lib/store-pages";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { isHotelStore } from "@/lib/storefront-routing"; import { prisma } from "@/lib/prisma";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
 import { CheckoutClient } from "./checkout-client";
+import { GuestPrompt } from "./guest-prompt";
 import { HotelCheckout } from "@/components/storefront/theluso-hotel";
 import { HOTEL_TEMPLATE_NAME } from "@/lib/hotel-content";
 import { getHotelContent } from "@/lib/hotel-content";
@@ -30,7 +31,11 @@ async function renderCheckout(slug: string) {
   const isHotel = isHotelStore({ businessCategory: rawStore.business?.category, storeBusinessType: rawStore.businessType, templateName: rawStore.template?.name });
   if (isHotel) return <HotelCheckout store={rawStore} slug={slug} content={await getHotelContent(slug)} />;
   const session = await getStoreCustomerSessionForStore(slug);
-  if (!session?.user?.id) redirect(`/login?callbackUrl=${encodeURIComponent(`/store/${slug}/checkout`)}&store=${encodeURIComponent(slug)}`);
+  // Not signed in: a short suggestion to sign up, or carry on as a guest (see GuestPrompt).
+  if (!session?.user?.id) {
+    const primary = (rawStore.themeColors as { primary?: string } | null)?.primary;
+    return <GuestPrompt slug={slug} storeName={rawStore.name} accent={primary && /^#[0-9a-f]{3,8}$/i.test(primary) ? primary : "#0f172a"} />;
+  }
   if (usesGrandeurSkin({ businessCategory: rawStore.business?.category, storeBusinessType: rawStore.businessType, templateName: rawStore.template?.name })) {
     const data = await getGrandeurRestaurantData(slug);
     if (data) return <GrandeurCheckout store={data.store} slug={slug} feeConfig={await getCheckoutFeeConfig(rawStore.id)} />;

@@ -31,7 +31,7 @@ const STORE_ADMIN_PATTERN = /^\/store\/[^/]+\/admin/;
 // entire checkout form across any of the 12+ storefront templates, not
 // after submitting it. Deliberately doesn't cover /cart — viewing your own
 // (possibly empty) cart isn't "shopping" and shouldn't force a sign-in.
-const STORE_CHECKOUT_PATTERN = /^\/store\/[^/]+\/checkout/;
+// (checkout is no longer gated in middleware; see isProtected below)
 
 // Platform admin routes require PLATFORM_ADMIN or SUPPORT_MODERATOR role.
 const PLATFORM_ADMIN_PATTERN = /^\/admin/;
@@ -235,8 +235,10 @@ export default auth(async (req) => {
   const { pathname } = url;
   const isProtected =
     PROTECTED_PREFIXES.some((p) => pathname.startsWith(p)) ||
-    STORE_ADMIN_PATTERN.test(pathname) ||
-    STORE_CHECKOUT_PATTERN.test(pathname);
+    STORE_ADMIN_PATTERN.test(pathname);
+  // /checkout is deliberately NOT protected here any more: the checkout page itself shows a short
+  // "sign up or continue as a guest" prompt when nobody is signed in (see app/store/[slug]/checkout/guest-prompt.tsx),
+  // and startCheckout still rejects anonymous requests server-side.
 
   const rewritten = slug !== null || pathname !== req.nextUrl.pathname;
 
@@ -275,7 +277,7 @@ export default auth(async (req) => {
     // etc): carry the store slug through so /login shows this store's own
     // branding instead of generic BizNest chrome — same as AccountLink's
     // header sign-in link already does.
-    if (STORE_CHECKOUT_PATTERN.test(pathname)) {
+    if (/^\/store\/[^/]+\/(checkout|orders)/.test(pathname)) {
       const slugMatch = pathname.match(/^\/store\/([^/]+)\//);
       if (slugMatch) loginUrl.searchParams.set("store", slugMatch[1]);
     }
