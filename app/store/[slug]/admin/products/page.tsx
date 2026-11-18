@@ -1,4 +1,5 @@
 // Route: /store/[slug]/admin/products
+import { buildStoreUrl } from "@/lib/store-url";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { listProductsPage, getProductStats, type ProductListQuery } from "@/lib/actions/product";
@@ -26,7 +27,7 @@ export default async function ProductsListPage({ params, searchParams }: { param
   const [list, stats, store] = await Promise.all([
     listProductsPage(slug, query),
     getProductStats(slug),
-    prisma.store.findUnique({ where: { slug }, select: { id: true, name: true, business: { select: { category: true } } } }),
+    prisma.store.findUnique({ where: { slug }, select: { id: true, name: true, slug: true, customDomain: true, customDomainStatus: true, business: { select: { category: true } } } }),
   ]);
   const products = list.rows;
   const terminology = getBusinessTerminology(store?.business.category);
@@ -55,7 +56,7 @@ export default async function ProductsListPage({ params, searchParams }: { param
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/store/${slug}`} target="_blank" className={outlineBtn}><ExternalLink className="h-4 w-4" />View store</Link>
+          <Link href={store ? buildStoreUrl(store, "") : `/${slug}`} target="_blank" className={outlineBtn}><ExternalLink className="h-4 w-4" />View store</Link>
           <Link href={`/store/${slug}/admin/products?import=1#bulk-import`} className={outlineBtn}><Upload className="h-4 w-4" />Import {terminology.catalog.toLowerCase()}</Link>
           <Link href={`/store/${slug}/admin/products/new`} className="inline-flex items-center gap-2 rounded-xl bg-[var(--bn-admin-orange)] px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-[color-mix(in_srgb,var(--bn-admin-orange)_30%,transparent)] transition hover:-translate-y-px hover:bg-[var(--bn-admin-orange-dark)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--bn-admin-orange)_45%,transparent)]"><Plus className="h-4 w-4" />Add {terminology.catalogSingular.toLowerCase()}</Link>
         </div>

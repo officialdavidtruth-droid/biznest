@@ -5,6 +5,7 @@ import { getHotelContent } from "@/lib/hotel-content";
 import { VelouraAccountHero } from "@/components/storefront/veloura-account-shell";
 import { VelouraMessageComposer } from "@/components/storefront/veloura-message-composer";
 import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
+import { AutoRefresh } from "@/components/dashboard/auto-refresh";
 import { formatDate } from "@/lib/i18n/locale";
 export default async function Page({params}:{params:Promise<{slug:string}>}){
  const{slug}=await params;
@@ -13,6 +14,8 @@ export default async function Page({params}:{params:Promise<{slug:string}>}){
  void markStoreMessagesRead(slug);
  const hero=hotel.rooms[0]?.image||null;
  return <div className="veloura-account-content">
+  {/* A vendor's reply shows up within a few seconds, without the customer reloading. */}
+  <AutoRefresh intervalMs={4000}/>
   <VelouraAccountHero title="Messages" subtitle="Stay connected with our team. Send your inquiries, requests, or special arrangements — we’re here to assist you." image={hero}/>
   <div className="veloura-message-layout">
    <div className="veloura-thread">

@@ -15,6 +15,7 @@ import { PlaybookCard } from "@/components/dashboard/playbook-card";
 
 export function DashboardSidebar({
   slug,
+  storeUrl,
   storeName,
   logoUrl,
   sellsProducts,
@@ -29,6 +30,8 @@ export function DashboardSidebar({
   themeColor,
 }: {
   slug: string;
+  /** Where "View Store" goes: the store's own domain when connected, else /slug. */
+  storeUrl?: string;
   storeName: string;
   logoUrl?: string | null;
   // What this business does — controls which "Sell" items appear. Both
@@ -105,7 +108,7 @@ export function DashboardSidebar({
                 <p className="truncate text-xs font-semibold text-white">{storeName}</p>
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
               </div>
-              <Link href={`/${slug}`} target="_blank" data-tour="view-store" className="mt-1 flex items-center gap-1 text-[10px] text-white/70 hover:text-white">
+              <Link href={storeUrl ?? `/${slug}`} target="_blank" data-tour="view-store" className="mt-1 flex items-center gap-1 text-[10px] text-white/70 hover:text-white">
                 <span>View Store</span><ExternalLink className="h-2.5 w-2.5" />
               </Link>
             </div>

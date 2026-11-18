@@ -28,3 +28,8 @@ export function buildStoreUrl(store: StoreForUrl, path: string): string {
       : `${APP_URL}/${store.slug}`;
   return `${base}${path}`;
 }
+
+/** Short label for a store's address, e.g. "veloxspace.online" or "biznest.space/truthhotel". */
+export function storePublicLabel(store: StoreForUrl): string {
+  return store.customDomain && store.customDomainStatus === "VERIFIED" ? store.customDomain : `biznest.space/${store.slug}`;
+}

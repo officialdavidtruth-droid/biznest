@@ -41,6 +41,8 @@ type NotificationItem = {
  */
 export function MobileDashboardChrome({
   slug,
+  storeUrl,
+  storeLabel,
   storeName,
   logoUrl,
   sellsProducts,
@@ -58,6 +60,8 @@ export function MobileDashboardChrome({
   themeColor,
 }: {
   slug: string;
+  storeUrl?: string;
+  storeLabel?: string;
   storeName: string;
   logoUrl?: string | null;
   sellsProducts: boolean;
@@ -154,11 +158,11 @@ export function MobileDashboardChrome({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold leading-tight text-white">{storeName}</p>
                 <Link
-                  href={`/${slug}`}
+                  href={storeUrl ?? `/${slug}`}
                   className="bn-admin-mobile-muted mt-0.5 flex items-center gap-1 truncate text-xs"
                   onClick={() => setDrawerOpen(false)}
                 >
-                  <span className="truncate">biznest.space/{slug}</span>
+                  <span className="truncate">{storeLabel ?? `biznest.space/${slug}`}</span>
                   <ExternalLink className="h-3 w-3 shrink-0" />
                 </Link>
               </div>
@@ -241,7 +245,7 @@ export function MobileDashboardChrome({
               </div>
             )}
             <div className="space-y-2 border-t border-[var(--bn-admin-border)] px-4 py-3">
-              <Link href={`/${slug}`} data-tour="view-store" className="bn-admin-mobile-muted block text-xs font-medium">
+              <Link href={storeUrl ?? `/${slug}`} data-tour="view-store" className="bn-admin-mobile-muted block text-xs font-medium">
                 View live store →
               </Link>
               <SignOutButton className="text-xs font-medium text-[var(--bn-admin-muted)]" />

@@ -1,3 +1,4 @@
+import { buildStoreUrl, storePublicLabel } from "@/lib/store-url";
 import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -189,6 +190,7 @@ export default async function StoreAdminLayout({
         <div className="bn-admin-app flex shrink-0 flex-col bg-background text-foreground lg:flex-row">
           <DashboardSidebar
             slug={slug}
+            storeUrl={buildStoreUrl(store, "")}
             storeName={store.name}
             logoUrl={store.logoUrl}
             sellsProducts={store.business.sellsProducts}
@@ -207,6 +209,8 @@ export default async function StoreAdminLayout({
               why this doesn't wrap {children} itself. */}
           <MobileDashboardChrome
             slug={slug}
+            storeUrl={buildStoreUrl(store, "")}
+            storeLabel={storePublicLabel(store)}
             storeName={store.name}
             logoUrl={store.logoUrl}
             sellsProducts={store.business.sellsProducts}

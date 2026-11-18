@@ -1,4 +1,5 @@
 // Route: /store/[slug]/admin/services
+import { buildStoreUrl } from "@/lib/store-url";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -25,7 +26,7 @@ export default async function ServicesPage({ params, searchParams }: { params: P
           <p className="mt-1 text-sm text-muted-foreground">{terminology.catalogDescription}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/store/${slug}`} target="_blank" className="bn-admin-action rounded-lg border bg-background px-4 py-2.5 text-sm font-semibold">View Store ↗</Link>
+          <Link href={store ? buildStoreUrl(store, "") : `/${slug}`} target="_blank" className="rounded-lg border bg-background px-4 py-2.5 text-sm font-semibold transition hover:bg-muted/60">View Store ↗</Link>
           <Link href={`/store/${slug}/admin/services/new`} className="bn-admin-action rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><Plus className="mr-2 inline h-4 w-4" />Add {terminology.catalogSingular}</Link>
         </div>
       </div>
