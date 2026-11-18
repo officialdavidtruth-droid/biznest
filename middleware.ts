@@ -239,6 +239,13 @@ export default auth(async (req) => {
       // Unknown or not-yet-resolvable domain: say so, instead of showing BizNest's own homepage on someone else's domain.
       return NextResponse.rewrite(new URL("/domain-not-connected", origin));
     }
+    // Many in-app links and post-login redirects are written as /store/<slug>/..., which only makes sense on the
+    // platform host. On the store's own domain that would double up into a page that doesn't exist, so send the
+    // visitor to the clean path (/store/<slug>/account -> /account).
+    const ownPrefix = `/store/${slug}`;
+    if (rawPathname === ownPrefix || rawPathname.startsWith(`${ownPrefix}/`)) {
+      return NextResponse.redirect(new URL(`${rawPathname.slice(ownPrefix.length) || "/"}${req.nextUrl.search}`, origin));
+    }
     if (slug) {
       // Browsers (and Safari, bookmarks, search results) request /favicon.ico implicitly,
       // ignoring <link rel="icon">. Serve the store's own logo as that icon.
