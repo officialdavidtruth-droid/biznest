@@ -156,7 +156,11 @@ function passThroughSupaAdmin(req: NextRequest) {
 }
 
 export default auth(async (req) => {
-  const host = req.nextUrl.hostname.toLowerCase();
+  // The host the visitor actually typed. NOT req.nextUrl.hostname: Auth.js rewrites the request URL onto AUTH_URL
+  // (www.biznest.space) inside this wrapper, so every vendor custom domain used to look like the platform itself and
+  // got BizNest's own homepage.
+  const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? req.nextUrl.hostname).split(",")[0].trim().toLowerCase().replace(/:\d+$/, "");
+  const origin = `${host === "localhost" ? "http" : "https"}://${req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? host}`.split(",")[0];
   const rawPathname = req.nextUrl.pathname;
 
   // supaadmin.biznest.space/ is just an easier-to-remember front door to the
@@ -167,12 +171,12 @@ export default auth(async (req) => {
   // exactly as it already did on the apex domain. biznest.space/supaadmin
   // keeps working too, unchanged, for anyone with it bookmarked.
   if (host === SUPAADMIN_HOST && rawPathname === "/") {
-    return NextResponse.redirect(new URL("/supaadmin", req.nextUrl.origin));
+    return NextResponse.redirect(new URL("/supaadmin", origin));
   }
 
   // A vendor's own domain serves their storefront and nothing else: never BizNest's admin panel.
   if (!isPlatformHost(host) && (rawPathname === "/supaadmin" || rawPathname.startsWith("/supaadmin/"))) {
-    return NextResponse.rewrite(new URL("/domain-not-connected", req.nextUrl.origin));
+    return NextResponse.rewrite(new URL("/domain-not-connected", origin));
   }
 
   // /supaadmin is gated entirely separately from everything else on this
@@ -196,8 +200,8 @@ export default auth(async (req) => {
     const token = req.cookies.get(ADMIN_COOKIE_NAME)?.value;
     const valid = await verifyAdminToken(token);
     if (!valid) {
-      const loginUrl = new URL("/supaadmin/login", req.nextUrl.origin);
-      loginUrl.searchParams.set("callbackUrl", `${req.nextUrl.origin}${rawPathname}${req.nextUrl.search}`);
+      const loginUrl = new URL("/supaadmin/login", origin);
+      loginUrl.searchParams.set("callbackUrl", `${origin}${rawPathname}${req.nextUrl.search}`);
       return NextResponse.redirect(loginUrl);
     }
     return passThroughSupaAdmin(req);
@@ -209,7 +213,7 @@ export default auth(async (req) => {
   // store slug, so pass it straight through.
   if (rawPathname === "/favicon.ico" && isPlatformHost(host)) return NextResponse.next();
 
-  const url = req.nextUrl.clone();
+  const url = new URL(`${rawPathname}${req.nextUrl.search}`, origin);
   let slug: string | null = null;
 
   if (isPlatformHost(host)) {
@@ -230,10 +234,10 @@ export default auth(async (req) => {
     // A vendor's own custom domain (e.g. mystore.com) maps entirely onto
     // one store — the whole path belongs to it, unlike the platform host
     // above where only the first segment is the slug.
-    slug = await resolveCustomDomain(host, req.nextUrl.origin);
+    slug = await resolveCustomDomain(host, origin);
     if (!slug) {
       // Unknown or not-yet-resolvable domain: say so, instead of showing BizNest's own homepage on someone else's domain.
-      return NextResponse.rewrite(new URL("/domain-not-connected", req.nextUrl.origin));
+      return NextResponse.rewrite(new URL("/domain-not-connected", origin));
     }
     if (slug) {
       // Browsers (and Safari, bookmarks, search results) request /favicon.ico implicitly,
@@ -280,11 +284,11 @@ export default auth(async (req) => {
   }
 
   if (!req.auth?.user) {
-    const loginUrl = new URL("/login", req.nextUrl.origin);
+    const loginUrl = new URL("/login", origin);
     // Absolute URL, not just `pathname` — a bare path like "/supaadmin" has
     // no host in it, so NextAuth's redirect callback would resolve it
     // against AUTH_URL (www.biznest.space) and lose the subdomain entirely.
-    loginUrl.searchParams.set("callbackUrl", `${req.nextUrl.origin}${pathname}`);
+    loginUrl.searchParams.set("callbackUrl", `${origin}${pathname}`);
     // Bounced off checkout specifically (as opposed to /admin, /account,
     // etc): carry the store slug through so /login shows this store's own
     // branding instead of generic BizNest chrome — same as AccountLink's
@@ -301,7 +305,7 @@ export default auth(async (req) => {
     if (role !== "PLATFORM_ADMIN" && role !== "SUPPORT_MODERATOR") {
       // Non-admins hitting /admin get bounced to the homepage. (/supaadmin
       // is handled entirely separately above via the PIN cookie.)
-      return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+      return NextResponse.redirect(new URL("/", origin));
     }
   }
 
