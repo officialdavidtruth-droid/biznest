@@ -4,6 +4,7 @@
 // workspace's POS tab instead (shifts + kitchen display), and the sidebar
 // already hides this link for them, so we forward them there.
 import { notFound, redirect } from "next/navigation";
+import { Store } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
@@ -51,17 +52,28 @@ export default async function PosPage({ params }: { params: Promise<{ slug: stri
 
   return (
     <div className="bn-admin-page space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">Point of Sale</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Ring up in-person sales. Stock updates automatically.</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--bn-admin-orange)] text-white shadow-md shadow-[color-mix(in_srgb,var(--bn-admin-orange)_30%,transparent)]">
+            <Store className="h-6 w-6" />
+          </span>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Point of Sale</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">Ring up in-person sales. Stock updates automatically.</p>
+          </div>
         </div>
-        <div className="rounded-xl border px-4 py-2 text-right">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Today</p>
-          <p className="text-sm font-semibold">
-            {summary.salesCount} {summary.salesCount === 1 ? "sale" : "sales"} · {summary.currency}{" "}
-            {formatNumber(summary.totalAmount)}
-          </p>
+        <div className="flex items-stretch divide-x overflow-hidden rounded-2xl border bg-[var(--bn-admin-orange-soft)]/50">
+          <div className="px-5 py-2.5">
+            <p className="text-xs font-medium text-muted-foreground">Sales today</p>
+            <p className="text-xl font-bold tabular-nums">{summary.salesCount}</p>
+          </div>
+          <div className="px-5 py-2.5">
+            <p className="text-xs font-medium text-muted-foreground">Taken today</p>
+            <p className="text-xl font-bold tabular-nums text-[var(--bn-admin-orange)]">
+              <span className="mr-1 text-xs font-semibold text-muted-foreground">{summary.currency}</span>
+              {formatNumber(summary.totalAmount)}
+            </p>
+          </div>
         </div>
       </div>
       <PosRegister
