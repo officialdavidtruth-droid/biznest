@@ -554,7 +554,7 @@ export function ServiceForm({
                 <label className="mb-1 block text-sm font-medium">Price ({watch("currency") || "NGN"}) <span className="text-destructive">*</span></label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{currencySymbol()}</span>
-                  <input type="number" step="0.01" placeholder="e.g. 5,500" className="input pl-8" {...register("price")} />
+                  <input type="number" step="0.01" placeholder="e.g. 5,500" className="input pl-8" style={{ paddingLeft: "2.75rem" }} {...register("price")} />
                 </div>
                 {errors.price && <p className="mt-1 text-xs text-destructive">{errors.price.message}</p>}
               </div>
