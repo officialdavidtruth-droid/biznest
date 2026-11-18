@@ -12,6 +12,10 @@ export default async function OfficialAccountPage() {
     where: { slug: OFFICIAL_SLUG },
     select: { id: true, name: true, logoUrl: true, followerCount: true, business: { select: { description: true } } },
   });
+  // Self-heal: the official account must always be visible in Browse (older set-ups switched this off, which makes its profile 404).
+  if (store) {
+    await prisma.business.updateMany({ where: { store: { is: { slug: OFFICIAL_SLUG } }, searchVisible: false }, data: { searchVisible: true } });
+  }
   return (
     <div className="space-y-6">
       <div>
