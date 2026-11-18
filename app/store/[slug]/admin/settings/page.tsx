@@ -15,6 +15,9 @@ import { TrackingIdsForm } from "@/components/dashboard/tracking-ids-form";
 import { sanitizeStoredTrackingIds } from "@/lib/tracking/ids";
 import { getStoreAccessRole } from "@/lib/access/store-access";
 import { StoreSettingsForm } from "@/components/dashboard/store-settings-form";
+import { DemoNicheSwitcher } from "@/components/dashboard/demo-store-forms";
+import { isDemoStoreSlug } from "@/lib/demo-store";
+import { ALL_BUSINESS_TYPE_NAMES } from "@/lib/capabilities";
 import { STORE_FONT_OPTIONS, STORE_SETTINGS_LIMITS } from "@/lib/validations/store-settings";
 
 export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -61,6 +64,12 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
   return (
     <div className="max-w-xl">
       <h1 className="mb-6 text-xl font-semibold">Settings</h1>
+      {/* Only the official BizNest demo store gets this. Every other store never sees it. */}
+      {isDemoStoreSlug(slug) && (
+        <div className="mb-6">
+          <DemoNicheSwitcher slug={slug} current={store.businessType} niches={ALL_BUSINESS_TYPE_NAMES} />
+        </div>
+      )}
       <StoreSettingsForm action={save}>
         <LogoBannerFields initialLogo={store.logoUrl ?? ""} initialBanner={store.bannerUrl ?? ""} />
         <div className="rounded-lg border bg-background p-4">
