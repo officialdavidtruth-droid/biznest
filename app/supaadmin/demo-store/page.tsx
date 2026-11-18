@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { DemoStoreSetupForm } from "@/components/dashboard/demo-store-forms";
+import { DemoStoreSetupForm, ShowInBrowseButton } from "@/components/dashboard/demo-store-forms";
 import { DEMO_STORE_EMAIL, DEMO_STORE_SLUG } from "@/lib/demo-store";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export default async function DemoStorePage() {
       <div>
         <h1 className="text-xl font-semibold">BizNest demo store</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          A real store on the main BizNest for running demos. It belongs to the official BizNest account, signs in like any other store, and is hidden from search and the marketplace.
+          A real store on the main BizNest for running demos. It belongs to the official BizNest account, signs in like any other store, and is kept out of Google.
           Switch its niche from Settings inside its dashboard.
         </p>
       </div>
@@ -24,6 +24,7 @@ export default async function DemoStorePage() {
           <Link className="underline" href={`/login?callbackUrl=/store/${DEMO_STORE_SLUG}/admin`} target="_blank">Open dashboard login</Link>
         </div>
       )}
+      {isSetUp && <ShowInBrowseButton />}
       <DemoStoreSetupForm isSetUp={isSetUp} email={DEMO_STORE_EMAIL} />
     </div>
   );

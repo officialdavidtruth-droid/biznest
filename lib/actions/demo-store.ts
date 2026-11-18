@@ -126,12 +126,12 @@ export async function setUpDemoStore(password: string): Promise<ActionResult<{ e
   const passwordHash = await bcrypt.hash(pw, 12);
   await prisma.$transaction([
     prisma.user.update({ where: { id: store.business.userId }, data: { passwordHash, email: DEMO_STORE_EMAIL, emailVerified: new Date(), role: "STORE_OWNER" } }),
-    prisma.business.update({ where: { id: store.businessId }, data: { fraudPolicyAcceptedAt: store.business.fraudPolicyAcceptedAt ?? new Date(), searchVisible: false, email: DEMO_STORE_EMAIL } }),
+    prisma.business.update({ where: { id: store.businessId }, data: { fraudPolicyAcceptedAt: store.business.fraudPolicyAcceptedAt ?? new Date(), searchVisible: true, email: DEMO_STORE_EMAIL } }),
     prisma.store.update({
       where: { id: store.id },
       data: {
         marketingOnly: false,
-        // A demo is for showing, not for Google or the marketplace.
+        // Keep it out of Google. (Not out of Browse: Browse hides any business with searchVisible off, which would hide the official account's posts.)
         seoNoIndex: true,
         subscriptionId: plan.id,
         subscriptionRenewsAt: FAR_FUTURE,
@@ -171,4 +171,14 @@ export async function switchDemoNiche(slug: string, niche: string): Promise<Acti
   revalidateDemo();
   revalidatePath(`/store/${slug}/admin`, "layout");
   return { success: true, data: { niche } };
+}
+
+/** Puts the official account's posts and profile back in Browse (set-up used to switch its search visibility off, which hides it there). */
+export async function showOfficialInBrowse(): Promise<ActionResult<void>> {
+  if (!(await isPlatformStaff())) return { success: false, error: NOT_ALLOWED };
+  const r = await prisma.business.updateMany({ where: { store: { is: { slug: OFFICIAL_SLUG } } }, data: { searchVisible: true } });
+  if (!r.count) return { success: false, error: "The official account could not be found." };
+  revalidatePath("/browse");
+  revalidatePath(`/browse/s/${OFFICIAL_SLUG}`);
+  return { success: true, data: undefined };
 }

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { setUpDemoStore, switchDemoNiche } from "@/lib/actions/demo-store";
+import { setUpDemoStore, showOfficialInBrowse, switchDemoNiche } from "@/lib/actions/demo-store";
 import { DEMO_PASSWORD_MIN } from "@/lib/demo-store";
 
 const input = "w-full rounded-lg border bg-background px-3 py-2 text-sm";
@@ -79,6 +79,25 @@ export function DemoNicheSwitcher({ slug, current, niches }: { slug: string; cur
         </button>
       </div>
       {msg && <p role={msg.ok ? "status" : "alert"} className={`mt-2 text-sm ${msg.ok ? "text-emerald-700" : "text-destructive"}`}>{msg.text}</p>}
+    </div>
+  );
+}
+
+/** SupaAdmin: one click to bring the official BizNest posts back into Browse. */
+export function ShowInBrowseButton() {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  return (
+    <div className="rounded-xl border bg-background p-4">
+      <h2 className="font-semibold">BizNest posts missing from Browse?</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Set-up used to hide the official account from search, and Browse hides anything hidden from search. This turns it back on. Nothing was deleted.</p>
+      {msg && <p role={msg.ok ? "status" : "alert"} className={`mt-2 text-sm ${msg.ok ? "text-emerald-700" : "text-destructive"}`}>{msg.text}</p>}
+      <button className={`${btn} mt-3`} disabled={pending} onClick={() => start(async () => {
+        const r = await showOfficialInBrowse();
+        setMsg(r.success ? { ok: true, text: "Done. The official posts should be back in Browse." } : { ok: false, text: r.error });
+        if (r.success) router.refresh();
+      })}>{pending ? "Working…" : "Show in Browse again"}</button>
     </div>
   );
 }
