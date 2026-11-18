@@ -8,6 +8,7 @@ import { LogoBannerFields } from "@/components/forms/logo-banner-fields";
 import { StoreSlugEditor } from "@/components/dashboard/store-slug-editor";
 import { BusinessCapabilitiesEditor } from "@/components/dashboard/business-capabilities-editor";
 import { WebhooksPanel } from "@/components/dashboard/webhooks-panel";
+import { planAllows, type PlanFeatures } from "@/lib/entitlements/plan-features";
 import { listWebhookEndpoints, availableWebhookEvents } from "@/lib/actions/webhook";
 import { APP_URL } from "@/lib/constants/app-url";
 import { GuideToggle } from "@/components/app/page-guide";
@@ -38,6 +39,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
 
   const features = store.subscription?.features as { customDomain?: boolean } | null;
   const domainUnlocked = Boolean(features?.customDomain);
+  const webhooksUnlocked = planAllows(store.subscription?.features as PlanFeatures, "webhooks");
 
   const [webhookEndpoints, webhookEventOptions] = await Promise.all([
     listWebhookEndpoints(slug),
@@ -197,7 +199,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
         {!domainUnlocked ? (
           <p className="text-xs text-muted-foreground">
             Connect your own domain (e.g. yourstore.com) instead of biznest.space/{slug}.
-            This is an Enterprise and Business Mogul feature —{" "}
+            This is an Entrepreneurship and Business Mogul feature —{" "}
             <a href={`/store/${slug}/admin/subscription`} className="font-medium text-primary hover:underline">upgrade your plan</a> to unlock it.
           </p>
         ) : store.customDomain ? (
@@ -235,7 +237,17 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
       )}
 
       <div className="mt-6">
-        <WebhooksPanel slug={slug} endpoints={webhookEndpoints} eventOptions={webhookEventOptions} />
+        {webhooksUnlocked ? (
+          <WebhooksPanel slug={slug} endpoints={webhookEndpoints} eventOptions={webhookEventOptions} />
+        ) : (
+          <div className="rounded-lg border bg-background p-4">
+            <p className="mb-1 text-sm font-medium">Webhooks</p>
+            <p className="text-xs text-muted-foreground">
+              Send live order and payment events to your own systems. This is a Business Mogul feature —{" "}
+              <a href={`/store/${slug}/admin/subscription`} className="font-medium text-primary hover:underline">upgrade your plan</a> to unlock it.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

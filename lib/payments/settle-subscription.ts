@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { amountCoversExpected } from "@/lib/payments/amount";
 import { flagPaymentForReview } from "@/lib/payments/review";
 import { creditVendorReferralForPlanPayment } from "@/lib/referrals/vendor-referral";
+import { addPeriod, paidPeriod } from "@/lib/billing/period";
 
 /**
  * Subscription (BizNest plan) payment settlement for gateways that have no saved-card
@@ -28,6 +29,9 @@ export async function settleSubscriptionUpgrade(reference: string, verifiedAmoun
   if (!store || !payment || payment.purpose !== "SUBSCRIPTION_UPGRADE" || payment.storeId !== store.id) return { outcome: "not_found" };
   if (payment.status === "SUCCESSFUL") return { outcome: "already", storeSlug: store.slug };
 
+  // Monthly or yearly: decided by the reference AND the amount the charge was created for.
+  const period = plan ? paidPeriod(reference, Number(payment.amount), Number(plan.price)) : "MONTHLY";
+
   // Money moved but doesn't match the plan: never mark it FAILED, flag it for a human.
   if (!plan || !amountCoversExpected(verifiedAmountNaira, Number(plan.price)) || !amountCoversExpected(verifiedAmountNaira, Number(payment.amount))) {
     await flagPaymentForReview(reference, "subscription payment verified but plan/amount did not match", rawPayload);
@@ -44,12 +48,11 @@ export async function settleSubscriptionUpgrade(reference: string, verifiedAmoun
   // a new plan, or a lapsed one, starts a fresh month from today.
   const now = new Date();
   const base = store.subscriptionId === plan.id && store.subscriptionRenewsAt && store.subscriptionRenewsAt > now ? new Date(store.subscriptionRenewsAt) : now;
-  const nextRenewal = new Date(base);
-  nextRenewal.setMonth(nextRenewal.getMonth() + 1);
+  const nextRenewal = addPeriod(base, period);
 
   await prisma.store.update({
     where: { id: store.id },
-    data: { subscriptionId: plan.id, subscriptionRenewsAt: nextRenewal, subscriptionPastDueSince: null, trialEndsAt: null,
+    data: { subscriptionId: plan.id, subscriptionRenewsAt: nextRenewal, subscriptionBillingPeriod: period, subscriptionPastDueSince: null, trialEndsAt: null,
       // Plan payments are now one-off Korapay payments: drop any old Paystack saved card so it is not auto-charged as well.
       paystackAuthorizationCode: null },
   });

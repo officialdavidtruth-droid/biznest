@@ -29,7 +29,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     isFree: true,
     eligibleBusinessTypes: ["Hotel & Lodging"],
     sortOrder: 10,
-    plans: ["Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "financial-control",
@@ -41,7 +41,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 20,
-    plans: ["Growth Store", "Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "crm",
@@ -53,7 +53,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 30,
-    plans: ["Growth Store", "Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "hr-payroll",
@@ -65,7 +65,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 40,
-    plans: ["Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "recruitment-ats",
@@ -77,7 +77,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["HR & Recruitment"],
     sortOrder: 41,
-    plans: ["Growth Store", "Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "requisition",
@@ -89,7 +89,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 45,
-    plans: ["Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "procurement",
@@ -101,7 +101,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 50,
-    plans: ["Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "advanced-analytics",
@@ -113,7 +113,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 60,
-    plans: ["Growth Store", "Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "fnb-operations",
@@ -125,7 +125,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["Restaurant", "Food & Groceries"],
     sortOrder: 65,
-    plans: ["Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "travel-agency",
@@ -137,7 +137,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["Travel & Tourism"],
     sortOrder: 66,
-    plans: ["Growth Store", "Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "helpdesk",
@@ -149,7 +149,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 80,
-    plans: ["Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "asset-management",
@@ -161,7 +161,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 90,
-    plans: ["Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "legal-compliance",
@@ -173,7 +173,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 100,
-    plans: ["Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "fleet-management",
@@ -186,7 +186,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["Logistics", "Courier", "Travel", "Construction"],
     sortOrder: 110,
-    plans: ["Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "loyalty-rewards",
@@ -198,7 +198,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 120,
-    plans: ["Growth Store", "Business Mogul"],
+    plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
     key: "qr-codes",

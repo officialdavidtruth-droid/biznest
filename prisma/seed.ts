@@ -78,39 +78,36 @@ const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
 };
 
 
-// Pricing tiers. "Free" stays as the entry tier for new vendors — the three
-// named paid tiers below are what's actually being sold. commissionRate and
-// product/service caps step down as price goes up; customDomain unlocks at
-// Enterprise and above. -1 in features means unlimited.
-// templateTier: 1=Free, 2=Entrepreneur, 3=Enterprise, 4=Business Mogul.
+// Pricing tiers. Three paid plans, all billed monthly (or yearly at 15% off, see lib/billing/period.ts),
+// no commission on sales, no free tier. Product/service caps, the own-domain feature and the plan tier rise
+// with price. templateTier: 1 = Starters, 2 = Entrepreneurship, 3+ = Business Mogul. What each tier unlocks in
+// the dashboard lives in lib/entitlements/plan-limits.ts. -1 in features means unlimited.
 // A store can pick any StoreTemplate whose tierRank <= its plan's templateTier
-// — matches TIER_RANK in lib/template-themes.ts, keep both in sync.
-// Only two plans, both paid monthly — no free tier. Users choose one during
-// mandatory checkout right after onboarding (see app/onboarding/select-plan)
-// and can't reach their dashboard until Store.subscriptionId is set (see
-// app/store/[slug]/admin/layout.tsx). Old tiers below are deactivated by the
-// updateMany at the bottom of main(), not deleted, since existing stores may
+// matches TIER_RANK in lib/template-themes.ts, keep both in sync.
+// Users choose a plan during mandatory checkout right after onboarding (see app/onboarding/select-plan) and
+// can't reach their dashboard until Store.subscriptionId is set (see app/store/[slug]/admin/layout.tsx).
+// Old plans are deactivated by the updateMany at the bottom of main(), not deleted, since existing stores may
 // still reference them via Store.subscriptionId.
 const SUBSCRIPTIONS = [
   {
-    name: "Store Templates",
-    price: 15000,
+    name: "Starters",
+    price: 10000,
     interval: "MONTHLY",
-    commissionRate: 5,
-    features: { products: 300, services: 150, customDomain: false, templateTier: 2 },
+    commissionRate: 0,
+    features: { products: 15, services: 15, customDomain: false, templateTier: 1 },
   },
   {
-    name: "Growth Store",
+    name: "Entrepreneurship",
     price: 45000,
     interval: "MONTHLY",
-    commissionRate: 3,
-    features: { products: 3000, services: 1500, customDomain: true, templateTier: 3 },
+    commissionRate: 0,
+    features: { products: 200, services: 200, customDomain: true, templateTier: 2 },
   },
   {
     name: "Business Mogul",
     price: 139000,
     interval: "MONTHLY",
-    commissionRate: 1,
+    commissionRate: 0,
     features: { products: -1, services: -1, customDomain: true, templateTier: 4 },
   },
 ];

@@ -17,6 +17,7 @@ import { formatNumber } from "@/lib/i18n/locale";
 import { customerDocUrl, invoiceTokenRequiredFrom, verifyDocToken } from "@/lib/documents/share-token";
 import { isCustomerOfStore } from "@/lib/access/store-customer";
 import { cleanLines, validateContact, validateLines, validateOptionalAmount } from "@/lib/utils/document-validation";
+import { planGate } from "@/lib/entitlements/plan-features";
 
 
 // Invoices live under the "orders" permission in the nav (dashboard-nav.ts).
@@ -46,6 +47,8 @@ export async function createInvoice(
 ): Promise<ActionResult<{ invoiceId: string; invoiceNo: string }>> {
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
+  const planOk = await planGate({ storeId: access.store.id }, "invoices");
+  if (!planOk.ok) return { success: false, error: planOk.message };
 
   const invalid =
     validateLines(input.items) ??

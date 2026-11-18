@@ -8,6 +8,7 @@ import type { WebhookEventType } from "@prisma/client";
 import { WEBHOOK_EVENT_TYPES, WEBHOOK_EVENT_NAMES } from "@/lib/webhooks/events";
 import { redeliver } from "@/lib/webhooks/dispatch";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { planGate } from "@/lib/entitlements/plan-features";
 
 // Webhooks live under store Settings ("settings" permission in dashboard-nav.ts).
 async function assertStoreAccess(slug: string) {
@@ -52,6 +53,8 @@ export async function createWebhookEndpoint(
 ): Promise<ActionResult<{ id: string; secret: string }>> {
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
+  const planOk = await planGate({ storeId: access.store.id }, "webhooks");
+  if (!planOk.ok) return { success: false, error: planOk.message };
 
   let parsed: URL;
   try {

@@ -6,6 +6,7 @@ import { settleInvoicePayment } from "@/lib/payments/settle-invoice";
 import { settleQuoteDeposit } from "@/lib/payments/settle-quote-deposit";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { settleOrderPayment } from "@/lib/payments/settle-order";
+import { addPeriod, paidPeriod } from "@/lib/billing/period";
 import { NextResponse } from "next/server";
 import { logError } from "@/lib/observability/log";
 import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
@@ -166,12 +167,13 @@ export async function POST(req: Request) {
       data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
     });
     if (claimed.count === 0) return NextResponse.json({ received: true });
-    const nextRenewal = new Date();
-    nextRenewal.setMonth(nextRenewal.getMonth() + 1);
+    const period = paidPeriod(reference, Number(payment.amount), Number(plan.price));
+    const nextRenewal = addPeriod(new Date(), period);
     await prisma.store.update({
       where: { id: store.id },
       data: {
         subscriptionId,
+        subscriptionBillingPeriod: period,
         paystackAuthorizationCode: verification.data?.authorization?.reusable
           ? verification.data.authorization.authorization_code
           : store.paystackAuthorizationCode,

@@ -964,6 +964,8 @@ model Store {
   // app/onboarding/select-plan). Set on both the first payment and every
   // successful renewal.
   subscriptionRenewsAt      DateTime?
+  // MONTHLY or YEARLY: what the owner last paid for, so reminders and the renew button charge the same period.
+  subscriptionBillingPeriod String    @default("MONTHLY")
   // Set the first time a renewal charge fails; cleared on the next
   // successful charge. Distinct from subscriptionRenewsAt so the renewal
   // cron can tell "due today" apart from "already tried and failed" and

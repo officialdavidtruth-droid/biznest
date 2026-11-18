@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 import { prisma } from "@/lib/prisma";
+import { periodFlag, type BillingPeriod } from "@/lib/billing/period";
 
 /**
  * Plan-upgrade payment references: SUBUP-{storeId}-{planToken}-{random}.
@@ -12,8 +13,9 @@ import { prisma } from "@/lib/prisma";
  */
 const PLAN_TOKEN_LEN = 8;
 
-export function buildSubscriptionReference(storeId: string, planId: string) {
-  return `SUBUP-${storeId}-${planId.slice(-PLAN_TOKEN_LEN)}-${nanoid(6)}`;
+export function buildSubscriptionReference(storeId: string, planId: string, period: BillingPeriod = "MONTHLY") {
+  // The first character of the random part records the billing period (see paidPeriod). Same length as before.
+  return `SUBUP-${storeId}-${planId.slice(-PLAN_TOKEN_LEN)}-${periodFlag(period)}${nanoid(5)}`;
 }
 
 /** Accepts the short token from a reference (or a full legacy id) and returns the full plan id. */

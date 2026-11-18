@@ -3,13 +3,14 @@
 import { useTransition } from "react";
 import { initiatePlanUpgrade } from "@/lib/actions/subscription";
 import { toast } from "sonner";
+import type { BillingPeriod } from "@/lib/billing/period";
 
-export function UpgradeButton({ storeSlug, planId, label }: { storeSlug: string; planId: string; label: string }) {
+export function UpgradeButton({ storeSlug, planId, label, period = "MONTHLY" }: { storeSlug: string; planId: string; label: string; period?: BillingPeriod }) {
   const [isPending, startTransition] = useTransition();
 
   function upgrade() {
     startTransition(async () => {
-      const result = await initiatePlanUpgrade(storeSlug, planId);
+      const result = await initiatePlanUpgrade(storeSlug, planId, period);
       if (!result.success) {
         toast.error(result.error);
         return;

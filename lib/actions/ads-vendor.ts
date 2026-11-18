@@ -10,6 +10,7 @@ import { billingCallbackUrl, chargeCustomer, getBillingGateway } from "@/lib/pay
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import { AD_MAX_ACTIVE_PER_STORE, adReference, sanitizeAd, type AdInput } from "@/lib/ads";
 import type { ActionResult } from "@/types/actions";
+import { planGate } from "@/lib/entitlements/plan-features";
 
 async function access(slug: string) {
   const a = await assertStorePermission(slug, "marketing");
@@ -47,6 +48,8 @@ async function startCheckout(slug: string, store: { id: string; slug: string }, 
 export async function createAdCampaign(slug: string, input: AdInput & { productId?: string | null }): Promise<ActionResult<{ authorizationUrl: string }>> {
   const a = await access(slug);
   if (!a.success) return { success: false, error: a.error };
+  const planOk = await planGate({ storeId: a.store.id }, "ads");
+  if (!planOk.ok) return { success: false, error: planOk.message };
   const parsed = sanitizeAd(input);
   if (!parsed.ok) return { success: false, error: parsed.error };
   const { ad } = parsed;

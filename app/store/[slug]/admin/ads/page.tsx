@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { loadVendorAds } from "@/lib/ads-data";
 import { AdsWorkspace } from "@/components/dashboard/ads-workspace";
+import { planGate } from "@/lib/entitlements/plan-features";
+import { PlanUpgradeNotice } from "@/components/dashboard/plan-upgrade-notice";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const { payment } = await searchParams;
   const s = await auth();
   if (!s?.user?.id) redirect(`/login?callbackUrl=/${slug}/admin/ads`);
+  const gate = await planGate({ slug }, "ads");
+  if (!gate.ok) return <PlanUpgradeNotice slug={slug} title="Ads" message={gate.message} />;
   const store = await prisma.store.findUnique({
     where: { slug },
     select: {

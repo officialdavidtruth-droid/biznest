@@ -13,6 +13,7 @@ import { roundMoney } from "@/lib/utils/pricing";
 import { issueGiftCard, redeemGiftCard, normalizeGiftCardCode } from "@/lib/payments/gift-card-ledger";
 import type { ActionResult } from "@/types/actions";
 import { formatMoney } from "@/lib/utils/format-money";
+import { planGate } from "@/lib/entitlements/plan-features";
 
 // Gift cards are stored value, so they sit behind the same "marketing"
 // permission as coupons. In-store redemption also accepts "pos" so a cashier
@@ -43,6 +44,8 @@ export async function issueGiftCardAction(
 ): Promise<ActionResult<{ code: string }>> {
   const access = await adminAccess(slug);
   if (!access.success) return { success: false, error: access.error };
+  const planOk = await planGate({ storeId: access.store.id }, "giftCards");
+  if (!planOk.ok) return { success: false, error: planOk.message };
 
   const rate = await checkRateLimit(`giftcard-issue:${access.store.id}`, 60, 10 * 60 * 1000);
   if (!rate.allowed) return { success: false, error: "Too many cards issued — try again shortly." };

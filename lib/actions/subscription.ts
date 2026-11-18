@@ -8,6 +8,7 @@ import { getFreeTrialSetting, getMarketingFreeTrialSetting } from "@/lib/actions
 import { buildSubscriptionReference } from "@/lib/payments/subscription-reference";
 import type { ActionResult } from "@/types/actions";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
+import { normalizePeriod, priceFor, type BillingPeriod } from "@/lib/billing/period";
 
 
 /**
@@ -19,8 +20,10 @@ import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending"
 
 export async function initiatePlanUpgrade(
   slug: string,
-  subscriptionId: string
+  subscriptionId: string,
+  billingPeriod: BillingPeriod = "MONTHLY"
 ): Promise<ActionResult<{ authorizationUrl: string } | { trialStarted: true }>> {
+  const period = normalizePeriod(billingPeriod);
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You must be signed in." };
 
@@ -34,8 +37,10 @@ export async function initiatePlanUpgrade(
   if (!plan || !plan.isActive) return { success: false, error: "That plan isn't available." };
   // Plan payments are one-off Korapay payments (no saved card), so the plan you are on can be
   // renewed once it is within a week of expiring (or has expired).
+  // Paying the same plan for a different period (monthly -> yearly) is always allowed.
   const renewable = store.subscriptionId === plan.id && Number(plan.price) > 0 && !!store.subscriptionRenewsAt && store.subscriptionRenewsAt.getTime() <= Date.now() + 7 * 24 * 60 * 60 * 1000;
-  if (store.subscriptionId === plan.id && !renewable) return { success: false, error: "You're already on this plan." };
+  const changingPeriod = store.subscriptionId === plan.id && store.subscriptionBillingPeriod !== period;
+  if (store.subscriptionId === plan.id && !renewable && !changingPeriod) return { success: false, error: "You're already on this plan." };
 
   if (Number(plan.price) === 0) {
     // Free tier — no charge needed, just switch immediately.
@@ -65,9 +70,11 @@ export async function initiatePlanUpgrade(
   }
 
   if (!(await acquirePaymentInitLock(`sub:${store.id}`))) return { success: false, error: PAYMENT_ALREADY_STARTING };
-  const reference = buildSubscriptionReference(store.id, plan.id);
+  // The amount charged is the plan's monthly price, or twelve months with 15% off for yearly.
+  const amountNaira = priceFor(Number(plan.price), period);
+  const reference = buildSubscriptionReference(store.id, plan.id, period);
   const billingGateway = await getBillingGateway();
-  await createPendingPayment({ storeId: store.id, purpose: "SUBSCRIPTION_UPGRADE", provider: billingGateway, reference, amount: Number(plan.price), currency: "NGN" });
+  await createPendingPayment({ storeId: store.id, purpose: "SUBSCRIPTION_UPGRADE", provider: billingGateway, reference, amount: amountNaira, currency: "NGN" });
 
   // Plan payments follow the gateway chosen in SupaAdmin, same as store checkout.
   const callbackUrl = billingCallbackUrl("subscription", undefined, billingGateway);
@@ -76,7 +83,7 @@ export async function initiatePlanUpgrade(
   // account, unlike order payments which split to the vendor's subaccount.
   const charge = await chargeCustomer({
     email: session.user.email ?? `${store.slug}@biznest.space`,
-    amountNaira: Number(plan.price),
+    amountNaira,
     reference,
     callbackUrl,
     gateway: billingGateway,

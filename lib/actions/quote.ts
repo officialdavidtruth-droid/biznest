@@ -17,6 +17,7 @@ import { signDocToken, verifyDocToken } from "@/lib/documents/share-token";
 import { isCustomerOfStore } from "@/lib/access/store-customer";
 import { effectiveQuoteStatus, expireLapsedQuotes, isQuoteLapsed, notLapsedWhere } from "@/lib/quotes/expiry";
 import { cleanLines, parseOptionalDate, validateContact, validateLines, validateOptionalAmount } from "@/lib/utils/document-validation";
+import { planGate } from "@/lib/entitlements/plan-features";
 
 
 const quoteToken = (quoteId: string) => signDocToken("quote", quoteId);
@@ -65,6 +66,8 @@ export async function createQuote(
 ): Promise<ActionResult<{ quoteId: string; quoteNo: string }>> {
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
+  const planOk = await planGate({ storeId: access.store.id }, "quotes");
+  if (!planOk.ok) return { success: false, error: planOk.message };
 
   const invalid = validateLines(input.items) ?? validateContact(input) ?? validateOptionalAmount("Deposit", input.depositRequired);
   if (invalid) return { success: false, error: invalid };

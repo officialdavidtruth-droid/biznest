@@ -44,12 +44,12 @@ export default async function SelectPlanPage({
       <div className="mb-8 text-center">
         <h1 className="text-2xl font-semibold tracking-tight">Choose your plan</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {store.name} is ready — pick a plan to unlock your dashboard. Billed monthly, cancel anytime.
+          {store.name} is ready — pick a plan to unlock your dashboard. Pay monthly, or pay yearly and save 15%.
         </p>
       </div>
       <PlanPicker
         slug={store.slug}
-        plans={plans}
+        plans={plans.map((p) => ({ id: p.id, name: p.name, price: Number(p.price), commissionRate: Number(p.commissionRate), features: p.features }))}
         trialPlanId={trialSetting.enabled ? trialSetting.planId : null}
         trialDays={trialSetting.days}
       />

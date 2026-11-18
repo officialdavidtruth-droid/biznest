@@ -5,6 +5,8 @@ import { QuoteRowActions } from "@/components/dashboard/quote-row-actions";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 import { effectiveQuoteStatus } from "@/lib/quotes/expiry";
 import { TableScroll } from "@/components/ui/table-scroll";
+import { planGate } from "@/lib/entitlements/plan-features";
+import { PlanUpgradeNotice } from "@/components/dashboard/plan-upgrade-notice";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
@@ -16,6 +18,8 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default async function QuotesPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const gate = await planGate({ slug }, "quotes");
+  if (!gate.ok) return <PlanUpgradeNotice slug={slug} title="Quotes" message={gate.message} />;
   const quotes = await listQuotes(slug);
   const incoming = quotes.filter((quote) => quote.creativeProject).length;
 

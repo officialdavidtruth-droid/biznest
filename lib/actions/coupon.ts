@@ -8,6 +8,7 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getPluginEntitlement } from "@/lib/plugins";
 import type { ActionResult } from "@/types/actions";
 import { formatMoney } from "@/lib/utils/format-money";
+import { planGate } from "@/lib/entitlements/plan-features";
 
 // Coupons & Gift Cards is an installable app: managing them needs the app
 // installed (and, for invited staff, the app's own permission).
@@ -24,6 +25,7 @@ async function assertCouponsApp(slug: string) {
 export async function createCoupon(slug: string, formData: FormData) {
   const access = await assertCouponsApp(slug);
   if (!access.success) return;
+  if (!(await planGate({ storeId: access.store.id }, "coupons")).ok) return;
 
   // Loose backstop (this is already store-owner-gated) against a runaway
   // script rather than a real abuse vector.

@@ -6,6 +6,7 @@ import { expireLapsedTrial, TRIAL_REMINDER_DAYS } from "@/lib/billing/trial";
 import { logInfo, logError, errorMeta } from "@/lib/observability/log";
 import { formatMoney } from "@/lib/utils/format-money";
 import { formatDate } from "@/lib/i18n/locale";
+import { normalizePeriod, priceFor } from "@/lib/billing/period";
 
 /**
  * Runs daily (see vercel.json, 06:00 UTC). Every in-app purchase (plans and apps) is paid through
@@ -106,7 +107,7 @@ export const GET = withCronMonitor("subscription-renewals", async (_req, ctx) =>
         userId: store.business.userId,
         type: "SUBSCRIPTION_RENEWING_SOON",
         title: "Your plan renews soon",
-        body: `${store.subscription?.name} (${formatMoney(Number(store.subscription?.price ?? 0))}) expires on ${formatDate(store.subscriptionRenewsAt)}. Renew it from your subscription page to keep your dashboard unlocked.`,
+        body: `${store.subscription?.name} (${formatMoney(priceFor(Number(store.subscription?.price ?? 0), normalizePeriod(store.subscriptionBillingPeriod)))}${normalizePeriod(store.subscriptionBillingPeriod) === "YEARLY" ? " a year" : ""}) expires on ${formatDate(store.subscriptionRenewsAt)}. Renew it from your subscription page to keep your dashboard unlocked.`,
         url: `/store/${store.slug}/admin/subscription`,
       });
       reminded++;

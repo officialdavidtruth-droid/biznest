@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 import { getInHouseReservations } from "@/lib/actions/folio";
 import { TableScroll } from "@/components/ui/table-scroll";
+import { planGate } from "@/lib/entitlements/plan-features";
+import { PlanUpgradeNotice } from "@/components/dashboard/plan-upgrade-notice";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-text)]",
@@ -16,6 +18,8 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default async function InvoicesPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const gate = await planGate({ slug }, "invoices");
+  if (!gate.ok) return <PlanUpgradeNotice slug={slug} title="Invoices" message={gate.message} />;
   const invoices = await listInvoices(slug);
   // Any product's currency reflects the store's billing currency (they all
   // share one -- see Product.currency default) -- fall back to NGN for a

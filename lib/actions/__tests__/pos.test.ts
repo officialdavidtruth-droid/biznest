@@ -14,6 +14,7 @@ import {
 // Production commission is 0% by design (lib/constants/commission.ts). These
 // tests exercise the commission accrual/settlement/refund mechanics, so they
 // pin the rate to 10%, matching the fixtures' subscription commissionRate.
+vi.mock("@/lib/entitlements/plan-features", () => ({ planGate: async () => ({ ok: true }) }));
 vi.mock("@/lib/constants/commission", () => ({ PLATFORM_COMMISSION_PERCENT: 10 }));
 
 

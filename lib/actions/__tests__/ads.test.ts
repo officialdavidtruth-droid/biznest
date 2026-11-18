@@ -11,6 +11,7 @@ const m = vi.hoisted(() => ({
   getViewer: vi.fn(), checkRateLimit: vi.fn(), assertStorePermission: vi.fn(), pending: vi.fn(), failed: vi.fn(), charge: vi.fn(),
 }));
 
+vi.mock("@/lib/entitlements/plan-features", () => ({ planGate: async () => ({ ok: true }) }));
 vi.mock("@/lib/prisma", () => ({ prisma: m.prisma }));
 vi.mock("@prisma/client", () => {
   class PrismaClientKnownRequestError extends Error { code: string; constructor(msg: string, o: { code: string }) { super(msg); this.code = o.code; } }

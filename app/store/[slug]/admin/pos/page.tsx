@@ -14,6 +14,8 @@ import { getOpenPosTabs } from "@/lib/actions/pos-tabs";
 import { getInHouseReservations } from "@/lib/actions/folio";
 import { formatNumber } from "@/lib/i18n/locale";
 import { PLATFORM_COMMISSION_PERCENT } from "@/lib/constants/commission";
+import { planGate } from "@/lib/entitlements/plan-features";
+import { PlanUpgradeNotice } from "@/components/dashboard/plan-upgrade-notice";
 
 const FOOD_TYPES = ["Restaurant", "Food & Groceries"];
 
@@ -22,6 +24,8 @@ export default async function PosPage({ params }: { params: Promise<{ slug: stri
 
   const access = await assertStorePermission(slug, "pos");
   if (!access.success) redirect(`/store/${slug}/admin`);
+  const gate = await planGate({ slug }, "pos");
+  if (!gate.ok) return <PlanUpgradeNotice slug={slug} title="Point of Sale" message={gate.message} />;
 
   const store = await prisma.store.findUnique({
     where: { slug },

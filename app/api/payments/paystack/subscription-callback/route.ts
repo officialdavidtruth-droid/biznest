@@ -1,3 +1,4 @@
+import { addPeriod, paidPeriod } from "@/lib/billing/period";
 import { creditVendorReferralForPlanPayment } from "@/lib/referrals/vendor-referral";
 import { resolveSubscriptionId } from "@/lib/payments/subscription-reference";
 import { prisma } from "@/lib/prisma";
@@ -39,7 +40,10 @@ export async function GET(req: Request) {
     // (kobo) actually covers this plan's price (naira) before granting it,
     // in case a reference is ever reused/replayed against a different plan.
     const plan = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
-    const amountMatches = plan && Number(verification.data.amount) >= Math.round(Number(plan.price) * 100);
+    // A yearly payment is created for the yearly price: the verified amount must cover that too.
+    const expectedRow = await prisma.payment.findUnique({ where: { reference }, select: { amount: true } });
+    const expectedKobo = Math.round(Math.max(Number(plan?.price ?? 0), Number(expectedRow?.amount ?? 0)) * 100);
+    const amountMatches = plan && Number(verification.data.amount) >= expectedKobo;
 
     if (!plan || !amountMatches) {
       // Money moved but doesn't match the plan: never mark that FAILED. Flag it
@@ -67,13 +71,14 @@ export async function GET(req: Request) {
     // Save the reusable authorization so the renewal cron can charge next
     // month with no card re-entry, and set the next renewal date to exactly
     // one calendar month out from this successful payment.
-    const nextRenewal = new Date();
-    nextRenewal.setMonth(nextRenewal.getMonth() + 1);
+    const period = paidPeriod(reference, Number(expectedRow?.amount ?? 0), Number(plan.price));
+    const nextRenewal = addPeriod(new Date(), period);
 
     await prisma.store.update({
       where: { id: store.id },
       data: {
         subscriptionId,
+        subscriptionBillingPeriod: period,
         paystackAuthorizationCode: verification.data.authorization?.reusable
           ? verification.data.authorization.authorization_code
           : store.paystackAuthorizationCode,

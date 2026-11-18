@@ -3,8 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getStoreAccessRole, canManageBillingAndStaff } from "@/lib/access/store-access";
-import { UpgradeButton } from "@/components/forms/upgrade-button";
-import { formatMoney } from "@/lib/utils/format-money";
+import { SubscriptionPlans } from "@/components/dashboard/subscription-plans";
 import { formatDate } from "@/lib/i18n/locale";
 
 export default async function SubscriptionPage({
@@ -38,7 +37,7 @@ export default async function SubscriptionPage({
 
       {pms === "upgrade" && (
         <div className="mb-4 rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_30%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_5%,transparent)] px-4 py-3 text-sm">
-          <strong>BizNest PMS is a Business Mogul feature.</strong> Upgrade this hotel to Business Mogul to unlock the dedicated property management workspace.
+          <strong>BizNest PMS is an Entrepreneurship and Business Mogul app.</strong> Upgrade this hotel to unlock the dedicated property management workspace.
         </div>
       )}
 
@@ -59,44 +58,14 @@ export default async function SubscriptionPage({
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-4">
-        {plans.map((p) => {
-          const isCurrent = p.id === store.subscriptionId || (!store.subscriptionId && p.name === "Free");
-          const features = p.features as { products?: number; services?: number; customDomain?: boolean };
-          return (
-            <div key={p.id} className={`rounded-lg border bg-background p-4 ${isCurrent ? "border-primary ring-1 ring-primary" : ""}`}>
-              <p className="font-medium">{p.name}</p>
-              <p className="mt-1 text-2xl font-semibold">
-                {formatMoney(Number(p.price))}
-                <span className="text-xs font-normal text-muted-foreground">/{p.interval.toLowerCase()}</span>
-              </p>
-              <ul className="mt-3 space-y-1.5 text-xs text-muted-foreground">
-                <li>{Number(p.commissionRate)}% commission</li>
-                <li>{features.products === -1 ? "Unlimited products" : `Up to ${features.products ?? 0} products`}</li>
-                <li>{features.services === -1 ? "Unlimited services" : `Up to ${features.services ?? 0} services`}</li>
-                <li className={features.customDomain ? "text-foreground" : ""}>
-                  {features.customDomain ? "✓ Custom domain" : "No custom domain"}
-                </li>
-              </ul>
-              {isCurrent ? (
-                <>
-                  <span className="mt-3 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Current plan</span>
-                  {Number(p.price) > 0 && store.subscriptionRenewsAt && (
-                    <>
-                      <p className="mt-2 text-xs text-muted-foreground">Active until {formatDate(store.subscriptionRenewsAt)}</p>
-                      {store.subscriptionRenewsAt.getTime() <= Date.now() + 7 * 24 * 60 * 60 * 1000 && (
-                        <UpgradeButton storeSlug={slug} planId={p.id} label="Renew plan" />
-                      )}
-                    </>
-                  )}
-                </>
-              ) : (
-                <UpgradeButton storeSlug={slug} planId={p.id} label={Number(p.price) === 0 ? "Switch to Free" : "Upgrade"} />
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <SubscriptionPlans
+        slug={slug}
+        plans={plans.map((p) => ({ id: p.id, name: p.name, price: Number(p.price), commissionRate: Number(p.commissionRate), features: p.features }))}
+        currentPlanId={store.subscriptionId}
+        currentPeriod={store.subscriptionBillingPeriod}
+        renewsAtMs={store.subscriptionRenewsAt ? store.subscriptionRenewsAt.getTime() : null}
+        renewsLabel={store.subscriptionRenewsAt ? formatDate(store.subscriptionRenewsAt) : null}
+      />
     </div>
   );
             }

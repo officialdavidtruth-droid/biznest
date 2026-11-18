@@ -25,6 +25,7 @@ import { formatNumber } from "@/lib/i18n/locale";
 import { postOrderSaleToLedger } from "@/lib/financial/order-ledger";
 import { logError, errorMeta } from "@/lib/observability/log";
 import { getLocalDateKey, localDateStartUtc, localDateEndUtc } from "@/lib/timezone";
+import { planGate } from "@/lib/entitlements/plan-features";
 
 type StoreAccessResult =
   | { success: true; store: Store & { business: Business } }
@@ -320,6 +321,8 @@ export async function createPosSale(
 ): Promise<ActionResult<{ orderId: string; total: number }>> {
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
+  const planOk = await planGate({ storeId: access.store.id }, "pos");
+  if (!planOk.ok) return { success: false, error: planOk.message };
 
   const parsed = posSaleSchema.safeParse(input);
   if (!parsed.success) {

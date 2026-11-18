@@ -1,3 +1,4 @@
+import { PricingSection } from "@/components/landing/pricing-section";
 import type { Metadata } from "next";
 import { SUPPORT_EMAIL } from "@/lib/constants/support";
 import Link from "next/link";
@@ -16,7 +17,6 @@ import { StorefrontRailDemo } from "@/components/motion/storefront-rail-demo";
 import { redirect } from "next/navigation";
 import { isAppRequest } from "@/lib/app-mode";
 import { AppWelcome } from "@/components/app/app-welcome";
-import { formatMoney } from "@/lib/utils/format-money";
 import { formatNumber } from "@/lib/i18n/locale";
 import { Reveal } from "@/components/motion/reveal";
 import { CountUp } from "@/components/motion/count-up";
@@ -506,54 +506,13 @@ export default async function HomePage() {
         <h2 className="mb-3 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           Simple pricing, real ownership
         </h2>
-        <p className="mb-10 max-w-lg text-sm" style={{ color: "var(--bn-mute)" }}>
-          Every plan is paid monthly — no free tier. Higher tiers raise your product and service limits and unlock your own domain name.
+        <p className="mb-8 max-w-lg text-sm" style={{ color: "var(--bn-mute)" }}>
+          No free tier and no commission on your sales. Pay monthly, or pay for a year and take 15% off. Higher plans raise your product and service limits and unlock more tools.
         </p>
-        <div className={`grid gap-5 sm:grid-cols-2 ${plans.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}>
-          {plans.map((p, planIndex) => {
-            const features = p.features as { products?: number; services?: number; customDomain?: boolean; aiStoreBuilder?: boolean };
-            const featured = plans.length >= 3 && planIndex === Math.floor(plans.length / 2);
-            return (
-              <div
-                key={p.id}
-                className="relative rounded-2xl p-6 transition hover:-translate-y-1"
-                style={{
-                  background: featured ? "var(--bn-accent-gradient)" : "var(--bn-ink-raised)",
-                  color: featured ? "#ffffff" : "var(--bn-ivory)",
-                  border: featured ? "none" : "1px solid var(--bn-ink-line)",
-                }}
-              >
-                {featured && (
-                  <span className="absolute -top-3 left-6 rounded-full bg-black/80 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-                    Most popular
-                  </span>
-                )}
-                <p className="text-sm font-semibold">{p.name}</p>
-                <p className="mt-2 text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
-                  {formatMoney(Number(p.price))}
-                  <span className="text-sm font-normal opacity-70">/mo</span>
-                </p>
-                <ul className="mt-5 space-y-2 text-sm" style={{ opacity: featured ? 0.85 : 0.75 }}>
-                  <li>{Number(p.commissionRate) === 0 ? "No commission per sale" : `${Number(p.commissionRate)}% commission per sale`}</li>
-                  <li>{features.products === -1 ? "Unlimited products" : `Up to ${features.products ?? 0} products`}</li>
-                  <li>{features.services === -1 ? "Unlimited services" : `Up to ${features.services ?? 0} services`}</li>
-                  
-                  <li className="font-medium">{features.customDomain ? "✓ Your own domain name" : "Runs on your biznest.space address"}</li>
-                </ul>
-                <Link
-                  href={session?.user ? dashboardHref : "/register"}
-                  className="mt-6 block rounded-full py-2.5 text-center text-sm font-medium transition hover:brightness-110"
-                  style={{
-                    background: featured ? "#ffffff" : "var(--bn-accent-gradient)",
-                    color: featured ? "var(--bn-accent-text)" : "#ffffff",
-                  }}
-                >
-                  Get started
-                </Link>
-              </div>
-            );
-          })}
-        </div>
+        <PricingSection
+          plans={plans.map((p) => ({ id: p.id, name: p.name, price: Number(p.price), commissionRate: Number(p.commissionRate), features: p.features }))}
+          ctaHref={session?.user ? dashboardHref : "/register"}
+        />
       </section>
 
       {/* Trust & security — states what's actually built, not generic marketing claims */}
