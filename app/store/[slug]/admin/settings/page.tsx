@@ -10,6 +10,7 @@ import { BusinessCapabilitiesEditor } from "@/components/dashboard/business-capa
 import { WebhooksPanel } from "@/components/dashboard/webhooks-panel";
 import { planAllows, type PlanFeatures } from "@/lib/entitlements/plan-features";
 import { listWebhookEndpoints, availableWebhookEvents } from "@/lib/actions/webhook";
+import { dnsInstructionFor } from "@/lib/domain-dns";
 import { APP_URL } from "@/lib/constants/app-url";
 import { GuideToggle } from "@/components/app/page-guide";
 import { TrackingIdsForm } from "@/components/dashboard/tracking-ids-form";
@@ -214,14 +215,34 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
                 {store.customDomainStatus}
               </span>
             </p>
-            {store.customDomainStatus !== "VERIFIED" && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Point your domain's DNS to Vercel: add a <code className="rounded bg-muted px-1">CNAME</code> record
-                for <code className="rounded bg-muted px-1">{store.customDomain}</code> targeting{" "}
-                <code className="rounded bg-muted px-1">cname.vercel-dns.com</code>. DNS changes can take up to
-                24–48 hours to propagate.
-              </p>
-            )}
+            {store.customDomainStatus !== "VERIFIED" && (() => {
+              const dns = dnsInstructionFor(store.customDomain!);
+              return (
+                <div className="mt-3 rounded-lg border bg-muted/30 p-4 text-xs">
+                  <p className="text-sm font-semibold">Connect your domain in 3 steps</p>
+                  <ol className="mt-3 space-y-3">
+                    <li><b>1. Open your DNS settings.</b> Log in where you bought <span className="font-mono">{store.customDomain}</span> (Namecheap, GoDaddy, Cloudflare, Whogohost, etc.) and open <i>DNS</i> or <i>Manage DNS</i>.</li>
+                    <li>
+                      <b>2. Add this record.</b>{dns.isRoot ? " Delete any existing A or CNAME record for @ first." : " Delete any existing record for this name first."}
+                      <div className="mt-2 overflow-hidden rounded-md border bg-background">
+                        <div className="grid grid-cols-3 border-b bg-muted/50 px-3 py-1.5 font-semibold"><span>Type</span><span>Name / Host</span><span>Value / Points to</span></div>
+                        <div className="grid grid-cols-3 px-3 py-2 font-mono"><span>{dns.recordType}</span><span>{dns.host}</span><span className="break-all">{dns.value}</span></div>
+                      </div>
+                      <p className="mt-1.5 text-muted-foreground">
+                        {dns.isRoot
+                          ? "This is a main (root) domain, so it needs an A record. A CNAME will not work on a root domain. Some providers show the name as @ or leave it blank."
+                          : "This is a subdomain, so it uses a CNAME record. Leave Proxy off if your provider (e.g. Cloudflare) shows an orange cloud."}
+                      </p>
+                    </li>
+                    <li><b>3. Save, wait, then press Re-check status.</b> It usually works in 5–30 minutes, but can take up to 24 hours. The status changes from PENDING to VERIFIED.</li>
+                  </ol>
+                  <p className="mt-3 rounded-md bg-[var(--bn-admin-orange-soft)] p-2.5 text-[var(--bn-admin-orange-dark)]">
+                    Heads up: if this domain already shows another website, that site will switch to your store as soon as the record changes.
+                    To keep it, press Remove domain and use a different one (a subdomain like <span className="font-mono">shop.{store.customDomain}</span> works well).
+                  </p>
+                </div>
+              );
+            })()}
             <div className="mt-3 flex gap-2">
               <form action={recheck}><button className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted">Re-check status</button></form>
               <form action={remove}><button className="rounded-md border border-destructive/40 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/5">Remove domain</button></form>
