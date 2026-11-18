@@ -242,9 +242,11 @@ export default auth(async (req) => {
     // Many in-app links and post-login redirects are written as /store/<slug>/..., which only makes sense on the
     // platform host. On the store's own domain that would double up into a page that doesn't exist, so send the
     // visitor to the clean path (/store/<slug>/account -> /account).
-    const ownPrefix = `/store/${slug}`;
-    if (rawPathname === ownPrefix || rawPathname.startsWith(`${ownPrefix}/`)) {
-      return NextResponse.redirect(new URL(`${rawPathname.slice(ownPrefix.length) || "/"}${req.nextUrl.search}`, origin));
+    // Covers both link styles used around the app: /store/<slug>/... and the short /<slug>/...
+    for (const ownPrefix of [`/store/${slug}`, `/${slug}`]) {
+      if (rawPathname === ownPrefix || rawPathname.startsWith(`${ownPrefix}/`)) {
+        return NextResponse.redirect(new URL(`${rawPathname.slice(ownPrefix.length) || "/"}${req.nextUrl.search}`, origin));
+      }
     }
     if (slug) {
       // Browsers (and Safari, bookmarks, search results) request /favicon.ico implicitly,
