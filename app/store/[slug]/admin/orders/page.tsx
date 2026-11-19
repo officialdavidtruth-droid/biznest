@@ -17,19 +17,19 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
   return (
     <div className="bn-admin-page space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Orders</h1>
+        <h1 className="text-xl font-bold sm:text-2xl">Orders</h1>
         <p className="mt-1 text-sm text-muted-foreground">Manage and track every order placed on your store</p>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard icon={ShoppingBag} tone="purple" label="Total Orders" value={orders.length} note="All time" />
         <StatCard icon={Clock3} tone="orange" label="Pending" value={pendingCount} note="Awaiting action" />
         <StatCard icon={CheckCircle2} tone="green" label="Completed" value={completedCount} note="Fulfilled orders" />
         <StatCard icon={Banknote} tone="blue" label="Revenue" value={`${currency} ${formatNumber(totalRevenue)}`} note="From all orders" />
       </div>
 
-      <section className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
-        <div className="mb-4"><h2 className="text-base font-bold">Orders</h2><p className="mt-1 text-xs text-muted-foreground">Search, filter and manage every order</p></div>
+      <section>
+        <div className="mb-3"><h2 className="text-base font-bold">All orders</h2><p className="mt-0.5 text-xs text-muted-foreground">Tap an order to open it</p></div>
         <OrdersTable
           storeSlug={slug}
           orders={orders.map((order) => ({

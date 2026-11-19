@@ -6,15 +6,16 @@ import { ListToolbar, ListPagination } from "@/components/dashboard/list-toolbar
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 const STATUS_STYLES: Record<string, string> = {
-  PENDING_PAYMENT: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]",
-  PAID: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
-  IN_PROGRESS: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
-  DELIVERED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
-  COMPLETED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
-  CANCELLED: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-text)]",
-  REFUNDED: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-text)]",
-  DISPUTED: "bg-destructive/10 text-destructive",
+  PENDING_PAYMENT: "bg-amber-100 text-amber-800",
+  PAID: "bg-emerald-100 text-emerald-800",
+  IN_PROGRESS: "bg-sky-100 text-sky-800",
+  DELIVERED: "bg-emerald-100 text-emerald-800",
+  COMPLETED: "bg-emerald-100 text-emerald-800",
+  CANCELLED: "bg-muted text-muted-foreground",
+  REFUNDED: "bg-muted text-muted-foreground",
+  DISPUTED: "bg-red-100 text-red-700",
 };
+const statusLabel = (s: string) => { const t = s.replace(/_/g, " ").toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); };
 
 type OrderRow = {
   id: string;
@@ -66,52 +67,44 @@ export function OrdersTable({ storeSlug, orders }: { storeSlug: string; orders: 
         onReset={() => { setSearch(""); setStatusFilter(""); setChannelFilter(""); setPage(1); }}
       />
 
-      <div className="overflow-x-auto rounded-lg border bg-background">
-        <table className="min-w-[640px] w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="px-4 py-2">Order</th>
-              <th className="px-4 py-2">Customer</th>
-              <th className="px-4 py-2">Items</th>
-              <th className="px-4 py-2">Total</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2">Date</th>
-              <th className="px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {paged.map((order) => (
-              <tr key={order.id} className="border-b last:border-0">
-                <td className="px-4 py-3 font-mono text-xs">#{order.id.slice(-8).toUpperCase()}</td>
-                <td className="px-4 py-3">
-                  {order.customerName}
-                  {order.channel === "POS" && (
-                    <span className="ml-1.5 rounded-full bg-[var(--bn-admin-surface-2)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--bn-admin-orange)]">POS</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">{order.itemCount}</td>
-                <td className="px-4 py-3">{order.currency} {formatNumber(order.total)}</td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLES[order.status] ?? "bg-muted text-muted-foreground"}`}>
-                    {order.status.replace("_", " ")}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">{formatDate(new Date(order.createdAt))}</td>
-                <td className="px-4 py-3 text-right">
-                  <Link href={`/${storeSlug}/admin/orders/${order.id}`} className="text-xs font-medium text-primary hover:underline">View</Link>
-                </td>
-              </tr>
-            ))}
-            {paged.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
-                  {orders.length === 0 ? "No orders yet." : "No orders match your filters."}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      {paged.length === 0 ? (
+        <div className="rounded-2xl border border-dashed bg-background px-4 py-10 text-center text-sm text-muted-foreground">
+          {orders.length === 0 ? "No orders yet. They'll show up here as soon as someone buys." : "No orders match your filters."}
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {paged.map((order) => (
+            <li key={order.id}>
+              <Link
+                href={`/store/${storeSlug}/admin/orders/${order.id}`}
+                className="block rounded-2xl border bg-background p-4 shadow-sm transition-colors hover:bg-muted/40 sm:p-5"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">
+                      {order.customerName}
+                      {order.channel === "POS" && (
+                        <span className="ml-2 rounded-full bg-[hsl(var(--primary)/0.1)] px-2 py-0.5 text-[10px] font-semibold text-primary">POS</span>
+                      )}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      <span className="font-mono">#{order.id.slice(-8).toUpperCase()}</span> · {formatDate(new Date(order.createdAt))} · {order.itemCount} item{order.itemCount === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-base font-bold tabular-nums">{order.currency} {formatNumber(order.total)}</p>
+                    <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_STYLES[order.status] ?? "bg-muted text-muted-foreground"}`}>
+                      {statusLabel(order.status)}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
 
+      <div className="mt-4 rounded-2xl border bg-background">
         <ListPagination
           page={currentPage}
           totalPages={totalPages}

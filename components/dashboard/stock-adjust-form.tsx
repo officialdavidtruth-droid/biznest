@@ -13,6 +13,8 @@ const ADJUSTABLE_TYPES: { value: StockMovementType; label: string; sign: 1 | -1 
   { value: "CORRECTION", label: "Correction (add stock)", sign: 1 },
 ];
 
+const field = "w-full rounded-xl border bg-background px-3 py-2.5 text-sm";
+
 export function StockAdjustForm({
   storeSlug,
   inventoryItemId,
@@ -64,13 +66,13 @@ export function StockAdjustForm({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border bg-background p-4">
+      <div className="rounded-2xl border bg-background p-4 shadow-sm sm:p-5">
         <h2 className="mb-3 text-sm font-semibold">Adjust stock</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <select
             value={type}
             onChange={(e) => setType(e.target.value as StockMovementType)}
-            className="rounded-md border px-3 py-1.5 text-sm sm:col-span-1"
+            className={`${field} sm:col-span-1`}
           >
             {ADJUSTABLE_TYPES.map((t) => (
               <option key={t.value} value={t.value}>
@@ -84,28 +86,29 @@ export function StockAdjustForm({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Amount"
-            className="rounded-md border px-3 py-1.5 text-sm"
+            className={field}
+            inputMode="numeric"
           />
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Note (optional)"
-            className="rounded-md border px-3 py-1.5 text-sm"
+            className={field}
           />
         </div>
         <button
           onClick={handleAdjust}
           disabled={submitting}
-          className="mt-3 rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+          className="mt-3 w-full rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50 sm:w-auto sm:py-2.5"
         >
           {submitting ? "Saving…" : "Apply"}
         </button>
       </div>
 
-      <div className="rounded-lg border bg-background p-4">
-        <h2 className="mb-3 text-sm font-semibold">Low-stock alert threshold</h2>
+      <div className="rounded-2xl border bg-background p-4 shadow-sm sm:p-5">
+        <h2 className="mb-1 text-sm font-semibold">Low-stock alert threshold</h2>
         <p className="mb-3 text-xs text-muted-foreground">
-          You&apos;ll get an email the moment stock drops to or below this number.
+          You'll get an email the moment stock drops to or below this number.
         </p>
         <div className="flex items-center gap-2">
           <input
@@ -113,12 +116,13 @@ export function StockAdjustForm({
             min="0"
             value={threshold}
             onChange={(e) => setThreshold(e.target.value)}
-            className="w-24 rounded-md border px-3 py-1.5 text-sm"
+            inputMode="numeric"
+            className="w-28 rounded-xl border bg-background px-3 py-2.5 text-sm"
           />
           <button
             onClick={handleThresholdSave}
             disabled={savingThreshold}
-            className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
+            className="rounded-xl border px-5 py-2.5 text-sm font-semibold hover:bg-muted disabled:opacity-50"
           >
             {savingThreshold ? "Saving…" : "Save"}
           </button>
