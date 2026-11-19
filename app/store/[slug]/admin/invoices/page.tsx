@@ -5,14 +5,15 @@ import { InvoiceRowActions } from "@/components/dashboard/invoice-row-actions";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 import { getInHouseReservations } from "@/lib/actions/folio";
-import { TableScroll } from "@/components/ui/table-scroll";
 import { planGate } from "@/lib/entitlements/plan-features";
 import { PlanUpgradeNotice } from "@/components/dashboard/plan-upgrade-notice";
+
+const STATUS_LABEL: Record<string, string> = { DRAFT: "Draft", SENT: "Awaiting payment", PAID: "Paid", CANCELLED: "Cancelled" };
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-text)]",
   SENT: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]",
-  PAID: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
+  PAID: "bg-emerald-100 text-emerald-800",
   CANCELLED: "bg-destructive/10 text-destructive",
 };
 
@@ -40,56 +41,61 @@ export default async function InvoicesPage({ params }: { params: Promise<{ slug:
     : [];
   const roomByInvoice = new Map(onRoom.map((c) => [c.sourceId, c.reservation.room.name]));
 
+  const sum = (st: string) => invoices.filter((i) => i.status === st).reduce((t, i) => t + Number(i.total), 0);
+  const outstanding = sum("SENT");
+  const paid = sum("PAID");
+  const drafts = invoices.filter((i) => i.status === "DRAFT").length;
+
   return (
     <div>
-      <h1 className="mb-6 text-xl font-semibold">Invoices</h1>
+      <h1 className="mb-4 text-xl font-semibold">Invoices</h1>
 
-      <InvoiceForm storeSlug={slug} currency={currency} />
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="col-span-2 rounded-2xl border bg-background p-4 shadow-sm sm:col-span-1">
+          <p className="text-xs text-muted-foreground">Waiting to be paid</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums">{currency} {formatNumber(outstanding)}</p>
+        </div>
+        <div className="rounded-2xl border bg-background p-4 shadow-sm">
+          <p className="text-xs text-muted-foreground">Paid</p>
+          <p className="mt-1 text-lg font-bold tabular-nums text-emerald-700">{currency} {formatNumber(paid)}</p>
+        </div>
+        <div className="rounded-2xl border bg-background p-4 shadow-sm">
+          <p className="text-xs text-muted-foreground">Drafts</p>
+          <p className="mt-1 text-lg font-bold tabular-nums">{drafts}</p>
+        </div>
+      </div>
 
-      <TableScroll className="rounded-lg border bg-background">
-        <table className="min-w-[640px] w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="px-4 py-2">Invoice</th>
-              <th className="px-4 py-2">Customer</th>
-              <th className="px-4 py-2">Total</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2">Date</th>
-              <th className="px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoices.map((invoice) => (
-              <tr key={invoice.id} className="border-b last:border-0">
-                <td className="px-4 py-3 font-mono text-xs">{invoice.invoiceNo}</td>
-                <td className="px-4 py-3">{invoice.customer?.name ?? invoice.customerName ?? "—"}</td>
-                <td className="px-4 py-3">
-                  {invoice.currency} {formatNumber(Number(invoice.total))}
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLES[invoice.status]}`}>
-                    {invoice.status}
+      <InvoiceForm storeSlug={slug} currency={currency} defaultOpen={invoices.length === 0} />
+
+      {invoices.length === 0 ? (
+        <div className="rounded-2xl border border-dashed bg-background px-4 py-10 text-center text-sm text-muted-foreground">
+          No invoices yet. Fill in the form above and tap Create invoice.
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {invoices.map((invoice) => (
+            <li key={invoice.id} className="rounded-2xl border bg-background p-4 shadow-sm sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{invoice.customer?.name ?? invoice.customerName ?? "No customer name"}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    <span className="font-mono">{invoice.invoiceNo}</span> · {formatDate(new Date(invoice.createdAt))}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-base font-bold tabular-nums">{invoice.currency} {formatNumber(Number(invoice.total))}</p>
+                  <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_STYLES[invoice.status]}`}>
+                    {STATUS_LABEL[invoice.status] ?? invoice.status}
                   </span>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {formatDate(new Date(invoice.createdAt))}
-                </td>
-                <td className="px-4 py-3">
-                  <InvoiceRowActions storeSlug={slug} invoiceId={invoice.id} status={invoice.status} rooms={rooms} postedTo={roomByInvoice.get(invoice.id) ?? null} />
-                </td>
-              </tr>
-            ))}
-            {invoices.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
-                  No invoices yet — create one above.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </TableScroll>
+                </div>
+              </div>
+              <div className="mt-3 border-t pt-3">
+                <InvoiceRowActions storeSlug={slug} invoiceId={invoice.id} status={invoice.status} rooms={rooms} postedTo={roomByInvoice.get(invoice.id) ?? null} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
-        }
-      
+}

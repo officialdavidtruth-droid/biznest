@@ -82,7 +82,7 @@ export function InvoiceRowActions({
   }
 
   return (
-    <div className="flex justify-end gap-3 text-xs font-medium">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold sm:justify-end">
       {status === "DRAFT" && (
         <button disabled={isSubmitting} onClick={() => handleSend("email")} className="text-primary hover:underline disabled:opacity-50">
           Send
