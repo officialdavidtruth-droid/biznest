@@ -214,7 +214,7 @@ export function Customer360View({
               const active = selected?.id === customer.id;
               return (
                 <li key={customer.id}>
-                  <button type="button" onClick={() => pick(customer.id)} aria-current={active ? "true" : undefined} className={`flex w-full items-center gap-3 px-3 py-3.5 text-left transition-colors lg:py-3 ${active ? "bg-primary/10 lg:shadow-[inset_3px_0_0_hsl(var(--primary))]" : "hover:bg-muted/60"}`}>
+                  <button type="button" onClick={() => pick(customer.id)} aria-current={active ? "true" : undefined} className={`flex w-full items-center gap-3 px-3 py-3.5 text-left transition-colors lg:py-3 ${active ? "bg-[hsl(var(--primary)/0.1)] lg:shadow-[inset_3px_0_0_hsl(var(--primary))]" : "hover:bg-muted/60"}`}>
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary lg:h-10 lg:w-10">{initials(customer.name)}</div>
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1.5"><span className="truncate text-sm font-semibold">{customer.name}</span>{customer.orders >= 2 && <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">Repeat</span>}</p>
