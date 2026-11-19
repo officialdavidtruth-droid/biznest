@@ -5,7 +5,8 @@ import { auth } from "@/lib/auth";
 import { getStoreConversation } from "@/lib/actions/store-messages";
 import { AdminMessageThread } from "@/components/dashboard/admin-message-thread";
 import { AutoRefresh } from "@/components/dashboard/auto-refresh";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, UserRound, Bot } from "lucide-react";
+import { ResolveHumanButton } from "@/components/dashboard/resolve-human-button";
 
 export default async function AdminConversationPage({
   params,
@@ -38,8 +39,23 @@ export default async function AdminConversationPage({
               Order #{conversation.order.id.slice(-8).toUpperCase()}
             </p>
           )}
+          {conversation.topic && (
+            <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              <Bot className="h-3 w-3" /> {conversation.topic}
+            </span>
+          )}
         </div>
       </div>
+
+      {conversation.needsHuman && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span className="flex items-center gap-2">
+            <UserRound className="h-5 w-5 shrink-0" />
+            This customer asked to talk to a human. Reply below, or mark it handled.
+          </span>
+          <ResolveHumanButton slug={slug} conversationId={conversation.id} />
+        </div>
+      )}
 
       <AdminMessageThread
         slug={slug}

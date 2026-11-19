@@ -769,6 +769,8 @@ enum DomainStatus {
 }
 
 model Store {
+  // Customer chat setup: { autoReply: boolean, humanHandoff: boolean, faqs: [{ id, topic, question, answer, enabled }] }. Null = niche defaults.
+  messagingConfig Json?
   timezone      String      @default("Africa/Lagos")
   // Owner opt-in: also email the end-of-day summary (sales, stock risks, unpaid
   // checkouts). The in-app notification + push are always sent. See app/api/cron/daily-summary.
@@ -2914,12 +2916,18 @@ model Conversation {
   orderId   String?  @unique
   order     Order?   @relation(fields: [orderId], references: [id])
 
+  // FAQ topic the customer asked about (used to file the inbox), and the human-agent request flag.
+  topic            String?
+  needsHuman       Boolean   @default(false)
+  humanRequestedAt DateTime?
+
   participants ConversationParticipant[]
   messages     Message[]
 
   createdAt DateTime @default(now())
 
   @@index([storeId])
+  @@index([storeId, needsHuman])
 }
 
 model ConversationParticipant {
@@ -2942,6 +2950,8 @@ model Message {
   content        String       @db.Text
   attachmentUrls String[]
   readAt         DateTime?
+  // Sent by the FAQ auto-reply, not typed by a person.
+  isAutomated    Boolean      @default(false)
 
   createdAt      DateTime     @default(now())
 

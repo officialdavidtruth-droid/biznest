@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
+import type { Prisma } from "@prisma/client";
 import { assertAnyStorePermission } from "@/lib/access/assert-store-access";
 import { auth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -36,8 +37,16 @@ async function getStoreSideIds(storeId: string, ownerId: string) {
  *  2. Only the requested page's threads are loaded in full, with just the
  *     columns the list renders (never the whole buyer User row).
  */
-export async function listStoreConversations(slug: string, page = 1, pageSize = CONVERSATIONS_PAGE_SIZE) {
-  const empty = { conversations: [], total: 0, page: 1, totalPages: 1, pageSize, denied: false };
+export type InboxFilter = "all" | "unread" | "human";
+
+export async function listStoreConversations(
+  slug: string,
+  page = 1,
+  opts: { q?: string; filter?: InboxFilter; topic?: string } = {},
+  pageSize = CONVERSATIONS_PAGE_SIZE
+) {
+  const emptyCounts = { all: 0, unread: 0, human: 0, topics: [] as { topic: string; count: number }[] };
+  const empty = { conversations: [], total: 0, page: 1, totalPages: 1, pageSize, denied: false, counts: emptyCounts, matchedBy: null as string | null };
   const access = await assertAnyStorePermission(slug, [...CONVERSATION_PERMISSIONS]);
   // `denied` lets the page say "no access" instead of the misleading
   // "No conversations yet" it would show for an empty list.
@@ -49,9 +58,52 @@ export async function listStoreConversations(slug: string, page = 1, pageSize = 
   const storeSide = await getStoreSideIds(storeId, access.store.business.userId);
   const storeSideIds = [...storeSide];
 
+  // Inbox filters. Search looks at the customer's name/email, any message text and the FAQ topic.
+  const q = (opts.q ?? "").trim().slice(0, 80);
+  const filter = opts.filter ?? "all";
+  const nameMatch = { OR: [{ name: { contains: q, mode: "insensitive" as const } }, { email: { contains: q, mode: "insensitive" as const } }] };
+  const where: Prisma.ConversationWhereInput = { storeId };
+  const and: Prisma.ConversationWhereInput[] = [];
+  if (opts.topic) and.push({ topic: opts.topic });
+  if (filter === "human") and.push({ needsHuman: true });
+  if (q) {
+    and.push({
+      OR: [
+        { participants: { some: { userId: { notIn: storeSideIds }, user: nameMatch } } },
+        { order: { buyer: nameMatch } },
+        { messages: { some: { content: { contains: q, mode: "insensitive" } } } },
+        { topic: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  // Unread threads store-wide: feeds the "Unread" tab, its count, and the badge numbers.
+  const unreadGroups = await prisma.message.groupBy({
+    by: ["conversationId"],
+    where: { conversation: { storeId }, readAt: null, senderId: { notIn: storeSideIds } },
+  });
+  const unreadIds = unreadGroups.map((g) => g.conversationId);
+  if (filter === "unread") and.push({ id: { in: unreadIds } });
+  if (and.length) where.AND = and;
+
+  const [allCount, humanCount, topicGroups] = await Promise.all([
+    prisma.conversation.count({ where: { storeId } }),
+    prisma.conversation.count({ where: { storeId, needsHuman: true } }),
+    prisma.conversation.groupBy({ by: ["topic"], where: { storeId, topic: { not: null } }, _count: { _all: true } }),
+  ]);
+  const counts = {
+    all: allCount,
+    unread: unreadIds.length,
+    human: humanCount,
+    topics: topicGroups
+      .filter((t): t is typeof t & { topic: string } => !!t.topic)
+      .map((t) => ({ topic: t.topic, count: t._count._all }))
+      .sort((a, b) => b.count - a.count),
+  };
+
   // 1. Ordering pass: ids + creation time, plus last-activity per thread.
   const [threads, activity] = await Promise.all([
-    prisma.conversation.findMany({ where: { storeId }, select: { id: true, createdAt: true } }),
+    prisma.conversation.findMany({ where, select: { id: true, createdAt: true, needsHuman: true, humanRequestedAt: true } }),
     prisma.message.groupBy({
       by: ["conversationId"],
       where: { conversation: { storeId } },
@@ -60,15 +112,15 @@ export async function listStoreConversations(slug: string, page = 1, pageSize = 
   ]);
   const lastActivity = new Map(activity.map((a) => [a.conversationId, a._max.createdAt]));
   const ordered = threads
-    .map((t) => ({ id: t.id, at: (lastActivity.get(t.id) ?? t.createdAt).getTime() }))
-    // Most recent activity first (a new customer message should surface an old thread).
-    .sort((a, b) => b.at - a.at);
+    .map((t) => ({ id: t.id, human: t.needsHuman, at: (lastActivity.get(t.id) ?? t.createdAt).getTime() }))
+    // People waiting for a human come first, then most recent activity (a new customer message surfaces an old thread).
+    .sort((a, b) => Number(b.human) - Number(a.human) || b.at - a.at);
 
   const total = ordered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(Math.max(1, Math.floor(page) || 1), totalPages);
   const pageIds = ordered.slice((safePage - 1) * pageSize, safePage * pageSize).map((t) => t.id);
-  if (pageIds.length === 0) return { ...empty, page: safePage, totalPages };
+  if (pageIds.length === 0) return { ...empty, page: safePage, totalPages, total, counts };
 
   // 2. Detail pass for this page only.
   const [rows, unread, lastMessages] = await Promise.all([
@@ -77,6 +129,8 @@ export async function listStoreConversations(slug: string, page = 1, pageSize = 
       select: {
         id: true,
         createdAt: true,
+        topic: true,
+        needsHuman: true,
         order: { select: { id: true, buyer: { select: { id: true, name: true, email: true } } } },
         participants: { select: { user: { select: { id: true, name: true, email: true } } } },
       },
@@ -104,6 +158,19 @@ export async function listStoreConversations(slug: string, page = 1, pageSize = 
     ),
   ]);
 
+  // When searching, show the message that matched instead of just the latest one.
+  const snippets = q
+    ? await Promise.all(
+        pageIds.map((id) =>
+          prisma.message.findFirst({
+            where: { conversationId: id, content: { contains: q, mode: "insensitive" } },
+            orderBy: { createdAt: "desc" },
+            select: { content: true },
+          })
+        )
+      )
+    : [];
+  const snippetById = new Map(pageIds.map((id, i) => [id, snippets[i]?.content ?? null]));
   const unreadById = new Map(unread.map((u) => [u.conversationId, u._count._all]));
   const lastById = new Map(pageIds.map((id, i) => [id, lastMessages[i]]));
   const rowById = new Map(rows.map((r) => [r.id, r]));
@@ -127,11 +194,14 @@ export async function listStoreConversations(slug: string, page = 1, pageSize = 
         messages: last ? [{ content: last.content, createdAt: last.createdAt }] : [],
         unreadCount: unreadById.get(id) ?? 0,
         lastMessageFromStore: last ? storeSide.has(last.senderId) : false,
+        topic: c.topic,
+        needsHuman: c.needsHuman,
+        matchSnippet: snippetById.get(id) ?? null,
       },
     ];
   });
 
-  return { conversations, total, page: safePage, totalPages, pageSize, denied: false };
+  return { conversations, total, page: safePage, totalPages, pageSize, denied: false, counts, matchedBy: q || null };
 }
 
 /**
@@ -223,6 +293,8 @@ export async function replyToStoreConversation(
   }
 
   await prisma.message.create({ data: { conversationId, senderId, content } });
+  // A person has answered, so any "talk to a human" request is now being handled.
+  if (conversation.needsHuman) await prisma.conversation.update({ where: { id: conversationId }, data: { needsHuman: false } }).catch(() => {});
 
   // Notify the customer(s) in the thread, not the staff member who just sent it.
   // Participants also include the owner and other staff — don't tell them

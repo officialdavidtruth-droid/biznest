@@ -14,6 +14,7 @@ import { canonicalPhone, phoneKey } from "@/lib/phone";
 import { deleteStoreCustomerAccount } from "@/lib/customer-privacy";
 import { signOutStoreCustomer } from "@/lib/store-customer-auth";
 import { CUSTOMER_MESSAGE_LIMIT, validateMessageContent } from "@/lib/message-limits";
+import { maybeAutoReply } from "@/lib/store-auto-reply";
 
 // ============ ADDRESSES ============
 
@@ -701,6 +702,7 @@ export async function startStoreConversation(storeSlug: string, message: string)
     conversationId: conversation.id,
     content: message,
   });
+  await maybeAutoReply({ storeId: store.id, conversationId: conversation.id, text: message });
 
   revalidatePath(`/store/${storeSlug}/account/messages`);
   return { success: true, data: { conversationId: conversation.id } };
@@ -731,6 +733,8 @@ export async function sendStoreMessage(storeSlug: string, conversationId: string
       conversationId,
       content,
     });
+    // Order and dispute threads are handled by people; only the general chat gets automated answers.
+    if (!conversation.orderId) await maybeAutoReply({ storeId: conversation.store.id, conversationId, text: content });
   }
 
   revalidatePath(`/store/${storeSlug}/account/messages`);

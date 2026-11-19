@@ -14,6 +14,8 @@ type ThreadMessage = {
   sender: { id: string; name: string | null };
   /** Sent by the owner or any staff member (not necessarily the viewer). */
   fromStore: boolean;
+  /** Sent by the FAQ auto-reply. */
+  isAutomated?: boolean;
 };
 
 export function AdminMessageThread({
@@ -110,7 +112,7 @@ export function AdminMessageThread({
           // are labelled "You"; colleagues keep their name (or "Staff" if they
           // have none), so a nameless team member is never shown as "Customer".
           const isMe = m.sender.id === currentUserId;
-          const label = isMe ? "You" : m.fromStore ? m.sender.name ?? "Staff" : m.sender.name ?? "Customer";
+          const label = m.isAutomated ? "Automatic reply" : isMe ? "You" : m.fromStore ? m.sender.name ?? "Staff" : m.sender.name ?? "Customer";
           return (
             <div key={m.id} className={`flex ${m.fromStore ? "justify-end" : "justify-start"}`}>
               <div className="min-w-0 max-w-[85%]">
@@ -119,7 +121,7 @@ export function AdminMessageThread({
                 </p>
                 <div
                   className={`whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm ${
-                    m.fromStore ? "bg-primary text-primary-foreground" : "border bg-background text-foreground"
+                    m.isAutomated ? "border border-dashed border-primary/40 bg-primary/10 text-foreground" : m.fromStore ? "bg-primary text-primary-foreground" : "border bg-background text-foreground"
                   }`}
                 >
                   {m.content}
