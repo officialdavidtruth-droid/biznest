@@ -49,7 +49,7 @@ function DailyBarChart({
         {series.map((d, i) => {
           const v = d[field] ?? 0;
           return (
-            <div key={i} className="group relative flex-1">
+            <div key={i} className="group relative flex h-full flex-1 items-end">
               <div
                 className="w-full rounded-t bg-primary/70 transition-colors group-hover:bg-primary"
                 style={{ height: `${Math.max(2, (v / max) * 100)}%` }}

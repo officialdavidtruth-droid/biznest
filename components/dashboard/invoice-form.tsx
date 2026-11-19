@@ -114,7 +114,7 @@ export function InvoiceForm({ storeSlug, currency = "NGN", defaultOpen = true }:
                 <input
                   value={item.description}
                   onChange={(e) => updateItem(index, { description: e.target.value })}
-                  placeholder="What are you billing for? e.g. Blue T-shirt (Large)"
+                  placeholder="Item, e.g. Blue T-shirt"
                   className={inputCls}
                 />
                 <button
