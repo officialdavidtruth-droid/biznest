@@ -89,11 +89,6 @@ export function ApproxPrice({ amount, currency, picker = false }: { amount: numb
           </select>
         </label>
       )}
-      {showEstimate && (
-        <div style={{ fontSize: 11 }}>
-          <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer">Rates By Exchange Rate API</a>
-        </div>
-      )}
     </div>
   );
 }
