@@ -1,28 +1,33 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ListToolbar, ListPagination } from "@/components/dashboard/list-toolbar";
+import { PackageOpen, Search } from "lucide-react";
+import { ListPagination } from "@/components/dashboard/list-toolbar";
 import { InventoryRow } from "@/components/dashboard/inventory-row";
 import type { InventoryOverviewItem } from "@/lib/actions/inventory";
 
-const STATUS_OPTIONS = [
-  { value: "IN_STOCK", label: "In stock" },
-  { value: "LOW_STOCK", label: "Low stock" },
-  { value: "OUT_OF_STOCK", label: "Out of stock" },
-];
+type Filter = "" | InventoryOverviewItem["status"];
 
 export function InventoryTable({ storeSlug, items }: { storeSlug: string; items: InventoryOverviewItem[] }) {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<Filter>("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
 
+  const counts = useMemo(
+    () => ({
+      "": items.length,
+      IN_STOCK: items.filter((i) => i.status === "IN_STOCK").length,
+      LOW_STOCK: items.filter((i) => i.status === "LOW_STOCK").length,
+      OUT_OF_STOCK: items.filter((i) => i.status === "OUT_OF_STOCK").length,
+    }),
+    [items],
+  );
+
   const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return items.filter((i) => {
-      if (search.trim()) {
-        const q = search.trim().toLowerCase();
-        if (!i.productName.toLowerCase().includes(q) && !(i.variantLabel ?? "").toLowerCase().includes(q) && !(i.sku ?? "").toLowerCase().includes(q)) return false;
-      }
+      if (q && !i.productName.toLowerCase().includes(q) && !(i.variantLabel ?? "").toLowerCase().includes(q) && !(i.sku ?? "").toLowerCase().includes(q) && !(i.barcode ?? "").toLowerCase().includes(q)) return false;
       if (statusFilter && i.status !== statusFilter) return false;
       return true;
     });
@@ -32,57 +37,78 @@ export function InventoryTable({ storeSlug, items }: { storeSlug: string; items:
   const currentPage = Math.min(page, totalPages);
   const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+  const tabs: Array<{ id: Filter; label: string }> = [
+    { id: "", label: "All" },
+    { id: "IN_STOCK", label: "In stock" },
+    { id: "LOW_STOCK", label: "Low" },
+    { id: "OUT_OF_STOCK", label: "Sold out" },
+  ];
+
   return (
-    <div>
-      <ListToolbar
-        search={search}
-        onSearchChange={(v) => { setSearch(v); setPage(1); }}
-        searchPlaceholder="Search by product, variant or SKU..."
-        filters={[
-          { id: "status", value: statusFilter, onChange: (v) => { setStatusFilter(v); setPage(1); }, placeholder: "All Status", options: STATUS_OPTIONS },
-        ]}
-        onReset={() => { setSearch(""); setStatusFilter(""); setPage(1); }}
-      />
-
-      <div className="overflow-x-auto rounded-lg border bg-background">
-        <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="px-4 py-2">Product</th>
-              <th className="px-4 py-2">SKU</th>
-              <th className="px-4 py-2">Barcode</th>
-              <th className="px-4 py-2">Cost</th>
-              <th className="px-4 py-2">Sell</th>
-              <th className="px-4 py-2">Profit / unit</th>
-              <th className="px-4 py-2">Margin</th>
-              <th className="px-4 py-2">In stock</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {paged.map((item) => (
-              <InventoryRow key={item.inventoryItemId} storeSlug={storeSlug} item={item} />
-            ))}
-            {paged.length === 0 && (
-              <tr>
-                <td colSpan={10} className="px-4 py-10 text-center text-muted-foreground">
-                  {items.length === 0 ? "Nothing tracked yet. Physical products get an inventory row automatically once added." : "No items match your filters."}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-
-        <ListPagination
-          page={currentPage}
-          totalPages={totalPages}
-          pageSize={pageSize}
-          totalItems={filtered.length}
-          onPageChange={setPage}
-          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
-        />
+    <section className="overflow-hidden rounded-2xl border bg-background shadow-sm">
+      <div className="space-y-3 p-4 sm:p-5">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search name, SKU or barcode"
+            className="w-full rounded-xl border bg-gray-50 py-2.5 pl-10 pr-3 text-sm focus:bg-white"
+          />
+        </div>
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0" role="tablist" aria-label="Filter by stock status">
+          {tabs.map((t) => {
+            const active = statusFilter === t.id;
+            return (
+              <button
+                key={t.id || "all"}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => { setStatusFilter(t.id); setPage(1); }}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium ${active ? "border-[#0f6410] bg-[#0f6410] text-white" : "bg-background text-gray-600 hover:bg-gray-50"}`}
+              >
+                {t.label}
+                <span className={`rounded-full px-1.5 text-[10px] font-semibold ${active ? "bg-white/20" : "bg-gray-100 text-gray-500"}`}>{counts[t.id]}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      <div className="hidden grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_7rem_6rem] gap-4 border-y bg-gray-50/70 px-5 py-2 text-[11px] font-medium text-gray-500 md:grid">
+        <span>Product</span>
+        <span>Stock</span>
+        <span>Price &amp; margin</span>
+        <span>Status</span>
+        <span className="text-right">Actions</span>
+      </div>
+
+      <ul className="divide-y border-t md:border-t-0">
+        {paged.map((item) => (
+          <InventoryRow key={item.inventoryItemId} storeSlug={storeSlug} item={item} />
+        ))}
+      </ul>
+
+      {paged.length === 0 && (
+        <div className="flex flex-col items-center px-6 py-12 text-center">
+          <span className="grid h-12 w-12 place-items-center rounded-full bg-gray-100 text-gray-400"><PackageOpen className="h-6 w-6" /></span>
+          <p className="mt-3 text-sm font-medium text-gray-900">{items.length === 0 ? "Nothing tracked yet" : "No items match"}</p>
+          <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+            {items.length === 0 ? "Physical products get an inventory row automatically once you add them." : "Try a different search or switch the filter above."}
+          </p>
+        </div>
+      )}
+
+      <ListPagination
+        page={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalItems={filtered.length}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+      />
+    </section>
   );
 }
