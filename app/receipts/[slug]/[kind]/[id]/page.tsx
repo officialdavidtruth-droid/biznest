@@ -9,8 +9,9 @@ import { ReceiptSheet } from "@/components/receipts/receipt-sheet";
 export const metadata: Metadata = { title: "Receipt", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
-export default async function ReceiptPage({ params }: { params: Promise<{ slug: string; kind: string; id: string }> }) {
+export default async function ReceiptPage({ params, searchParams }: { params: Promise<{ slug: string; kind: string; id: string }>; searchParams: Promise<{ print?: string }> }) {
   const { slug, kind, id } = await params;
+  const { print } = await searchParams;
   if (!isReceiptKind(kind)) return notFound();
 
   const result = await loadReceipt(slug, kind, id);
@@ -24,5 +25,5 @@ export default async function ReceiptPage({ params }: { params: Promise<{ slug: 
     );
   }
 
-  return <ReceiptSheet receipt={result.receipt} backHref={`/${slug}/admin/receipts`} />;
+  return <ReceiptSheet receipt={result.receipt} backHref={`/${slug}/admin/receipts`} autoPrint={print === "1"} />;
 }

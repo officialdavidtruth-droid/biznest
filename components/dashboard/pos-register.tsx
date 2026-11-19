@@ -359,6 +359,12 @@ export function PosRegister({
         : chargeMode === "ROOM"
           ? `Charged ${currency} ${formatNumber(result.data.total)} to room ${chosenRoom?.roomName ?? ""}.`
           : `Sale complete — ${currency} ${formatNumber(result.data.total)}`,
+      chargeMode === "NOW"
+        ? {
+            duration: 12000,
+            action: { label: "Print receipt", onClick: () => window.open(`/receipts/${slug}/order/${result.data.orderId}?print=1`, "_blank") },
+          }
+        : undefined,
     );
     setCart([]);
     setCustomerName("");

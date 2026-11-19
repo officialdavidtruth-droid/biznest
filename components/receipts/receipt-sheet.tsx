@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Printer } from "lucide-react";
 import { biznestPromoUrl } from "@/lib/branding";
 import type { ReceiptData } from "@/lib/receipts/load";
@@ -14,8 +14,14 @@ const TONE: Record<ReceiptData["status"]["tone"], string> = {
   void: "border-gray-500 text-gray-600",
 };
 
-export function ReceiptSheet({ receipt, backHref }: { receipt: ReceiptData; backHref: string }) {
+export function ReceiptSheet({ receipt, backHref, autoPrint = false }: { receipt: ReceiptData; backHref: string; autoPrint?: boolean }) {
   const [paper, setPaper] = useState<Paper>("a4");
+  // Opened from the POS "Print receipt" button: go straight to the print dialog.
+  useEffect(() => {
+    if (!autoPrint) return;
+    const t = setTimeout(() => window.print(), 400);
+    return () => clearTimeout(t);
+  }, [autoPrint]);
   const thermal = paper === "thermal";
 
   return (
