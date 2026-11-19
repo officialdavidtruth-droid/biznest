@@ -48,7 +48,13 @@ export function ReferralSettingsForm({
           <span className="block text-sm font-semibold">Referral program</span>
           <span className="block text-xs text-muted-foreground">{enabled ? "On. Customers earn points for referring friends." : "Off. Turn on to start rewarding referrals."}</span>
         </span>
-        <input type="checkbox" role="switch" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-slate-300 transition-colors checked:bg-[hsl(var(--primary))] relative before:absolute before:left-0.5 before:top-0.5 before:h-5 before:w-5 before:rounded-full before:bg-white before:transition-transform before:content-[''] checked:before:translate-x-5" />
+        <input type="checkbox" role="switch" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="sr-only" />
+        <span
+          aria-hidden
+          style={{ background: enabled ? "hsl(var(--primary))" : "#cbd5e1", width: 44, height: 24, borderRadius: 12, position: "relative", flexShrink: 0, transition: "background .15s" }}
+        >
+          <span style={{ position: "absolute", top: 2, left: enabled ? 22 : 2, width: 20, height: 20, borderRadius: 10, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.3)", transition: "left .15s" }} />
+        </span>
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm">
