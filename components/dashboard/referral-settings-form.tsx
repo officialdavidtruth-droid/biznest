@@ -48,7 +48,7 @@ export function ReferralSettingsForm({
           <span className="block text-sm font-semibold">Referral program</span>
           <span className="block text-xs text-muted-foreground">{enabled ? "On. Customers earn points for referring friends." : "Off. Turn on to start rewarding referrals."}</span>
         </span>
-        <input type="checkbox" role="switch" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-muted-foreground/30 transition-colors checked:bg-[hsl(var(--primary))] relative before:absolute before:left-0.5 before:top-0.5 before:h-5 before:w-5 before:rounded-full before:bg-white before:transition-transform before:content-[''] checked:before:translate-x-5" />
+        <input type="checkbox" role="switch" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-slate-300 transition-colors checked:bg-[hsl(var(--primary))] relative before:absolute before:left-0.5 before:top-0.5 before:h-5 before:w-5 before:rounded-full before:bg-white before:transition-transform before:content-[''] checked:before:translate-x-5" />
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm">
