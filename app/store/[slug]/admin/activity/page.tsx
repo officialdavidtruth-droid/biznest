@@ -52,12 +52,13 @@ function describe(action: string): string {
   return ACTION_LABELS[action] ?? action.replace(/[._]/g, " ");
 }
 
-function formatMeta(metadata: unknown): string | null {
+function formatMeta(metadata: unknown): string[] | null {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
   const parts = Object.entries(metadata as Record<string, unknown>)
     .filter(([, v]) => v !== null && v !== undefined && v !== "")
-    .map(([k, v]) => `${k.replace(/([A-Z])/g, " $1").toLowerCase()}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`);
-  return parts.length ? parts.join(" · ").slice(0, 300) : null;
+    .filter(([k, v]) => !(/id$/i.test(k) && String(v).length > 16))
+    .map(([k, v]) => `${k.replace(/([A-Z])/g, " $1").replace(/_/g, " ").toLowerCase()}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`);
+  return parts.length ? parts.slice(0, 6) : null;
 }
 
 export default async function ActivityPage({
@@ -94,39 +95,47 @@ export default async function ActivityPage({
       </p>
 
       <form className="mt-4 flex gap-2">
-        <select name="action" defaultValue={action ?? ""} className="flex-1 rounded-md border px-3 py-1.5 text-sm">
+        <select name="action" defaultValue={action ?? ""} className="min-w-0 flex-1 rounded-xl border bg-background px-3 py-2.5 text-sm">
           <option value="">All actions</option>
           {actionRows.map((r) => (
             <option key={r.action} value={r.action}>{describe(r.action)}</option>
           ))}
         </select>
-        <button type="submit" className="rounded-md border px-3 py-1.5 text-sm font-medium">Filter</button>
+        <button type="submit" className="rounded-xl border px-4 py-2.5 text-sm font-semibold">Filter</button>
       </form>
 
       {entries.length === 0 ? (
-        <p className="mt-6 text-sm text-muted-foreground">Nothing logged yet.</p>
+        <p className="mt-6 rounded-2xl border border-dashed bg-background px-4 py-10 text-center text-sm text-muted-foreground">Nothing logged yet.</p>
       ) : (
-        <div className="mt-6 divide-y divide-border rounded-lg border border-border">
+        <ul className="mt-5 space-y-3">
           {entries.map((e) => {
             const meta = formatMeta(e.metadata);
             return (
-              <div key={e.id} className="flex items-start justify-between gap-3 p-3 text-sm">
-                <div className="min-w-0">
-                  <p>
-                    <span className="font-medium">{e.actorName}</span>{" "}
-                    <span className="text-muted-foreground">({e.actorEmail})</span> {describe(e.action)}
-                    {e.target ? <span className="text-muted-foreground"> — {e.target}</span> : null}
+              <li key={e.id} className="flex items-start gap-3 rounded-2xl border bg-background p-4 shadow-sm">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--primary)/0.1)] text-sm font-semibold text-primary">
+                  {(e.actorName ?? "?").trim().charAt(0).toUpperCase()}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm leading-snug">
+                    <span className="font-semibold">{e.actorName}</span> {describe(e.action)}
+                    {e.target && /^#/.test(String(e.target)) ? <span className="font-semibold text-primary"> {e.target}</span> : null}
                   </p>
-                  {meta && <p className="mt-0.5 break-words text-xs text-muted-foreground">{meta}</p>}
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {e.actorRole} ·{" "}
+                  {meta && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {meta.map((m) => (
+                        <span key={m} className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{m}</span>
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {e.actorEmail} · {e.actorRole.replace(/_/g, " ").toLowerCase()} ·{" "}
                     {formatDate(new Date(e.createdAt), { dateStyle: "medium", timeStyle: "short" })}
                   </p>
                 </div>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
 
       {pages > 1 && (

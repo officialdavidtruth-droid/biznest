@@ -40,41 +40,44 @@ export function ReferralSettingsForm({
     }
   }
 
-  const field = "w-full rounded-md border px-3 py-1.5 text-sm";
+  const field = "w-full rounded-xl border bg-background px-3 py-2.5 text-sm";
   return (
-    <form onSubmit={onSubmit} className="space-y-4 rounded-lg border bg-background p-4">
-      <label className="flex items-center gap-2 text-sm font-medium">
-        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
-        Referral program is on
+    <form onSubmit={onSubmit} className="space-y-5 rounded-2xl border bg-background p-4 shadow-sm sm:p-5">
+      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-muted/40 px-4 py-3">
+        <span>
+          <span className="block text-sm font-semibold">Referral program</span>
+          <span className="block text-xs text-muted-foreground">{enabled ? "On. Customers earn points for referring friends." : "Off. Turn on to start rewarding referrals."}</span>
+        </span>
+        <input type="checkbox" role="switch" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-muted-foreground/30 transition-colors checked:bg-[hsl(var(--primary))] relative before:absolute before:left-0.5 before:top-0.5 before:h-5 before:w-5 before:rounded-full before:bg-white before:transition-transform before:content-[''] checked:before:translate-x-5" />
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm">
-          <span className="text-muted-foreground">Points for the customer who refers</span>
+          <span className="text-xs text-muted-foreground">Points for the customer who refers</span>
           <input type="number" min="0" step="1" value={referrerPoints} onChange={(e) => setReferrerPoints(e.target.value)} className={field} />
         </label>
         <label className="space-y-1 text-sm">
-          <span className="text-muted-foreground">Points for the new customer</span>
+          <span className="text-xs text-muted-foreground">Points for the new customer</span>
           <input type="number" min="0" step="1" value={refereePoints} onChange={(e) => setRefereePoints(e.target.value)} className={field} />
         </label>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="space-y-1 text-sm">
-          <span className="text-muted-foreground">Minimum first-order value</span>
+          <span className="text-xs text-muted-foreground">Minimum first-order value</span>
           <input type="number" min="0" step="0.01" value={minOrderAmount} onChange={(e) => setMinOrderAmount(e.target.value)} className={field} />
         </label>
         <label className="space-y-1 text-sm">
-          <span className="text-muted-foreground">Max rewards per referrer (0 = no limit)</span>
+          <span className="text-xs text-muted-foreground">Max rewards per referrer (0 = no limit)</span>
           <input type="number" min="0" step="1" value={maxRewardsPerReferrer} onChange={(e) => setMaxRewardsPerReferrer(e.target.value)} className={field} />
         </label>
         <label className="space-y-1 text-sm">
-          <span className="text-muted-foreground">Expire waiting referrals after (days, 0 = never)</span>
+          <span className="text-xs text-muted-foreground">Expire waiting referrals after (days, 0 = never)</span>
           <input type="number" min="0" step="1" value={expiryDays} onChange={(e) => setExpiryDays(e.target.value)} className={field} />
         </label>
       </div>
       <p className="text-xs text-muted-foreground">
         Points can be cashed out as coupons, so a reward is real money. The new customer must also have verified their email. If you lower the reward later, friends who already signed up still get the amount they were promised. Points are paid into each customer&apos;s store rewards once the new customer&apos;s first order is completed — not when they sign up.
       </p>
-      <button disabled={pending} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50">Save</button>
+      <button disabled={pending} className="w-full rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50 sm:w-auto sm:py-2.5">{pending ? "Saving…" : "Save settings"}</button>
     </form>
   );
 }

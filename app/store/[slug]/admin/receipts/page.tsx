@@ -6,7 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { assertAnyStorePermission } from "@/lib/access/assert-store-access";
 import { formatDate } from "@/lib/i18n/locale";
 import { moneyFormatter } from "@/lib/utils/format-money";
-import { TableScroll } from "@/components/ui/table-scroll";
 
 const PAID_ORDER = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] as const;
 const TABS = [
@@ -99,65 +98,55 @@ export default async function ReceiptsPage({
   return (
     <div>
       <h1 className="mb-1 text-xl font-semibold">Receipts</h1>
-      <p className="mb-5 max-w-xl text-sm text-muted-foreground">
-        Print an order receipt, a payment receipt or a bill for any customer. Choose A4 or an 80mm receipt roll on the print screen.
+      <p className="mb-4 max-w-xl text-sm text-muted-foreground">
+        Print an order receipt, a payment receipt or a bill for any customer. Pick A4 or an 80mm roll on the print screen.
       </p>
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
         {TABS.map((t) => (
           <Link
             key={t.id}
-            href={`/${slug}/admin/receipts?type=${t.id}`}
-            className={`rounded-full border px-3 py-1.5 text-sm font-medium ${tab === t.id ? "bg-foreground text-background" : "bg-background text-muted-foreground"}`}
+            href={`/store/${slug}/admin/receipts?type=${t.id}`}
+            className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold ${tab === t.id ? "border-foreground bg-foreground text-background" : "bg-background text-muted-foreground"}`}
           >
             {t.label}
           </Link>
         ))}
       </div>
 
-      <TableScroll className="rounded-lg border bg-background">
-        <table className="w-full min-w-[640px] text-sm">
-          <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="px-4 py-2">Reference</th>
-              <th className="px-4 py-2">Customer</th>
-              <th className="px-4 py-2">Amount</th>
-              <th className="px-4 py-2">{tab === "payments" ? "For" : "Status"}</th>
-              <th className="px-4 py-2">Date</th>
-              <th className="px-4 py-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-b last:border-0">
-                <td className="px-4 py-3 font-mono text-xs">{r.ref}</td>
-                <td className="px-4 py-3">{r.who}</td>
-                <td className="px-4 py-3">{r.amount}</td>
-                <td className="px-4 py-3 text-xs capitalize text-muted-foreground">{r.status.toLowerCase()}</td>
-                <td className="px-4 py-3 text-muted-foreground">{r.when}</td>
-                <td className="px-4 py-3 text-right">
-                  <a
-                    href={`/receipts/${slug}/${r.kind}/${r.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                  >
-                    <Printer className="h-3.5 w-3.5" /> Print
-                  </a>
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
-                  Nothing to print here yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </TableScroll>
-      {rows.length === 50 && <p className="mt-2 text-xs text-muted-foreground">Showing the latest 50.</p>}
+      {rows.length === 0 ? (
+        <div className="rounded-2xl border border-dashed bg-background px-4 py-10 text-center text-sm text-muted-foreground">
+          Nothing to print here yet.
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {rows.map((r) => (
+            <li key={r.id} className="flex items-center gap-3 rounded-2xl border bg-background p-4 shadow-sm">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--primary)/0.1)] text-primary">
+                <Printer className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{r.who}</p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  <span className="font-mono">{r.ref}</span> · {r.when} · <span className="capitalize">{r.status.toLowerCase()}</span>
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-sm font-bold tabular-nums">{r.amount}</p>
+                <a
+                  href={`/receipts/${slug}/${r.kind}/${r.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold text-primary hover:bg-muted"
+                >
+                  Print
+                </a>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {rows.length === 50 && <p className="mt-3 text-xs text-muted-foreground">Showing the latest 50.</p>}
     </div>
   );
 }

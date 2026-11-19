@@ -12,11 +12,11 @@ const RANGES = [
   { label: "90 days", value: 90 },
 ] as const;
 
-function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function StatCard({ label, value, sub, wide }: { label: string; value: string; sub?: string; wide?: boolean }) {
   return (
-    <div className="rounded-lg border bg-background p-4">
-      <p className="text-xs uppercase text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold">{value}</p>
+    <div className={`${wide ? "col-span-2 lg:col-span-1 " : ""}rounded-2xl border bg-background p-4 shadow-sm`}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-bold tabular-nums sm:text-2xl">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>}
     </div>
   );
@@ -40,9 +40,12 @@ function DailyBarChart({
   const values = series.map((d) => d[field] ?? 0);
   const max = Math.max(1, ...values);
   return (
-    <div className="rounded-lg border bg-background p-4">
-      <p className="mb-4 text-sm font-medium">{title}</p>
-      <div className="flex h-32 items-end gap-1">
+    <div className="rounded-2xl border bg-background p-4 shadow-sm">
+      <div className="mb-4 flex items-baseline justify-between gap-2">
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="text-xs text-muted-foreground">Peak {format(max === 1 && values.every((v) => v === 0) ? 0 : max)}</p>
+      </div>
+      <div className="flex h-32 items-end gap-0.5 sm:gap-1">
         {series.map((d, i) => {
           const v = d[field] ?? 0;
           return (
@@ -58,6 +61,12 @@ function DailyBarChart({
           );
         })}
       </div>
+      {series.length > 1 && (
+        <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
+          <span>{series[0].label}</span>
+          <span>{series[series.length - 1].label}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -86,12 +95,12 @@ export default async function AnalyticsPage({
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Analytics</h1>
-        <div className="flex gap-1 rounded-lg border p-1">
+        <div className="flex gap-1 rounded-xl border bg-background p-1">
           {RANGES.map((r) => (
             <Link
               key={r.value}
               href={`/store/${slug}/admin/analytics?range=${r.value}`}
-              className={`rounded-md px-3 py-1 text-xs font-medium ${
+              className={`rounded-lg px-3.5 py-2 text-xs font-semibold ${
                 rangeDays === r.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
               }`}
             >
@@ -102,8 +111,8 @@ export default async function AnalyticsPage({
       </div>
 
       {/* ---------- Summary stat cards ---------- */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard label="Revenue" value={`${money(summary.revenue)}`} />
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <StatCard wide label="Revenue" value={`${money(summary.revenue)}`} />
         <StatCard label="Orders" value={formatNumber(summary.orders)} />
         <StatCard label="Customers" value={formatNumber(summary.customers)} />
         <StatCard
@@ -132,8 +141,8 @@ export default async function AnalyticsPage({
 
       {/* ---------- Abandoned carts + returning customers ---------- */}
       <div className={`mb-6 grid gap-4 ${showAbandoned ? "sm:grid-cols-2" : ""}`}>
-        {showAbandoned && <div className="rounded-lg border bg-background p-4">
-          <p className="text-xs uppercase text-muted-foreground">Abandoned carts</p>
+        {showAbandoned && <div className="rounded-2xl border bg-background p-4 shadow-sm">
+          <p className="text-xs text-muted-foreground">Abandoned carts</p>
           <p className="mt-1 text-2xl font-semibold">{formatNumber(summary.abandonedCarts)}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Checkouts started but never paid, in the last {rangeDays} days.{" "}
@@ -142,8 +151,8 @@ export default async function AnalyticsPage({
             </Link>
           </p>
         </div>}
-        <div className="rounded-lg border bg-background p-4">
-          <p className="text-xs uppercase text-muted-foreground">Returning customers</p>
+        <div className="rounded-2xl border bg-background p-4 shadow-sm">
+          <p className="text-xs text-muted-foreground">Returning customers</p>
           <p className="mt-1 text-2xl font-semibold">
             {data.returningCustomerRate != null ? `${data.returningCustomerRate}%` : "—"}
           </p>
@@ -155,7 +164,7 @@ export default async function AnalyticsPage({
 
       {/* ---------- Best products / categories ---------- */}
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border bg-background p-4">
+        <div className="rounded-2xl border bg-background p-4 shadow-sm">
           <p className="mb-3 text-sm font-medium">Best products</p>
           {data.bestProducts.length === 0 ? (
             <p className="text-xs text-muted-foreground">No sales in this range yet.</p>
@@ -172,7 +181,7 @@ export default async function AnalyticsPage({
             </ul>
           )}
         </div>
-        <div className="rounded-lg border bg-background p-4">
+        <div className="rounded-2xl border bg-background p-4 shadow-sm">
           <p className="mb-3 text-sm font-medium">Best categories</p>
           {data.bestCategories.length === 0 ? (
             <p className="text-xs text-muted-foreground">No sales in this range yet.</p>
@@ -192,7 +201,7 @@ export default async function AnalyticsPage({
       </div>
 
       {/* ---------- Traffic sources ---------- */}
-      <div className="mb-6 rounded-lg border bg-background p-4">
+      <div className="mb-6 rounded-2xl border bg-background p-4 shadow-sm">
         <p className="mb-3 text-sm font-medium">Traffic sources</p>
         {data.trafficSources.length === 0 ? (
           <p className="text-xs text-muted-foreground">No visits recorded in this range yet.</p>
@@ -222,7 +231,7 @@ export default async function AnalyticsPage({
       </div>
 
       {/* ---------- Profit (only if any product has a cost set) ---------- */}
-      <div className="rounded-lg border bg-background p-4">
+      <div className="rounded-2xl border bg-background p-4 shadow-sm">
         <p className="mb-1 text-sm font-medium">Profit</p>
         {data.profit ? (
           <>

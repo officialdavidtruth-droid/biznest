@@ -29,7 +29,7 @@ export default async function AbandonedCheckoutsPage({
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="mb-1 text-xl font-semibold">Abandoned checkouts</h1>
-      <p className="mb-6 text-sm text-muted-foreground">
+      <p className="mb-5 text-sm text-muted-foreground">
         Buyers who started checkout but didn&apos;t complete payment. Send a reminder to bring them back.
       </p>
 
@@ -41,18 +41,23 @@ export default async function AbandonedCheckoutsPage({
           return (
             <li
               key={order.id}
-              className={`rounded-xl border bg-background p-4 ${order.id === highlightId ? "border-primary ring-2 ring-primary/20" : ""}`}
+              className={`rounded-2xl border bg-background p-4 shadow-sm sm:p-5 ${order.id === highlightId ? "border-primary ring-2 ring-primary/20" : ""}`}
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--primary)/0.1)] text-sm font-semibold text-primary">
+                    {(who ?? "?").trim().charAt(0).toUpperCase()}
+                  </span>
+                  <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{who}</p>
                   <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{label}</p>
+                  </div>
                 </div>
-                <p className="shrink-0 text-sm font-semibold">
+                <p className="shrink-0 text-base font-bold tabular-nums">
                   {order.currency} {formatNumber(Number(order.total))}
                 </p>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-3 text-xs text-muted-foreground">
                 Left {formatDate(new Date(order.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
                 {order.abandonedNotifications.length > 0 && (
                   <>
@@ -63,14 +68,14 @@ export default async function AbandonedCheckoutsPage({
                   </>
                 )}
               </p>
-              <div className="mt-3">
+              <div className="mt-3 border-t pt-3">
                 <AbandonedCheckoutActions slug={slug} orderId={order.id} />
               </div>
             </li>
           );
         })}
         {checkouts.length === 0 && (
-          <li className="rounded-xl border bg-background px-4 py-10 text-center text-sm text-muted-foreground">
+          <li className="rounded-2xl border border-dashed bg-background px-4 py-10 text-center text-sm text-muted-foreground">
             No abandoned checkouts right now.
           </li>
         )}

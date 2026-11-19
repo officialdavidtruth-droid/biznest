@@ -25,9 +25,9 @@ export function ReferralRowActions({ slug, referralId }: { slug: string; referra
   }
 
   return (
-    <div className="flex gap-2">
-      <button type="button" disabled={pending} onClick={() => run("pay")} className="rounded-md border px-2 py-1 text-xs disabled:opacity-50">Pay now</button>
-      <button type="button" disabled={pending} onClick={() => run("cancel")} className="rounded-md border px-2 py-1 text-xs text-destructive disabled:opacity-50">Cancel</button>
+    <div className="grid grid-cols-2 gap-2 sm:flex">
+      <button type="button" disabled={pending} onClick={() => run("pay")} className="rounded-xl border px-4 py-2.5 text-xs font-semibold disabled:opacity-50">Pay now</button>
+      <button type="button" disabled={pending} onClick={() => run("cancel")} className="rounded-xl border px-4 py-2.5 text-xs font-semibold text-destructive disabled:opacity-50">Cancel</button>
     </div>
   );
 }

@@ -8,7 +8,6 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { ReferralSettingsForm } from "@/components/dashboard/referral-settings-form";
 import { ReferralRowActions } from "@/components/dashboard/referral-row-actions";
 import { formatDate } from "@/lib/i18n/locale";
-import { TableScroll } from "@/components/ui/table-scroll";
 
 const PAGE_SIZE = 25;
 
@@ -71,45 +70,54 @@ export default async function ReferralsPage({
           expiryDays: store.referralExpiryDays,
         }}
       />
-      <p className="text-sm text-muted-foreground">
-        {total} referral{total === 1 ? "" : "s"}, {rewarded} rewarded, {waiting} waiting.
-      </p>
-      <TableScroll className="rounded-lg border bg-background">
-        <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-            <tr><th className="px-4 py-2">Referred by</th><th className="px-4 py-2">New customer</th><th className="px-4 py-2">Status</th><th className="px-4 py-2">Points</th><th className="px-4 py-2">Joined</th><th className="px-4 py-2" /></tr>
-          </thead>
-          <tbody>
-            {referrals.map((r) => (
-              <tr key={r.id} className="border-b last:border-0 align-top">
-                <td className="px-4 py-3">{r.referrer.name ?? "—"}</td>
-                <td className="px-4 py-3">{r.referee.name ?? "—"}</td>
-                <td className="px-4 py-3">
+      <div className="grid grid-cols-3 gap-3">
+        {[["Referrals", total], ["Rewarded", rewarded], ["Waiting", waiting]].map(([l, n]) => (
+          <div key={String(l)} className="rounded-2xl border bg-background p-3 shadow-sm sm:p-4">
+            <p className="text-xs text-muted-foreground">{l}</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums">{n}</p>
+          </div>
+        ))}
+      </div>
+      {referrals.length === 0 ? (
+        <div className="rounded-2xl border border-dashed bg-background px-4 py-10 text-center text-sm text-muted-foreground">
+          No referrals yet. When a customer shares their link and a friend signs up, it shows here.
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {referrals.map((r) => (
+            <li key={r.id} className="rounded-2xl border bg-background p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{r.referee.name ?? "New customer"}</p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">Referred by {r.referrer.name ?? "—"} · {formatDate(r.createdAt)}</p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${r.status === "REWARDED" ? "bg-emerald-100 text-emerald-800" : r.status === "PENDING" ? "bg-amber-100 text-amber-800" : "bg-muted text-muted-foreground"}`}>
                   {statusLabel(r)}
-                  {r.note && <div className="mt-0.5 text-xs text-muted-foreground">{r.note}</div>}
-                </td>
-                <td className="px-4 py-3">
+                </span>
+              </div>
+              {r.note && <p className="mt-2 text-xs text-muted-foreground">{r.note}</p>}
+              <p className="mt-2 text-sm">
+                <span className="text-muted-foreground">Points: </span>
+                <span className="font-semibold tabular-nums">
                   {r.status === "REWARDED" || r.status === "REVERSED"
                     ? `${r.referrerPoints} + ${r.refereePoints}`
                     : r.status === "PENDING"
                       ? `${r.promisedReferrerPoints ?? store.referralReferrerPoints} + ${r.promisedRefereePoints ?? store.referralRefereePoints} promised`
                       : "—"}
-                </td>
-                <td className="px-4 py-3">{formatDate(r.createdAt)}</td>
-                <td className="px-4 py-3">{r.status === "PENDING" && <ReferralRowActions slug={slug} referralId={r.id} />}</td>
-              </tr>
-            ))}
-            {referrals.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">No referrals yet.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </TableScroll>
+                </span>
+              </p>
+              {r.status === "PENDING" && (
+                <div className="mt-3 border-t pt-3"><ReferralRowActions slug={slug} referralId={r.id} /></div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
       {pages > 1 && (
         <div className="flex items-center justify-between text-sm">
-          {page > 1 ? <Link href={`?page=${page - 1}`} className="rounded-md border px-3 py-1.5">Previous</Link> : <span />}
+          {page > 1 ? <Link href={`?page=${page - 1}`} className="rounded-xl border px-4 py-2 font-medium">Previous</Link> : <span />}
           <span className="text-muted-foreground">Page {page} of {pages}</span>
-          {page < pages ? <Link href={`?page=${page + 1}`} className="rounded-md border px-3 py-1.5">Next</Link> : <span />}
+          {page < pages ? <Link href={`?page=${page + 1}`} className="rounded-xl border px-4 py-2 font-medium">Next</Link> : <span />}
         </div>
       )}
     </div>

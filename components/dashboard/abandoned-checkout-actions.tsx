@@ -28,13 +28,13 @@ export function AbandonedCheckoutActions({ slug, orderId }: { slug: string; orde
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="grid grid-cols-2 gap-2 sm:flex">
       {CHANNELS.map((c) => (
         <button
           key={c.value}
           onClick={() => handleSend(c.value)}
           disabled={sending !== null}
-          className="rounded-full border px-2.5 py-1 text-xs font-medium hover:border-primary hover:text-primary disabled:opacity-50"
+          className="rounded-xl border px-4 py-2.5 text-xs font-semibold hover:border-primary hover:text-primary disabled:opacity-50"
         >
           {sending === c.value ? "Sending…" : `Send ${c.label}`}
         </button>
