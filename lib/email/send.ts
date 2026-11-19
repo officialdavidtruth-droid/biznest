@@ -61,6 +61,16 @@ function fromFor(brand?: StoreEmailBrand) {
   return brand ? `${safeFromName(brand.name)} <${FROM_ADDRESS}>` : FROM;
 }
 
+/** Email clients can't load relative paths, so make a stored logo URL absolute. */
+function absoluteLogoUrl(url?: string | null): string | null {
+  const u = url?.trim();
+  if (!u) return null;
+  if (/^https?:\/\//i.test(u)) return u;
+  if (u.startsWith("//")) return `https:${u}`;
+  if (u.startsWith("/")) return `${APP_URL}${u}`;
+  return null;
+}
+
 /** Builds the email identity for a Store row (or any object with the same fields). */
 export function storeEmailBrand(store: {
   name: string;
@@ -74,7 +84,7 @@ export function storeEmailBrand(store: {
   const theme = (store.themeColors ?? null) as { primary?: string } | null;
   return {
     name: store.name,
-    logoUrl: store.logoUrl ?? null,
+    logoUrl: absoluteLogoUrl(store.logoUrl),
     color: /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(theme?.primary ?? "") ? theme!.primary! : null,
     contactEmail: store.contactEmail ?? null,
     contactPhone: store.contactPhone ?? null,
