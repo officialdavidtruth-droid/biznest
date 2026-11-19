@@ -77,7 +77,7 @@ export function InventoryTable({ storeSlug, items }: { storeSlug: string; items:
         </div>
       </div>
 
-      <div className="hidden grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_7rem_6rem] gap-4 border-y bg-gray-50/70 px-5 py-2 text-[11px] font-medium text-gray-500 md:grid">
+      <div className="hidden grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_9rem_6.5rem] gap-4 border-y bg-gray-50/70 px-5 py-2 text-[11px] font-medium text-gray-500 md:grid">
         <span>Product</span>
         <span>Stock</span>
         <span>Price &amp; margin</span>

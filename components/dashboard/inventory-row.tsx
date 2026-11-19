@@ -94,7 +94,7 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
 
   return (
     <li>
-      <div className="grid grid-cols-1 gap-3 px-4 py-4 sm:px-5 md:grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_7rem_6rem] md:items-center md:gap-4">
+      <div className="grid grid-cols-1 gap-3 px-4 py-4 sm:px-5 md:grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_9rem_6.5rem] md:items-center md:gap-4">
         {/* Product */}
         <div className="flex min-w-0 items-center gap-3">
           {item.productImage ? (
