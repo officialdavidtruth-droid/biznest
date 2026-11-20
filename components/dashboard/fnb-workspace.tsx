@@ -9,7 +9,7 @@ import {
   Trash2, Truck, Users, UtensilsCrossed, XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { advanceFnbOrderStatus, endFnbShift, recordFnbWaste, saveFnbRecipe, saveFnbStation, setFnbRotationMode, startFnbShift } from "@/lib/actions/fnb";
+import { advanceFnbOrderStatus, createFnbIngredient, endFnbShift, recordFnbWaste, saveFnbRecipe, saveFnbStation, setFnbRotationMode, startFnbShift } from "@/lib/actions/fnb";
 import { getPosCatalog, getPosDailySummary } from "@/lib/actions/pos";
 import { PosRegister } from "@/components/dashboard/pos-register";
 import { PosOpenTabs } from "@/components/dashboard/pos-open-tabs";
@@ -155,6 +155,29 @@ function RecipesPanel({ slug, products, inventory, role }: { slug: string; produ
   const [ingredients, setIngredients] = useState<{ inventoryItemId: string; quantity: string; unit: string }[]>(toRows(existing));
   const [yieldQty, setYieldQty] = useState(String(existing?.yieldQty || 1));
   const [busy, start] = useTransition();
+  const router = useRouter();
+  const [newIng, setNewIng] = useState({ name: "", unit: "g", quantity: "", cost: "" });
+  const [showNew, setShowNew] = useState(false);
+  const isIngredient = (v: any) => v.product.isPublished === false;
+  const ingredientOptions = inventory.filter((v: any) => v.productId !== product?.id);
+  const costOf = (id: string) => { const v = inventory.find((x: any) => x.id === id); if (!v) return null; return v.costPrice != null ? Number(v.costPrice) : isIngredient(v) ? Number(v.product.price) : null; };
+  const yieldNum = Number(yieldQty) > 0 ? Number(yieldQty) : 1;
+  const costRows = ingredients.map((i) => { const c = costOf(i.inventoryItemId); return { ...i, line: c == null ? null : c * (Number(i.quantity) || 0) }; });
+  const unknownCost = costRows.some((r) => r.line == null);
+  const costPerPortion = costRows.reduce((sum, r) => sum + (r.line ?? 0), 0) / yieldNum;
+  const dishPrice = product ? Number(product.price) : 0;
+  const margin = dishPrice - costPerPortion;
+  const addNewIngredient = () => {
+    const quantity = Number(newIng.quantity || 0); const cost = Number(newIng.cost);
+    start(async () => {
+      const r = await createFnbIngredient(slug, { name: newIng.name, unit: newIng.unit, quantity, costPerUnit: cost });
+      if (!r.success) { toast.error(r.error); return; }
+      toast.success(`${r.data.name} added`);
+      setIngredients((prev) => [...prev, { inventoryItemId: r.data.inventoryItemId, quantity: "1", unit: newIng.unit.trim() || "unit" }]);
+      setNewIng({ name: "", unit: "g", quantity: "", cost: "" }); setShowNew(false);
+      router.refresh();
+    });
+  };
   const field = "w-full rounded-lg border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] px-2 py-2 text-xs disabled:opacity-60";
   const selectProduct = (id: string) => {
     const p = products.find((x) => x.id === id);
@@ -164,8 +187,8 @@ function RecipesPanel({ slug, products, inventory, role }: { slug: string; produ
     setYieldQty(String(r?.yieldQty || 1));
   };
   const addIngredient = () => {
-    if (inventory.length === 0) { toast.error("No inventory items yet. Add your ingredients in Inventory first, then come back."); return; }
-    const first = inventory.find((i: any) => !ingredients.some((x) => x.inventoryItemId === i.id)) || inventory[0];
+    if (ingredientOptions.length === 0) { setShowNew(true); toast.message("Add your first ingredient below, then pick it here."); return; }
+    const first = ingredientOptions.find((i: any) => !ingredients.some((x) => x.inventoryItemId === i.id)) || ingredientOptions[0];
     setIngredients((prev) => [...prev, { inventoryItemId: first.id, quantity: "1", unit: "unit" }]);
   };
   const update = (idx: number, patch: Partial<{ inventoryItemId: string; quantity: string; unit: string }>) => setIngredients((prev) => prev.map((x, n) => (n === idx ? { ...x, ...patch } : x)));
@@ -194,15 +217,30 @@ function RecipesPanel({ slug, products, inventory, role }: { slug: string; produ
         <div className="mt-5 rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_20%,transparent)] p-3 text-xs text-[var(--bn-admin-orange)]">Selling this dish deducts its ingredients from stock. Enter quantities for the full yield, as whole numbers in the unit you count that ingredient in (g, ml, pcs).</div>
       </section>
       <section className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4">
-        {inventory.length === 0 && <div className="mb-3 rounded-xl border border-[var(--bn-admin-border)] p-3 text-xs text-[var(--bn-admin-orange)]">Ingredients come from your inventory, and you have none yet. <Link href={`/store/${slug}/admin/inventory`} className="font-bold underline">Add ingredients in Inventory</Link> first.</div>}
+        {canEdit && <div className="mb-3 rounded-xl border border-[var(--bn-admin-border)] p-3">
+          <button type="button" onClick={() => setShowNew((v) => !v)} className="text-xs font-bold text-[var(--bn-admin-orange)] underline">{showNew ? "Close" : "+ New ingredient (not on the menu)"}</button>
+          {showNew && <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <input className={`${field} col-span-2 sm:col-span-4`} placeholder="Name, e.g. Palm oil" value={newIng.name} onChange={(e) => setNewIng({ ...newIng, name: e.target.value })} />
+            <input className={field} placeholder="Unit (g, ml, pcs)" value={newIng.unit} onChange={(e) => setNewIng({ ...newIng, unit: e.target.value })} />
+            <input className={field} type="number" inputMode="numeric" min="0" placeholder="In stock now" value={newIng.quantity} onChange={(e) => setNewIng({ ...newIng, quantity: e.target.value })} />
+            <input className={`${field} col-span-2`} type="number" inputMode="decimal" min="0" step="any" placeholder="Cost per unit (e.g. 2)" value={newIng.cost} onChange={(e) => setNewIng({ ...newIng, cost: e.target.value })} />
+            <button type="button" disabled={busy} onClick={addNewIngredient} className="col-span-2 rounded-xl bg-[var(--bn-admin-active)] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50 sm:col-span-4">{busy ? "Adding..." : "Add ingredient"}</button>
+          </div>}
+        </div>}
         <div className="hidden grid-cols-[1fr_100px_100px_32px] gap-2 text-[10px] font-bold uppercase tracking-wide text-[var(--bn-admin-orange)] sm:grid"><span>Ingredient</span><span>Qty</span><span>Unit</span><span /></div>
         {ingredients.map((i, idx) => <div key={idx} className="mt-2 grid grid-cols-[1fr_1fr_40px] gap-2 rounded-xl border border-[var(--bn-admin-border)] p-2 sm:grid-cols-[1fr_100px_100px_32px] sm:border-0 sm:p-0">
-          <select disabled={!canEdit} value={i.inventoryItemId} onChange={(e) => update(idx, { inventoryItemId: e.target.value })} className={`${field} col-span-3 sm:col-span-1`}>{inventory.map((v: any) => <option key={v.id} value={v.id}>{v.product.name}</option>)}</select>
+          <select disabled={!canEdit} value={i.inventoryItemId} onChange={(e) => update(idx, { inventoryItemId: e.target.value })} className={`${field} col-span-3 sm:col-span-1`}>{ingredientOptions.filter(isIngredient).length > 0 && <optgroup label="Ingredients">{ingredientOptions.filter(isIngredient).map((v: any) => <option key={v.id} value={v.id}>{v.product.name}</option>)}</optgroup>}{ingredientOptions.filter((v: any) => !isIngredient(v)).length > 0 && <optgroup label="Menu items">{ingredientOptions.filter((v: any) => !isIngredient(v)).map((v: any) => <option key={v.id} value={v.id}>{v.product.name}</option>)}</optgroup>}</select>
           <input disabled={!canEdit} type="number" inputMode="numeric" min="1" step="1" placeholder="Qty" value={i.quantity} onChange={(e) => update(idx, { quantity: e.target.value })} className={field} />
           <input disabled={!canEdit} placeholder="Unit (g, kg, pcs)" value={i.unit} onChange={(e) => update(idx, { unit: e.target.value })} className={field} />
           <button type="button" aria-label="Remove ingredient" disabled={!canEdit} onClick={() => setIngredients((prev) => prev.filter((_, n) => n !== idx))} className="rounded-lg border border-[var(--bn-admin-border)] text-[var(--bn-admin-orange)]">×</button>
         </div>)}
         {ingredients.length === 0 && <Empty text={canEdit ? "No ingredients yet. Tap + Ingredient to add the first one." : "No ingredients configured."} />}
+        {ingredients.length > 0 && <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-[var(--bn-admin-border)] p-3 text-center text-xs">
+          <div><p className="text-[10px] font-bold uppercase text-[var(--bn-admin-orange)]">Cost / portion</p><p className="mt-1 text-sm font-bold">{unknownCost ? "—" : money(costPerPortion)}</p></div>
+          <div><p className="text-[10px] font-bold uppercase text-[var(--bn-admin-orange)]">Menu price</p><p className="mt-1 text-sm font-bold">{money(dishPrice)}</p></div>
+          <div><p className="text-[10px] font-bold uppercase text-[var(--bn-admin-orange)]">Margin</p><p className="mt-1 text-sm font-bold">{unknownCost ? "—" : `${money(margin)} (${dishPrice > 0 ? Math.round((margin / dishPrice) * 100) : 0}%)`}</p></div>
+          {unknownCost && <p className="col-span-3 text-[11px] text-[var(--bn-admin-orange)]">Some ingredients have no cost yet, so food cost can't be worked out. Set a cost per unit in Inventory.</p>}
+        </div>}
         {canEdit && <div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={addIngredient} className="rounded-xl border border-[var(--bn-admin-border)] px-4 py-2.5 text-xs font-bold">+ Add ingredient</button><button type="button" disabled={busy || !product} onClick={save} className="rounded-xl bg-[var(--bn-admin-active)] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">{busy ? "Saving..." : "Save Recipe"}</button></div>}
       </section>
     </div>}

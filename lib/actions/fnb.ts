@@ -4,6 +4,7 @@ import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { createProduct } from "@/lib/actions/product";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { consumeFifoStockTx, consumeFefoStockTx } from "@/lib/inventory-fifo";
@@ -306,4 +307,35 @@ export async function recordFnbWaste(slug: string, inventoryItemId: string, quan
   } catch (err: any) {
     return { success: false, error: err?.message || "Couldn't record waste safely." };
   }
+}
+
+/**
+ * Adds a kitchen ingredient (rice, oil, flour...) as a hidden stock item so it can be used in recipes.
+ * It is never published, so guests don't see it on the menu.
+ */
+export async function createFnbIngredient(slug: string, input: { name: string; unit: string; quantity: number; costPerUnit: number }): Promise<ActionResult<{ inventoryItemId: string; name: string }>> {
+  const a = await access(slug, "fnb:inventory");
+  if (!a.success) return { success: false, error: a.error };
+  if (a.role === "STAFF") return { success: false, error: "Only the store owner or manager can add ingredients." };
+  const name = input.name.trim();
+  const unit = input.unit.trim() || "unit";
+  if (name.length < 2) return { success: false, error: "Give the ingredient a name." };
+  if (!Number.isInteger(input.quantity) || input.quantity < 0) return { success: false, error: "Stock on hand must be a whole number, counted in your unit (for example 5000 g)." };
+  if (!Number.isFinite(input.costPerUnit) || input.costPerUnit <= 0) return { success: false, error: "Enter what one unit costs you, above 0." };
+  const created = await createProduct(slug, {
+    name: `${name} (${unit})`,
+    type: "PHYSICAL",
+    description: `Kitchen ingredient, counted in ${unit}. Not sold to guests.`,
+    price: input.costPerUnit,
+    currency: a.store.currency,
+    images: [],
+    isPublished: false,
+    quantity: input.quantity,
+    attributes: { fnbIngredient: true, unit },
+  } as Parameters<typeof createProduct>[1]);
+  if (!created.success) return { success: false, error: created.error };
+  const inv = await prisma.inventoryItem.update({ where: { productId: created.data.productId }, data: { costPrice: input.costPerUnit }, select: { id: true } });
+  revalidatePath(`/store/${slug}/admin/fnb`);
+  revalidatePath(`/store/${slug}/admin/inventory`);
+  return { success: true, data: { inventoryItemId: inv.id, name: `${name} (${unit})` } };
 }

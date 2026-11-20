@@ -494,6 +494,9 @@ export function ProductForm({
                     disabled={Boolean(product?.hasVariants) || (!product && wantsVariants)}
                     {...register("quantity")}
                   />
+                  {isMenuItem && !product?.hasVariants && !(!product && wantsVariants) && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">Guests can order this while the quantity is above 0. Leave it at 0 and the dish shows as out of stock.</p>
+                  )}
                   {(product?.hasVariants || (!product && wantsVariants)) && (
                     <p className="mt-1 text-[11px] text-muted-foreground">
                       {product?.hasVariants ? "This product uses variant stock. Manage quantities from the Variants page." : "Stock is set per size/colour after you save."}
@@ -527,7 +530,7 @@ export function ProductForm({
             </section>
           )}
 
-          {productType === "PHYSICAL" && (
+          {productType === "PHYSICAL" && !isMenuItem && (
             <section className="rounded-xl border bg-white p-5 shadow-sm">
               <h2 className="text-sm font-bold">Sizes, colours & options <span className="font-normal text-muted-foreground">(Optional)</span></h2>
               <p className="mb-4 mt-1 text-xs text-muted-foreground">Skip this if the {entityLabel.toLowerCase()} comes in one version. Otherwise pick what applies; each combination gets its own stock and price.</p>
