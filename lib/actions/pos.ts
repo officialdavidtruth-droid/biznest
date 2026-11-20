@@ -110,7 +110,9 @@ export async function getPosCatalog(slug: string): Promise<PosCatalogItem[]> {
 
   // A dish with a recipe is limited by its ingredients (checked server-side at
   // sale time), not by its own stock count, so the register must not lock it.
-  const productItems: PosCatalogItem[] = products.map((p) => { const hasRecipe = computeRecipeRequirements(p.attributes, 1) !== null; return ({
+  // Kitchen ingredients are stock, not things to ring up at the register.
+  const sellable = products.filter((p) => !((p.attributes as Record<string, unknown> | null)?.fnbIngredient));
+  const productItems: PosCatalogItem[] = sellable.map((p) => { const hasRecipe = computeRecipeRequirements(p.attributes, 1) !== null; return ({
     kind: "product",
     id: p.id,
     name: p.name,

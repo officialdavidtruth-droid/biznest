@@ -261,7 +261,14 @@ export async function saveFnbRecipe(slug: string, productId: string, recipe: { y
   const clean = recipe.ingredients.filter((i) => i.inventoryItemId && Number(i.quantity) > 0).map((i) => ({ inventoryItemId: i.inventoryItemId, quantity: Number(i.quantity), unit: i.unit.trim() || "unit", name: names.get(i.inventoryItemId) || "Ingredient" }));
   const current = product.attributes && typeof product.attributes === "object" && !Array.isArray(product.attributes) ? product.attributes as Record<string, unknown> : {};
   await prisma.product.update({ where: { id: product.id }, data: { attributes: { ...current, fnbRecipe: { yieldQty: recipe.yieldQty, ingredients: clean } } } });
+  // Hidden (unpublished) items used in a recipe are kitchen ingredients: keep them off the POS register.
+  const hidden = await prisma.product.findMany({ where: { storeId: a.store.id, isPublished: false, inventory: { id: { in: ids } } }, select: { id: true, attributes: true } });
+  for (const h of hidden) {
+    const attrs = h.attributes && typeof h.attributes === "object" && !Array.isArray(h.attributes) ? h.attributes as Record<string, unknown> : {};
+    if (!attrs.fnbIngredient) await prisma.product.update({ where: { id: h.id }, data: { attributes: { ...attrs, fnbIngredient: true } } });
+  }
   revalidatePath(`/store/${slug}/admin/fnb`);
+  revalidatePath(`/store/${slug}/admin/pos`);
   return { success: true, data: undefined };
 }
 
