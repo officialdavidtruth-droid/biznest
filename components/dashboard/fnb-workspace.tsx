@@ -1,76 +1,80 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import {
-  ArrowLeft, BarChart3, Menu, Boxes, CalendarDays, CheckCircle2, ChefHat, ClipboardCheck, Settings2,
-  Clock3, DollarSign, FileSignature, PackageCheck, Plus, Search, ShoppingBag,
-  Trash2, Truck, Users, UtensilsCrossed, XCircle,
+  ArrowLeft, BarChart3, Boxes, CalendarDays, ChefHat, ClipboardList, FileSignature, Home, LayoutGrid, Settings2,
+  ShoppingBag, Trash2, Truck, Users, UtensilsCrossed, X, BookOpen,
 } from "lucide-react";
-import { toast } from "sonner";
-import { advanceFnbOrderStatus, createFnbIngredient, endFnbShift, recordFnbWaste, saveFnbRecipe, saveFnbStation, setFnbRotationMode, startFnbShift } from "@/lib/actions/fnb";
 import { getPosCatalog, getPosDailySummary } from "@/lib/actions/pos";
-import { PosRegister } from "@/components/dashboard/pos-register";
-import { PosOpenTabs } from "@/components/dashboard/pos-open-tabs";
 import { getOpenPosTabs } from "@/lib/actions/pos-tabs";
 import { getInHouseReservations } from "@/lib/actions/folio";
-import { extractFnbRecipe } from "@/lib/fnb-utils";
-import { formatMoney } from "@/lib/utils/format-money";
-import { formatDate, formatNumber } from "@/lib/i18n/locale";
-import { TableScroll } from "@/components/ui/table-scroll";
+import { setFnbCurrency, Chip } from "@/components/dashboard/fnb/ui";
+import { KitchenPanel, OrdersPanel, OverviewPanel, PosPanel, TablesPanel } from "@/components/dashboard/fnb/service-panels";
+import { MenuPanel, RecipesPanel } from "@/components/dashboard/fnb/menu-panels";
+import { CustomerPanel, InventoryPanel, ProcurementPanel, ReportsPanel, SettingsPanel, SupplierPanel, WastagePanel } from "@/components/dashboard/fnb/stock-panels";
 
-// Set from the store on every render of FnbWorkspace, before any panel renders.
-let activeCurrency = "NGN";
-function money(n: number) { return formatMoney(n, activeCurrency); }
-function time(v: string | Date) { return formatDate(new Date(v), { hour: "2-digit", minute: "2-digit" }); }
-function date(v: string | Date) { return formatDate(new Date(v), { day: "2-digit", month: "short", year: "numeric" }); }
-function label(v: string) { return v.replaceAll("_", " ").toLowerCase().replace(/(^| )\w/g, (m) => m.toUpperCase()); }
-function statusClass(v: string) { if (["PAID", "COMPLETED", "DELIVERED", "AVAILABLE", "IN_STOCK", "RECEIVED", "READY", "EXPO", "FULFILLED"].includes(v)) return "border-[color-mix(in_srgb,var(--bn-admin-border)_20%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_10%,transparent)] text-[var(--bn-admin-orange)]"; if (["IN_PROGRESS", "CONFIRMED", "SENT", "PARTIALLY_RECEIVED"].includes(v)) return "border-[color-mix(in_srgb,var(--bn-admin-border)_30%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-orange-soft)_10%,transparent)] text-[var(--bn-admin-orange)]"; if (["CANCELLED", "REFUNDED", "OUT_OF_STOCK"].includes(v)) return "border-[color-mix(in_srgb,var(--bn-admin-danger-line)_20%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-danger-soft)_10%,transparent)] text-[var(--bn-admin-danger)]"; return "border-[color-mix(in_srgb,var(--bn-admin-border)_20%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-orange-soft)_10%,transparent)] text-[var(--bn-admin-orange)]"; }
+export type Tab = "overview" | "kitchen" | "orders" | "pos" | "tables" | "menu" | "recipes" | "inventory" | "procurement" | "suppliers" | "customers" | "wastage" | "reports" | "settings";
 
-type Tab = "overview" | "kitchen" | "orders" | "pos" | "tables" | "menu" | "recipes" | "inventory" | "procurement" | "suppliers" | "customers" | "wastage" | "reports" | "settings";
-const tabs: Array<{ id: Tab; label: string; icon: any }> = [
-  { id: "overview", label: "Overview", icon: BarChart3 },
-  { id: "pos", label: "POS", icon: ShoppingBag },
-  { id: "kitchen", label: "Kitchen Display", icon: ChefHat },
-  { id: "orders", label: "Orders", icon: ClipboardCheck },
-  { id: "tables", label: "Tables & Reservations", icon: CalendarDays },
-  { id: "menu", label: "Menu", icon: UtensilsCrossed },
-  { id: "recipes", label: "Recipes & Food Cost", icon: ClipboardCheck },
-  { id: "inventory", label: "Inventory", icon: Boxes },
-  { id: "procurement", label: "Procurement", icon: FileSignature },
-  { id: "suppliers", label: "Suppliers", icon: Truck },
-  { id: "customers", label: "Customers", icon: Users },
-  { id: "wastage", label: "Wastage", icon: Trash2 },
-  { id: "reports", label: "Reports", icon: BarChart3 },
-  { id: "settings", label: "Settings", icon: Settings2 },
+const groups: Array<{ title: string; items: Array<{ id: Tab; label: string; icon: any }> }> = [
+  { title: "Service", items: [{ id: "overview", label: "Today", icon: Home }, { id: "pos", label: "Register", icon: ShoppingBag }, { id: "kitchen", label: "Kitchen", icon: ChefHat }, { id: "orders", label: "Orders", icon: ClipboardList }, { id: "tables", label: "Reservations", icon: CalendarDays }] },
+  { title: "Menu", items: [{ id: "menu", label: "Menu", icon: UtensilsCrossed }, { id: "recipes", label: "Recipes & cost", icon: BookOpen }] },
+  { title: "Stock", items: [{ id: "inventory", label: "Stock", icon: Boxes }, { id: "procurement", label: "Purchasing", icon: FileSignature }, { id: "suppliers", label: "Suppliers", icon: Truck }, { id: "wastage", label: "Waste", icon: Trash2 }] },
+  { title: "Business", items: [{ id: "customers", label: "Customers", icon: Users }, { id: "reports", label: "Reports", icon: BarChart3 }, { id: "settings", label: "Settings", icon: Settings2 }] },
 ];
+const all = groups.flatMap((g) => g.items);
+const bottom: Tab[] = ["overview", "pos", "kitchen", "menu"];
 
 export function FnbWorkspace({ slug, data }: { slug: string; data: any }) {
-  activeCurrency = data.currency || "NGN";
+  setFnbCurrency(data.currency || "NGN");
   const [tab, setTab] = useState<Tab>("overview");
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [sheet, setSheet] = useState(false);
   const [pos, setPos] = useState<any>(null);
-  const navigate = async (next: Tab) => {
-    setTab(next); setMobileOpen(false);
-    if (next === "pos" && !pos) {
-      const [catalog, summary, openTabs, inHouseRooms] = await Promise.all([getPosCatalog(slug), getPosDailySummary(slug), getOpenPosTabs(slug), getInHouseReservations(slug)]);
-      setPos({ catalog, summary, openTabs, inHouseRooms, commissionRatePercent: data.posCommissionRatePercent ?? 8 });
-    }
+
+  const loadPos = async () => {
+    if (pos) return;
+    const [catalog, summary, openTabs, inHouseRooms] = await Promise.all([getPosCatalog(slug), getPosDailySummary(slug), getOpenPosTabs(slug), getInHouseReservations(slug)]);
+    setPos({ catalog, summary, openTabs, inHouseRooms, commissionRatePercent: data.posCommissionRatePercent ?? 8 });
   };
+  const go = (next: Tab) => {
+    setTab(next); setSheet(false);
+    try { history.replaceState(null, "", `#${next}`); } catch {}
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+    if (next === "pos") void loadPos();
+  };
+  useEffect(() => {
+    const h = window.location.hash.replace("#", "") as Tab;
+    if (all.some((x) => x.id === h) && h !== "overview") { setTab(h); if (h === "pos") void loadPos(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // The tab list lives in this component's state, so re-read it after a sale or a settlement.
   const refreshTabs = async () => { const openTabs = await getOpenPosTabs(slug); setPos((p: any) => (p ? { ...p, openTabs } : p)); };
-  return <div className="bn-fnb-workspace min-h-screen bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]">
-    <header className="sticky top-0 z-30 border-b border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_95%,transparent)] backdrop-blur"><div className="flex items-center gap-3 px-4 py-3 lg:px-7"><button className="rounded-lg border border-[var(--bn-admin-border)] p-2 lg:hidden" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Open FnB menu"><Menu className="h-4 w-4" /></button><a href={`/store/${slug}/admin/apps`} className="hidden items-center gap-2 text-xs font-semibold text-[var(--bn-admin-orange)] hover:text-[var(--bn-admin-orange)] lg:flex"><ArrowLeft className="h-4 w-4" /> Apps</a><div className="hidden h-5 w-px bg-[var(--bn-admin-surface-2)] lg:block" /><div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--bn-admin-orange)]">BizNest FnB</p><p className="truncate text-sm font-bold">{data.storeName} · Restaurant Operations</p></div><span className="hidden rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_20%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_10%,transparent)] px-3 py-2 text-[10px] font-bold text-[var(--bn-admin-orange)] sm:inline-flex">POS · Kitchen · Inventory</span></div></header>
-    <div className="flex">{mobileOpen && <button className="fixed inset-0 z-30 bg-[color-mix(in_srgb,var(--bn-admin-page)_50%,transparent)] lg:hidden" onClick={() => setMobileOpen(false)} />}
-      <aside className={`${mobileOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-40 w-72 border-r border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] pt-16 transition-transform lg:sticky lg:top-[57px] lg:h-[calc(100vh-57px)] lg:w-64 lg:translate-x-0 lg:self-start lg:pt-0`}><nav className="h-full overflow-y-auto p-3">{tabs.map(({ id, label: text, icon: Icon }) => <button id={id === "pos" ? "fnb-pos-nav" : undefined} key={id} onClick={() => navigate(id)} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-semibold ${tab === id ? "bg-[var(--bn-admin-active)] text-white" : "text-[var(--bn-admin-orange)] hover:bg-[var(--bn-admin-surface-2)] hover:text-[var(--bn-admin-orange)]"}`}><Icon className="h-4 w-4" />{text}</button>)}</nav></aside>
-      <main className="min-w-0 flex-1 px-4 py-5 lg:px-7 lg:py-7">
-        {tab === "overview" && <OverviewPanel slug={slug} data={data} />}
+
+  const activeTickets = data.metrics.activeOrders as number;
+  const current = all.find((x) => x.id === tab)!;
+  const moreActive = !bottom.includes(tab);
+
+  return <div className="bn-fnb min-h-screen bg-[var(--bn-admin-page)] text-[var(--bn-admin-text)]">
+    <style>{`.bn-fnb{--fnb-warn:#b45309;--fnb-info:#1d4ed8}html.bn-admin-dark .bn-fnb{--fnb-warn:#fbbf24;--fnb-info:#93c5fd}`}</style>
+    <header className="sticky top-0 z-30 border-b border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface)_92%,transparent)] backdrop-blur">
+      <div className="flex items-center gap-3 px-4 py-2.5 lg:px-7">
+        <a href={`/store/${slug}/admin/apps`} aria-label="Back to Apps" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--bn-admin-border)] text-[var(--bn-admin-text)]"><ArrowLeft className="h-4 w-4" /></a>
+        <div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold leading-tight text-[var(--bn-admin-text-strong)]">{data.storeName}</p><p className="truncate text-[11px] leading-tight text-[var(--bn-admin-muted)]">Restaurant · {current.label}</p></div>
+        <button onClick={() => go("pos")} className="shrink-0"><Chip tone={data.currentShift ? "ok" : "mute"} dot>{data.currentShift ? "Shift open" : "No shift"}</Chip></button>
+        <button onClick={() => setSheet(true)} aria-label="All sections" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--bn-admin-border)] text-[var(--bn-admin-text)] lg:hidden"><LayoutGrid className="h-4 w-4" /></button>
+      </div>
+    </header>
+
+    <div className="flex">
+      <aside className="sticky top-[61px] hidden h-[calc(100vh-61px)] w-60 shrink-0 self-start overflow-y-auto border-r border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface)] p-3 lg:block">
+        {groups.map((g) => <div key={g.title} className="mb-4"><p className="px-3 pb-1.5 text-[11px] font-bold text-[var(--bn-admin-muted)]">{g.title}</p>{g.items.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => go(id)} className={`mb-0.5 flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-[13px] font-semibold transition ${tab === id ? "bg-[var(--bn-admin-active)] text-white" : "text-[var(--bn-admin-text)] hover:bg-[var(--bn-admin-surface-2)]"}`}><Icon className="h-4 w-4" /><span className="flex-1">{label}</span>{id === "kitchen" && activeTickets > 0 && <span className={`rounded-full px-1.5 text-[10px] font-extrabold ${tab === id ? "bg-white/25" : "bg-[var(--bn-admin-active)] text-white"}`}>{activeTickets}</span>}</button>)}</div>)}
+      </aside>
+      <main className="min-w-0 flex-1 px-4 pb-28 pt-5 lg:px-8 lg:pb-10 lg:pt-7"><div className="mx-auto max-w-6xl">
+        {tab === "overview" && <OverviewPanel slug={slug} data={data} go={go} />}
         {tab === "kitchen" && <KitchenPanel slug={slug} orders={data.orders} />}
-        {tab === "orders" && <OrdersPanel slug={slug} orders={data.orders} />}
-        {tab === "pos" && (pos ? <PosPanel slug={slug} pos={pos} currentShift={data.currentShift} recentShifts={data.recentShifts} refreshTabs={refreshTabs} /> : <LoadingPanel title="Loading POS" />)}
+        {tab === "orders" && <OrdersPanel orders={data.orders} />}
+        {tab === "pos" && (pos ? <PosPanel slug={slug} pos={pos} currentShift={data.currentShift} recentShifts={data.recentShifts} refreshTabs={refreshTabs} /> : <div className="grid min-h-[50vh] place-items-center text-sm text-[var(--bn-admin-muted)]">Opening the register…</div>)}
         {tab === "tables" && <TablesPanel reservations={data.reservations} />}
-        {tab === "menu" && <MenuPanel slug={slug} products={data.products} role={data.role} />}
+        {tab === "menu" && <MenuPanel slug={slug} products={data.products} inventory={data.inventory} role={data.role} go={go} />}
         {tab === "recipes" && <RecipesPanel slug={slug} products={data.products} inventory={data.inventory} role={data.role} />}
         {tab === "inventory" && <InventoryPanel slug={slug} data={data} />}
         {tab === "procurement" && <ProcurementPanel slug={slug} purchaseOrders={data.purchaseOrders} />}
@@ -79,198 +83,24 @@ export function FnbWorkspace({ slug, data }: { slug: string; data: any }) {
         {tab === "wastage" && <WastagePanel slug={slug} data={data} />}
         {tab === "reports" && <ReportsPanel data={data} />}
         {tab === "settings" && <SettingsPanel slug={slug} role={data.role} mode={data.mode} />}
-      </main>
+      </div></main>
     </div>
-  </div>;
-}
 
-function PosPanel({ slug, pos, currentShift, recentShifts, refreshTabs }: { slug: string; pos: any; currentShift: any; recentShifts: any[]; refreshTabs: () => void }) {
-  return <div className="space-y-5"><SectionTitle title="POS" description="Run in-person sales with every sale linked to the signed-in operator's shift." /><ShiftControl slug={slug} currentShift={currentShift} recentShifts={recentShifts} />{currentShift ? <><PosRegister slug={slug} catalog={pos.catalog} commissionRatePercent={pos.commissionRatePercent} inHouseRooms={pos.inHouseRooms ?? []} openTabs={pos.openTabs ?? []} onSaleComplete={refreshTabs} /><PosOpenTabs slug={slug} tabs={pos.openTabs ?? []} inHouseRooms={pos.inHouseRooms ?? []} onChanged={refreshTabs} /></> : <div className="rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_30%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-orange-soft)_5%,transparent)] p-8 text-center"><Clock3 className="mx-auto h-8 w-8 text-[var(--bn-admin-orange)]" /><h2 className="mt-3 text-lg font-bold">Start your shift before selling</h2><p className="mt-1 text-sm text-[var(--bn-admin-orange)]">The register stays locked until the signed-in operator has an active shift.</p></div>}</div>;
-}
+    {/* Phone bottom bar (hidden on the register, which has its own cart bar) */}
+    {tab !== "pos" && <nav aria-label="FnB sections" className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface)_96%,transparent)] pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+      <div className="grid grid-cols-5">
+        {bottom.map((id) => { const it = all.find((x) => x.id === id)!; const Icon = it.icon; const on = tab === id; return <button key={id} onClick={() => go(id)} className={`relative flex min-h-[60px] flex-col items-center justify-center gap-1 text-[11px] font-bold ${on ? "text-[var(--bn-admin-active)]" : "text-[var(--bn-admin-muted)]"}`}><span className="relative"><Icon className="h-5 w-5" />{id === "kitchen" && activeTickets > 0 && <span className="absolute -right-2.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--bn-admin-danger)] px-1 text-[9px] font-extrabold text-white">{activeTickets}</span>}</span>{it.label}</button>; })}
+        <button onClick={() => setSheet(true)} className={`flex min-h-[60px] flex-col items-center justify-center gap-1 text-[11px] font-bold ${moreActive ? "text-[var(--bn-admin-active)]" : "text-[var(--bn-admin-muted)]"}`}><LayoutGrid className="h-5 w-5" />More</button>
+      </div>
+    </nav>}
 
-function ShiftControl({ slug, currentShift, recentShifts }: { slug: string; currentShift: any; recentShifts: any[] }) {
-  const router = useRouter();
-  const [busy, start] = useTransition();
-  const run = () => start(async () => { const r = currentShift ? await endFnbShift(slug) : await startFnbShift(slug); if (!r.success) toast.error(r.error); else { toast.success(currentShift && "salesCount" in r.data ? `Shift ended — ${r.data.salesCount} sales, ${money(r.data.salesTotal)}.` : "Shift started."); router.refresh(); } });
-  return <section className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_70%,transparent)] p-4"><div className="flex flex-col gap-4 xl:flex-row xl:items-center"><div className="min-w-0 flex-1"><p className="text-xs font-bold">{currentShift ? "Shift is open" : "No active shift"}</p><p className="mt-1 text-[11px] text-[var(--bn-admin-orange)]">{currentShift ? `Started ${date(currentShift.startedAt)} at ${time(currentShift.startedAt)} · ${currentShift.salesCount} sales · ${money(currentShift.salesTotal)}` : "Start a shift before accepting POS orders."}</p></div><button disabled={busy} onClick={run} className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50 ${currentShift ? "bg-[var(--bn-admin-active)]" : "bg-[var(--bn-admin-active)]"}`}>{currentShift ? "End Shift" : "Start Shift"}</button></div>{recentShifts.length > 0 && <div className="mt-4 border-t border-[var(--bn-admin-border)] pt-3"><p className="text-[10px] font-bold uppercase tracking-wider text-[var(--bn-admin-orange)]">Recent staff shifts</p><div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">{recentShifts.slice(0, 4).map((s: any) => <div key={s.id} className="rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] px-3 py-2"><p className="truncate text-[11px] font-semibold">{s.staffUser?.name || s.staffUser?.email || "Operator"}</p><p className="mt-1 text-[10px] text-[var(--bn-admin-orange)]">{date(s.startedAt)} · {s.status === "OPEN" ? "Open" : `Ended ${s.endedAt ? time(s.endedAt) : ""}`}</p><p className="mt-1 text-[10px] text-[var(--bn-admin-orange)]">{s.salesCount} sales · {money(s.salesTotal)}</p></div>)}</div></div>}</section>;
-}
-
-function OverviewPanel({ slug, data }: { slug: string; data: any }) {
-  const m = data.metrics;
-  const active = data.orders.filter((o: any) => ["QUEUED", "STARTED", "READY", "EXPO"].includes(o.kitchenStatus));
-  return <div className="space-y-6"><SectionTitle title="Restaurant Operations" description="One operating workspace for sales, service, kitchen production, inventory and purchasing." action={<button onClick={() => document.getElementById("fnb-pos-nav")?.click()} className="rounded-xl bg-[var(--bn-admin-active)] px-4 py-2.5 text-xs font-bold text-white">Open POS</button>} /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={DollarSign} label="Today's sales" value={money(m.revenue)} sub={`${m.ordersToday} orders`} /><Metric icon={ShoppingBag} label="Active tickets" value={m.activeOrders} sub="In kitchen / expo" /><Metric icon={Boxes} label="Stock value" value={money(m.stockValue)} sub={`${m.lowStock} low stock`} /><Metric icon={ChefHat} label="Recipes" value={m.recipeCount} sub={`${m.wasteUnits} waste units`} /></div><div className="grid gap-5 lg:grid-cols-2"><section className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-5"><div className="flex items-center justify-between"><div><h2 className="text-sm font-bold">Live kitchen</h2><p className="mt-1 text-xs text-[var(--bn-admin-orange)]">The KDS refreshes automatically.</p></div><span className="rounded-full bg-[color-mix(in_srgb,var(--bn-admin-orange-soft)_10%,transparent)] px-2.5 py-1 text-[10px] font-bold text-[var(--bn-admin-orange)]">{active.length} active</span></div><div className="mt-4 grid grid-cols-4 gap-2"><ReportRow label="New" value={`${active.filter((o: any) => o.kitchenStatus === "QUEUED").length}`} /><ReportRow label="Prep" value={`${active.filter((o: any) => o.kitchenStatus === "STARTED").length}`} /><ReportRow label="Ready" value={`${active.filter((o: any) => o.kitchenStatus === "READY").length}`} /><ReportRow label="Expo" value={`${active.filter((o: any) => o.kitchenStatus === "EXPO").length}`} /></div></section><section className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-5"><h2 className="text-sm font-bold">Operational risks</h2><div className="mt-4 space-y-2"><ReportRow label="Low stock" value={`${m.lowStock}`} /><ReportRow label="Out of stock" value={`${m.outOfStock}`} /><ReportRow label="Expiring soon" value={`${m.expiringSoon}`} /><ReportRow label="Expired batches" value={`${m.expired}`} /></div></section></div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"><Link href={`/store/${slug}/admin/fnb`} className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4 text-xs font-bold hover:border-[color-mix(in_srgb,var(--bn-admin-border)_40%,transparent)]">Open FnB workspace</Link><Link href={`/store/${slug}/admin/inventory`} className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4 text-xs font-bold hover:border-[color-mix(in_srgb,var(--bn-admin-border)_40%,transparent)]">Manage inventory</Link><Link href={`/store/${slug}/admin/purchase-orders`} className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4 text-xs font-bold hover:border-[color-mix(in_srgb,var(--bn-admin-border)_40%,transparent)]">Manage procurement</Link><Link href={`/store/${slug}/admin/staff`} className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4 text-xs font-bold hover:border-[color-mix(in_srgb,var(--bn-admin-border)_40%,transparent)]">Manage staff</Link></div></div>;
-}
-
-function KitchenPanel({ slug, orders }: { slug: string; orders: any[] }) {
-  const router = useRouter();
-  const [station, setStation] = useState("All");
-  useEffect(() => { const timer = setInterval(() => router.refresh(), 8000); return () => clearInterval(timer); }, [router]);
-  const active = orders.filter((o) => ["QUEUED", "STARTED", "READY", "EXPO"].includes(o.kitchenStatus));
-  const stations = ["All", "Hot Kitchen", "Grill", "Cold", "Drinks", "Pizza", "Dessert", "Expo"];
-  const visible = station === "All" ? active : active.filter((o) => o.items.some((i: any) => (i.fnbStation || "Hot Kitchen") === station));
-  const columns: Array<{ status: string; title: string; hint: string; icon: any; next?: { status: "STARTED" | "READY" | "EXPO" | "SERVED"; label: string } }> = [
-    { status: "QUEUED", title: "Incoming", hint: "New tickets", icon: Clock3, next: { status: "STARTED", label: "Start Preparing" } },
-    { status: "STARTED", title: "Preparing", hint: "In production", icon: ChefHat, next: { status: "READY", label: "Mark Ready" } },
-    { status: "READY", title: "Ready", hint: "Awaiting expo / service", icon: PackageCheck, next: { status: "EXPO", label: "Send to Expo" } },
-    { status: "EXPO", title: "Expo", hint: "Ready to serve", icon: CheckCircle2, next: { status: "SERVED", label: "Mark Served" } },
-  ];
-  const advance = (order: any, next: "STARTED" | "READY" | "EXPO" | "SERVED") => {
-    void (async () => {
-      const r = await advanceFnbOrderStatus(slug, order.id, next);
-      if (!r.success) toast.error(r.error); else { toast.success(next === "SERVED" ? "Order served" : `Ticket moved to ${label(next)}`); router.refresh(); }
-    })();
-  };
-  return <div className="space-y-5">
-    <SectionTitle title="Kitchen Display System" description="Live production queue with station routing. POS, online and other BizNest orders feed the same kitchen flow." />
-    <div className="flex flex-wrap gap-2">{stations.map((item) => <button key={item} onClick={() => setStation(item)} className={`rounded-xl border px-3 py-2 text-[11px] font-bold ${station === item ? "border-[var(--bn-admin-border)] bg-[var(--bn-admin-active)] text-white" : "border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]"}`}>{item}</button>)}</div>
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Metric icon={Clock3} label="Incoming" value={visible.filter((o) => o.kitchenStatus === "QUEUED").length} sub="Waiting to start" />
-      <Metric icon={ChefHat} label="Preparing" value={visible.filter((o) => o.kitchenStatus === "STARTED").length} sub="Currently cooking" />
-      <Metric icon={PackageCheck} label="Ready" value={visible.filter((o) => o.kitchenStatus === "READY").length} sub="Ready for expo" />
-      <Metric icon={CheckCircle2} label="Expo" value={visible.filter((o) => o.kitchenStatus === "EXPO").length} sub="Ready to serve" />
-    </div>
-    <div className="grid gap-4 xl:grid-cols-4">{columns.map((col) => { const list = visible.filter((o) => o.kitchenStatus === col.status); const Icon = col.icon; return <section key={col.status} className="min-h-[300px] rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-3"><div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2"><Icon className="h-4 w-4 text-[var(--bn-admin-orange)]" /><div><p className="text-xs font-bold">{col.title}</p><p className="text-[10px] text-[var(--bn-admin-orange)]">{col.hint}</p></div></div><span className="rounded-full bg-[var(--bn-admin-surface-2)] px-2 py-1 text-[10px] font-bold">{list.length}</span></div><div className="space-y-3">{list.map((o) => <div key={o.id} className="rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] p-3"><div className="flex items-start justify-between gap-2"><div><p className="text-xs font-bold">#{o.id.slice(-6).toUpperCase()}</p><p className="mt-1 text-[10px] text-[var(--bn-admin-orange)]">{o.channel} · {o.fnbOrderType ? label(o.fnbOrderType) : "Online"}{o.fnbTableLabel ? ` · ${o.fnbTableLabel}` : ""} · {time(o.createdAt)}</p></div><span className="rounded-full border border-[color-mix(in_srgb,var(--bn-admin-border)_20%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_10%,transparent)] px-2 py-1 text-[9px] font-bold text-[var(--bn-admin-orange)]">{label(o.kitchenStatus)}</span></div><div className="mt-3 space-y-1.5">{o.items.filter((i: any) => station === "All" || (i.fnbStation || "Hot Kitchen") === station).map((i: any, idx: number) => <div key={idx} className="flex items-center justify-between rounded-lg bg-[var(--bn-admin-surface-2)] px-2.5 py-2 text-[11px]"><span>{i.quantity} × {i.variant?.product?.name ? `${i.variant.product.name} — ${i.variant.label}` : i.product?.name || "Menu item"}</span><span className="ml-2 shrink-0 text-[9px] text-[var(--bn-admin-orange)]">{i.fnbStation || "Hot Kitchen"}</span></div>)}</div>{col.next && <button onClick={() => advance(o, col.next!.status)} className="mt-3 w-full rounded-xl bg-[var(--bn-admin-active)] px-3 py-2 text-[10px] font-bold text-white hover:bg-[var(--bn-admin-active)]">{col.next.label}</button>}</div>)}{list.length === 0 && <div className="rounded-xl border border-dashed border-[var(--bn-admin-border)] p-6 text-center text-[10px] text-[var(--bn-admin-orange)]">Nothing here</div>}</div></section>; })}</div>
-  </div>;
-}
-
-function OrdersPanel({ slug, orders }: { slug: string; orders: any[] }) {
-  const active = orders;
-  return <div className="space-y-4"><SectionTitle title="Orders" description="Today's paid restaurant orders, newest first, with their kitchen status." /><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{active.map((o) => <div key={o.id} className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold">#{o.id.slice(-6).toUpperCase()}</p><p className="mt-1 text-[10px] text-[var(--bn-admin-orange)]">{o.channel} · {o.fnbOrderType ? label(o.fnbOrderType) : "Online"}{o.fnbTableLabel ? ` · ${o.fnbTableLabel}` : ""} · {time(o.createdAt)}{o.posCustomerName ? ` · ${o.posCustomerName}` : ""}</p></div><span className="rounded-full border border-[color-mix(in_srgb,var(--bn-admin-border)_20%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_10%,transparent)] px-2 py-1 text-[10px] font-bold text-[var(--bn-admin-orange)]">{label(o.kitchenStatus)}</span></div><div className="mt-4 space-y-2">{o.items.map((i: any, idx: number) => <div key={idx} className="rounded-lg bg-[var(--bn-admin-surface-2)] px-3 py-2 text-xs"><div className="flex justify-between gap-3"><span>{i.quantity} × {i.variant?.product?.name ? `${i.variant.product.name} — ${i.variant.label}` : i.product?.name || "Menu item"}</span><span className="text-[10px] text-[var(--bn-admin-orange)]">{i.fnbStation || "Hot Kitchen"}</span></div></div>)}</div></div>)}{active.length === 0 && <Empty text="No restaurant orders yet today." />}</div></div>;
-}
-
-function TablesPanel({ reservations }: { reservations: any[] }) { return <div className="space-y-5"><SectionTitle title="Tables & Reservations" description="Today's live reservation schedule from the BizNest booking system." /><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{reservations.map((r: any) => <div key={r.id} className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4"><div className="flex items-start justify-between gap-3"><p className="text-sm font-bold">{r.guestName || "Guest"}</p><span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${statusClass(r.status)}`}>{label(r.status)}</span></div><p className="mt-2 text-xs text-[var(--bn-admin-orange)]">{time(r.scheduledAt)} · Party of {r.partySize || 1}</p></div>)}{reservations.length === 0 && <Empty text="No reservations booked for today." />}</div></div>; }
-
-function MenuPanel({ slug, products, role }: { slug: string; products: any[]; role: string }) {
-  const canEdit = role !== "STAFF";
-  const stations = ["Hot Kitchen", "Grill", "Cold", "Drinks", "Pizza", "Dessert", "Expo"];
-  const saveStation = (productId: string, station: string) => { void (async () => { const r = await saveFnbStation(slug, productId, station); if (!r.success) toast.error(r.error); else toast.success("Kitchen station updated"); })(); };
-  return <div className="space-y-5"><SectionTitle title="Menu & Kitchen Routing" description="Live menu items plus the production station each item should route to. Pricing remains in the core catalog." action={canEdit ? <Link href={`/store/${slug}/admin/products`} className="rounded-xl border border-[var(--bn-admin-border)] px-4 py-2.5 text-xs font-bold">Open Catalog</Link> : <span className="rounded-xl border border-[var(--bn-admin-border)] px-4 py-2.5 text-xs font-semibold text-[var(--bn-admin-orange)]">Staff: View Only</span>} /><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{products.map((p: any) => { const attrs = p.attributes && typeof p.attributes === "object" && !Array.isArray(p.attributes) ? p.attributes : {}; const station = typeof attrs.fnbStation === "string" ? attrs.fnbStation : "Hot Kitchen"; return <div key={p.id} className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4"><div className="flex justify-between gap-3"><div><p className="text-sm font-bold">{p.name}</p><p className="mt-1 text-xs text-[var(--bn-admin-orange)]">{money(p.price)}</p></div><span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${p.isPublished ? "border-[color-mix(in_srgb,var(--bn-admin-border)_30%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-orange-soft)_10%,transparent)] text-[var(--bn-admin-orange)]" : "border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]"}`}>{p.isPublished ? "Published" : "Hidden"}</span></div><label className="mt-4 block text-[10px] font-bold uppercase tracking-wide text-[var(--bn-admin-orange)]">Kitchen station</label><select disabled={!canEdit} value={station} onChange={(e) => saveStation(p.id, e.target.value)} className="mt-2 w-full rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] px-3 py-2 text-xs"><option>Hot Kitchen</option><option>Grill</option><option>Cold</option><option>Drinks</option><option>Pizza</option><option>Dessert</option><option>Expo</option></select></div>; })}{products.length === 0 && <Empty text="No menu items found." />}</div></div>;
-}
-
-function RecipesPanel({ slug, products: allProducts, inventory, role }: { slug: string; products: any[]; inventory: any[]; role: string }) {
-  // Kitchen ingredients are stock, not dishes, so they never get a recipe of their own.
-  const products = allProducts.filter((p: any) => !(p.attributes && typeof p.attributes === "object" && (p.attributes as any).fnbIngredient));
-  const canEdit = role !== "STAFF";
-  const toRows = (r: ReturnType<typeof extractFnbRecipe>) => (r?.ingredients || []).map((i) => ({ inventoryItemId: i.inventoryItemId, quantity: String(i.quantity), unit: i.unit }));
-  const [productId, setProductId] = useState(products[0]?.id || "");
-  const product = products.find((p) => p.id === productId) || products[0];
-  const existing = product ? extractFnbRecipe(product.attributes) : null;
-  const [ingredients, setIngredients] = useState<{ inventoryItemId: string; quantity: string; unit: string }[]>(toRows(existing));
-  const [yieldQty, setYieldQty] = useState(String(existing?.yieldQty || 1));
-  const [busy, start] = useTransition();
-  const router = useRouter();
-  const [newIng, setNewIng] = useState({ name: "", unit: "g", quantity: "", cost: "" });
-  const [showNew, setShowNew] = useState(false);
-  const isIngredient = (v: any) => v.product.isPublished === false;
-  const ingredientOptions = inventory.filter((v: any) => v.productId !== product?.id);
-  const costOf = (id: string) => { const v = inventory.find((x: any) => x.id === id); if (!v) return null; return v.costPrice != null ? Number(v.costPrice) : isIngredient(v) ? Number(v.product.price) : null; };
-  const yieldNum = Number(yieldQty) > 0 ? Number(yieldQty) : 1;
-  const costRows = ingredients.map((i) => { const c = costOf(i.inventoryItemId); return { ...i, line: c == null ? null : c * (Number(i.quantity) || 0) }; });
-  const unknownCost = costRows.some((r) => r.line == null);
-  const costPerPortion = costRows.reduce((sum, r) => sum + (r.line ?? 0), 0) / yieldNum;
-  const dishPrice = product ? Number(product.price) : 0;
-  const margin = dishPrice - costPerPortion;
-  const addNewIngredient = () => {
-    const quantity = Number(newIng.quantity || 0); const cost = Number(newIng.cost);
-    start(async () => {
-      const r = await createFnbIngredient(slug, { name: newIng.name, unit: newIng.unit, quantity, costPerUnit: cost });
-      if (!r.success) { toast.error(r.error); return; }
-      toast.success(`${r.data.name} added`);
-      setIngredients((prev) => [...prev, { inventoryItemId: r.data.inventoryItemId, quantity: "1", unit: newIng.unit.trim() || "unit" }]);
-      setNewIng({ name: "", unit: "g", quantity: "", cost: "" }); setShowNew(false);
-      router.refresh();
-    });
-  };
-  const field = "w-full rounded-lg border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] px-2 py-2 text-xs disabled:opacity-60";
-  const selectProduct = (id: string) => {
-    const p = products.find((x) => x.id === id);
-    const r = p ? extractFnbRecipe(p.attributes) : null;
-    setProductId(id);
-    setIngredients(toRows(r));
-    setYieldQty(String(r?.yieldQty || 1));
-  };
-  const addIngredient = () => {
-    if (ingredientOptions.length === 0) { setShowNew(true); toast.message("Add your first ingredient below, then pick it here."); return; }
-    const first = ingredientOptions.find((i: any) => !ingredients.some((x) => x.inventoryItemId === i.id)) || ingredientOptions[0];
-    setIngredients((prev) => [...prev, { inventoryItemId: first.id, quantity: "1", unit: "unit" }]);
-  };
-  const update = (idx: number, patch: Partial<{ inventoryItemId: string; quantity: string; unit: string }>) => setIngredients((prev) => prev.map((x, n) => (n === idx ? { ...x, ...patch } : x)));
-  const save = () => {
-    if (!product || !canEdit) return;
-    const y = Number(yieldQty);
-    if (!Number.isFinite(y) || y <= 0) { toast.error("Yield must be greater than zero."); return; }
-    const rows = ingredients.map((i) => ({ inventoryItemId: i.inventoryItemId, quantity: Number(i.quantity), unit: i.unit }));
-    if (rows.some((i) => !Number.isFinite(i.quantity) || i.quantity <= 0)) { toast.error("Every ingredient needs a quantity above zero."); return; }
-    if (rows.some((i) => !Number.isInteger(i.quantity))) { toast.error("Use whole numbers in your stock unit (for example 200 g, not 0.2 kg)."); return; }
-    if (new Set(rows.map((i) => i.inventoryItemId)).size !== rows.length) { toast.error("Each ingredient can only appear once in a recipe."); return; }
-    start(async () => {
-      const r = await saveFnbRecipe(slug, product.id, { yieldQty: y, ingredients: rows });
-      if (!r.success) toast.error(r.error); else toast.success("Recipe saved");
-    });
-  };
-  const addBtn = canEdit ? <button type="button" onClick={addIngredient} disabled={!product} className="rounded-xl bg-[var(--bn-admin-active)] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50"><Plus className="mr-1 inline h-3.5 w-3.5" /> Ingredient</button> : <span className="rounded-xl border border-[var(--bn-admin-border)] px-4 py-2.5 text-xs font-semibold text-[var(--bn-admin-orange)]">Staff: View Only</span>;
-  return <div className="space-y-5">
-    <SectionTitle title="Recipes & Food Cost" description="Build ingredient-level recipes from real inventory cost data." action={addBtn} />
-    {products.length === 0 ? <Empty text="No menu items yet. Add a menu item first, then build its recipe here." /> : <div className="grid gap-5 xl:grid-cols-[320px_1fr]">
-      <section className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4">
-        <label className="text-xs font-bold">Menu item</label>
-        <select value={product?.id || ""} onChange={(e) => selectProduct(e.target.value)} className="mt-2 w-full rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] px-3 py-2 text-sm">{products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
-        <label className="mt-4 block text-xs font-bold">Yield / portions</label>
-        <input disabled={!canEdit} type="number" inputMode="decimal" min="1" step="any" value={yieldQty} onChange={(e) => setYieldQty(e.target.value)} className="mt-2 w-full rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] px-3 py-2 text-sm" />
-        <div className="mt-5 rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_20%,transparent)] p-3 text-xs text-[var(--bn-admin-orange)]">Selling this dish deducts its ingredients from stock. Enter quantities for the full yield, as whole numbers in the unit you count that ingredient in (g, ml, pcs).</div>
-      </section>
-      <section className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4">
-        {canEdit && <div className="mb-3 rounded-xl border border-[var(--bn-admin-border)] p-3">
-          <button type="button" onClick={() => setShowNew((v) => !v)} className="text-xs font-bold text-[var(--bn-admin-orange)] underline">{showNew ? "Close" : "+ New ingredient (not on the menu)"}</button>
-          {showNew && <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <input className={`${field} col-span-2 sm:col-span-4`} placeholder="Name, e.g. Palm oil" value={newIng.name} onChange={(e) => setNewIng({ ...newIng, name: e.target.value })} />
-            <input className={field} placeholder="Unit (g, ml, pcs)" value={newIng.unit} onChange={(e) => setNewIng({ ...newIng, unit: e.target.value })} />
-            <input className={field} type="number" inputMode="numeric" min="0" placeholder="In stock now" value={newIng.quantity} onChange={(e) => setNewIng({ ...newIng, quantity: e.target.value })} />
-            <input className={`${field} col-span-2`} type="number" inputMode="decimal" min="0" step="any" placeholder="Cost per unit (e.g. 2)" value={newIng.cost} onChange={(e) => setNewIng({ ...newIng, cost: e.target.value })} />
-            <button type="button" disabled={busy} onClick={addNewIngredient} className="col-span-2 rounded-xl bg-[var(--bn-admin-active)] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50 sm:col-span-4">{busy ? "Adding..." : "Add ingredient"}</button>
-          </div>}
-        </div>}
-        <div className="hidden grid-cols-[1fr_100px_100px_32px] gap-2 text-[10px] font-bold uppercase tracking-wide text-[var(--bn-admin-orange)] sm:grid"><span>Ingredient</span><span>Qty</span><span>Unit</span><span /></div>
-        {ingredients.map((i, idx) => <div key={idx} className="mt-2 grid grid-cols-[1fr_1fr_40px] gap-2 rounded-xl border border-[var(--bn-admin-border)] p-2 sm:grid-cols-[1fr_100px_100px_32px] sm:border-0 sm:p-0">
-          <select disabled={!canEdit} value={i.inventoryItemId} onChange={(e) => update(idx, { inventoryItemId: e.target.value })} className={`${field} col-span-3 sm:col-span-1`}>{ingredientOptions.filter(isIngredient).length > 0 && <optgroup label="Ingredients">{ingredientOptions.filter(isIngredient).map((v: any) => <option key={v.id} value={v.id}>{v.product.name}</option>)}</optgroup>}{ingredientOptions.filter((v: any) => !isIngredient(v)).length > 0 && <optgroup label="Menu items">{ingredientOptions.filter((v: any) => !isIngredient(v)).map((v: any) => <option key={v.id} value={v.id}>{v.product.name}</option>)}</optgroup>}</select>
-          <input disabled={!canEdit} type="number" inputMode="numeric" min="1" step="1" placeholder="Qty" value={i.quantity} onChange={(e) => update(idx, { quantity: e.target.value })} className={field} />
-          <input disabled={!canEdit} placeholder="Unit (g, kg, pcs)" value={i.unit} onChange={(e) => update(idx, { unit: e.target.value })} className={field} />
-          <button type="button" aria-label="Remove ingredient" disabled={!canEdit} onClick={() => setIngredients((prev) => prev.filter((_, n) => n !== idx))} className="rounded-lg border border-[var(--bn-admin-border)] text-[var(--bn-admin-orange)]">×</button>
-        </div>)}
-        {ingredients.length === 0 && <Empty text={canEdit ? "No ingredients yet. Tap + Ingredient to add the first one." : "No ingredients configured."} />}
-        {ingredients.length > 0 && <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-[var(--bn-admin-border)] p-3 text-center text-xs">
-          <div><p className="text-[10px] font-bold uppercase text-[var(--bn-admin-orange)]">Cost / portion</p><p className="mt-1 text-sm font-bold">{unknownCost ? "—" : money(costPerPortion)}</p></div>
-          <div><p className="text-[10px] font-bold uppercase text-[var(--bn-admin-orange)]">Menu price</p><p className="mt-1 text-sm font-bold">{money(dishPrice)}</p></div>
-          <div><p className="text-[10px] font-bold uppercase text-[var(--bn-admin-orange)]">Margin</p><p className="mt-1 text-sm font-bold">{unknownCost ? "—" : `${money(margin)} (${dishPrice > 0 ? Math.round((margin / dishPrice) * 100) : 0}%)`}</p></div>
-          {unknownCost && <p className="col-span-3 text-[11px] text-[var(--bn-admin-orange)]">Some ingredients have no cost yet, so food cost can't be worked out. Set a cost per unit in Inventory.</p>}
-        </div>}
-        {canEdit && <div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={addIngredient} className="rounded-xl border border-[var(--bn-admin-border)] px-4 py-2.5 text-xs font-bold">+ Add ingredient</button><button type="button" disabled={busy || !product} onClick={save} className="rounded-xl bg-[var(--bn-admin-active)] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">{busy ? "Saving..." : "Save Recipe"}</button></div>}
-      </section>
+    {sheet && <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="All sections">
+      <button aria-label="Close" className="absolute inset-0 bg-black/40" onClick={() => setSheet(false)} />
+      <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-[var(--bn-admin-surface)] px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3 shadow-2xl">
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--bn-admin-border)]" />
+        <div className="mb-2 flex items-center justify-between"><p className="text-base font-extrabold text-[var(--bn-admin-text-strong)]">All sections</p><button onClick={() => setSheet(false)} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-full bg-[var(--bn-admin-surface-2)]"><X className="h-4 w-4" /></button></div>
+        {groups.map((g) => <div key={g.title} className="mt-4"><p className="mb-2 text-[11px] font-bold text-[var(--bn-admin-muted)]">{g.title}</p><div className="grid grid-cols-3 gap-2">{g.items.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => go(id)} className={`flex min-h-[84px] flex-col items-center justify-center gap-2 rounded-2xl border px-1 text-center text-xs font-bold ${tab === id ? "border-transparent bg-[var(--bn-admin-active)] text-white" : "border-[var(--bn-admin-border)] text-[var(--bn-admin-text)]"}`}><Icon className="h-5 w-5" />{label}</button>)}</div></div>)}
+      </div>
     </div>}
   </div>;
 }
-
-function InventoryPanel({ slug, data }: { slug: string; data: any }) { const [q, setQ] = useState(""); const rows = data.inventory.filter((i: any) => !i.isDish && i.product.name.toLowerCase().includes(q.toLowerCase())); const canManage = data.role !== "STAFF"; return <div className="space-y-5"><SectionTitle title="Inventory" description="Stock levels, batches, expiry dates and cost basis for kitchen operations." action={<Link href={`/store/${slug}/admin/inventory`} className="rounded-xl border border-[var(--bn-admin-border)] px-4 py-2.5 text-xs font-bold">Open Inventory</Link>} /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={Boxes} label="Tracked items" value={data.inventory.filter((i: any) => !i.isDish).length} sub="Inventory records" /><Metric icon={Clock3} label="Low stock" value={data.metrics.lowStock} sub="At/below threshold" /><Metric icon={XCircle} label="Out of stock" value={data.metrics.outOfStock} sub="Unavailable" /><Metric icon={DollarSign} label="Stock value" value={money(data.metrics.stockValue)} sub="Known cost basis" /></div><div className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4"><div className="relative mb-3 max-w-md"><Search className="absolute left-3 top-2.5 h-4 w-4 text-[var(--bn-admin-orange)]" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search stock..." className="w-full rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] py-2 pl-9 pr-3 text-xs" /></div><TableScroll><table className="w-full min-w-[700px] text-left text-xs"><thead className="border-b border-[var(--bn-admin-border)] text-[10px] uppercase tracking-wide text-[var(--bn-admin-orange)]"><tr><th className="pb-2">Item</th><th>On hand</th><th>Cost</th><th>Status</th><th>Lots</th></tr></thead><tbody>{rows.map((i: any) => { const lots = data.batches.filter((b: any) => b.inventoryItem?.id === i.id); const st = i.quantity === 0 ? "OUT_OF_STOCK" : i.quantity <= i.lowStockThreshold ? "LOW_STOCK" : "IN_STOCK"; return <tr key={i.id} className="border-b border-[var(--bn-admin-border)] last:border-0"><td className="py-3 font-semibold">{i.product.name}</td><td>{i.quantity}</td><td>{i.costPrice == null ? "—" : money(i.costPrice)}</td><td><span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${statusClass(st)}`}>{label(st)}</span></td><td>{lots.length}</td></tr>; })}</tbody></table></TableScroll></div><p className="text-[10px] text-[var(--bn-admin-orange)]">{canManage ? "Owners/managers can use the linked BizNest inventory controls for stock adjustments." : "Staff can view operational stock here; stock editing stays under administrator controls."}</p></div>; }
-
-function ProcurementPanel({ slug, purchaseOrders }: { slug: string; purchaseOrders: any[] }) { return <div className="space-y-5"><SectionTitle title="Procurement" description="Purchase orders and receiving status for kitchen supply operations." action={<Link href={`/store/${slug}/admin/purchase-orders`} className="rounded-xl bg-[var(--bn-admin-active)] px-4 py-2.5 text-xs font-bold text-white">Open Procurement</Link>} /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={FileSignature} label="Recent POs" value={purchaseOrders.length} sub="Latest records" /><Metric icon={Clock3} label="Awaiting receipt" value={purchaseOrders.filter((p: any) => ["SENT", "PARTIALLY_RECEIVED"].includes(p.status)).length} sub="Open procurement" /><Metric icon={Truck} label="Suppliers used" value={new Set(purchaseOrders.map((p: any) => p.supplier.name)).size} sub="Recent POs" /><Metric icon={DollarSign} label="PO value" value={money(purchaseOrders.reduce((s: number, p: any) => s + Number(p.subtotal), 0))} sub="Recent subtotal" /></div><div className="overflow-x-auto rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)]"><table className="min-w-[640px] w-full text-left text-xs"><thead className="border-b border-[var(--bn-admin-border)] text-[10px] uppercase tracking-wide text-[var(--bn-admin-orange)]"><tr><th className="px-4 py-3">PO</th><th>Supplier</th><th>Status</th><th>Value</th></tr></thead><tbody>{purchaseOrders.map((p: any) => <tr key={p.id} className="border-b border-[var(--bn-admin-border)] last:border-0"><td className="px-4 py-3 font-semibold">{p.poNumber}</td><td>{p.supplier.name}</td><td><span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${statusClass(p.status)}`}>{label(p.status)}</span></td><td>{p.currency} {formatNumber(Number(p.subtotal))}</td></tr>)}</tbody></table>{purchaseOrders.length === 0 && <Empty text="No purchase orders yet." />}</div></div>; }
-
-function SupplierPanel({ slug, suppliers }: { slug: string; suppliers: any[] }) { return <div className="space-y-5"><SectionTitle title="Suppliers" description="Supplier directory for kitchen purchasing and receiving." action={<Link href={`/store/${slug}/admin/suppliers`} className="rounded-xl border border-[var(--bn-admin-border)] px-4 py-2.5 text-xs font-bold">Manage Suppliers</Link>} /><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{suppliers.map((s: any) => <div key={s.id} className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4"><p className="text-sm font-bold">{s.name}</p><p className="mt-1 text-xs text-[var(--bn-admin-orange)]">{s.contactName || "No contact name"}</p><p className="mt-3 text-xs">{s.phone || s.email || "No contact details"}</p></div>)}{suppliers.length === 0 && <Empty text="No suppliers yet." />}</div></div>; }
-
-function CustomerPanel({ customers }: { customers: any[] }) { return <div className="space-y-5"><SectionTitle title="Customers" description="Customer records connected to restaurant orders." /><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{customers.map((c: any) => <div key={c.id} className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4"><p className="text-sm font-bold">{c.name}</p><p className="mt-1 text-xs text-[var(--bn-admin-orange)]">{c.phone || c.email || "No contact"}</p></div>)}{customers.length === 0 && <Empty text="No customer profiles yet." />}</div></div>; }
-
-function WastagePanel({ slug, data }: { slug: string; data: any }) { const [item, setItem] = useState(data.inventory[0]?.id || ""); const [qty, setQty] = useState("1"); const [reason, setReason] = useState(""); const [busy, start] = useTransition(); const submit = () => start(async () => { const r = await recordFnbWaste(slug, item, Number(qty), reason); if (!r.success) toast.error(r.error); else { toast.success("Waste recorded and stock reconciled"); setReason(""); setQty("1"); } }); return <div className="space-y-5"><SectionTitle title="Wastage" description="Record spoilage, expired stock, damage and overproduction with an auditable stock movement." /><div className="grid gap-5 xl:grid-cols-[420px_1fr]"><section className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-5"><label className="text-xs font-bold">Stock item</label><select value={item} onChange={(e) => setItem(e.target.value)} className="mt-2 w-full rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] px-3 py-2.5 text-sm">{data.inventory.map((i: any) => <option key={i.id} value={i.id}>{i.product.name} · {i.quantity} available</option>)}</select><label className="mt-4 block text-xs font-bold">Quantity wasted</label><input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} className="mt-2 w-full rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] px-3 py-2.5 text-sm" /><label className="mt-4 block text-xs font-bold">Reason</label><textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Expired, spoiled, burnt, damaged, overproduction..." className="mt-2 min-h-24 w-full rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] px-3 py-2.5 text-sm" /><button disabled={busy} onClick={submit} className="mt-4 w-full rounded-xl bg-[var(--bn-admin-active)] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">Record Waste</button></section><section className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-5"><h2 className="text-sm font-bold">Recent waste</h2><div className="mt-4 divide-y divide-slate-800">{data.wasteMovements.map((w: any) => <div key={w.id} className="flex items-center gap-3 py-3"><Trash2 className="h-4 w-4 text-[var(--bn-admin-orange)]" /><div className="min-w-0 flex-1"><p className="text-xs font-semibold">{w.inventoryItem?.product?.name || "Stock item"}</p><p className="mt-0.5 text-[10px] text-[var(--bn-admin-orange)]">{String(w.note || "").replace("FNB WASTE: ", "")} · {date(w.createdAt)}</p></div><span className="text-xs font-bold">{Math.abs(w.quantityChange)}</span></div>)}{data.wasteMovements.length === 0 && <Empty text="No waste records yet." />}</div></section></div></div>; }
-
-function ReportsPanel({ data }: { data: any }) { const m = data.metrics; const costed = data.products.map((p: any) => { const r = extractFnbRecipe(p.attributes); if (!r || r.ingredients.length === 0) return null; const batchCost = r.ingredients.reduce((s: number, i: any) => { const stock = data.inventory.find((x: any) => x.id === i.inventoryItemId); return s + (stock?.costPrice || 0) * i.quantity; }, 0); return { cost: batchCost / (r.yieldQty > 0 ? r.yieldQty : 1), price: Number(p.price) || 0 }; }).filter(Boolean) as Array<{ cost: number; price: number }>; const totalCost = costed.reduce((s, c) => s + c.cost, 0); const totalPrice = costed.reduce((s, c) => s + c.price, 0); const foodCostPct = totalPrice > 0 ? (totalCost / totalPrice) * 100 : null; return <div className="space-y-5"><SectionTitle title="Kitchen Reports" description="Live kitchen, inventory, procurement, food-cost and waste indicators." /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={DollarSign} label="Today's sales" value={money(m.revenue)} sub="Orders today" /><Metric icon={Boxes} label="Inventory value" value={money(m.stockValue)} sub="Known cost basis" /><Metric icon={PackageCheck} label="Avg food cost" value={foodCostPct == null ? "—" : `${foodCostPct.toFixed(1)}%`} sub={`Per portion vs price · ${costed.length} recipes`} /><Metric icon={Trash2} label="Waste units" value={m.wasteUnits} sub="Recorded waste" /></div><div className="grid gap-4 lg:grid-cols-2"><section className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-5"><h2 className="text-sm font-bold">Stock risks</h2><div className="mt-4 space-y-2"><ReportRow label="Out of stock" value={`${m.outOfStock}`} /><ReportRow label="Low stock" value={`${m.lowStock}`} /><ReportRow label="Expiring soon" value={`${m.expiringSoon}`} /><ReportRow label="Expired batches" value={`${m.expired}`} /></div></section><section className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-5"><h2 className="text-sm font-bold">Kitchen flow</h2><div className="mt-4 space-y-2"><ReportRow label="Orders today" value={`${m.ordersToday}`} /><ReportRow label="Active orders" value={`${m.activeOrders}`} /><ReportRow label="Reservations today" value={`${m.reservationsToday}`} /><ReportRow label="Recipes configured" value={`${m.recipeCount}`} /></div></section></div></div>; }
-
-
-function SettingsPanel({ slug, role, mode }: { slug: string; role: string; mode: "FIFO" | "FEFO" }) {
-  const canEdit = role !== "STAFF";
-  const [busy, start] = useTransition();
-  const setMode = (next: "FIFO" | "FEFO") => start(async () => { const r = await setFnbRotationMode(slug, next); if (!r.success) toast.error(r.error); else toast.success(`Stock rotation set to ${next}`); });
-  return <div className="space-y-5"><SectionTitle title="FnB Settings" description="Restaurant-wide operating controls for stock rotation and kitchen behavior." /><div className="grid gap-5 lg:grid-cols-2"><section className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-5"><h2 className="text-sm font-bold">Stock rotation</h2><p className="mt-1 text-xs text-[var(--bn-admin-orange)]">Choose how tracked inventory batches are consumed by POS sales and waste reconciliation.</p><div className="mt-4 grid grid-cols-2 gap-3">{(["FIFO", "FEFO"] as const).map((item) => <button key={item} disabled={!canEdit || busy} onClick={() => setMode(item)} className={`rounded-xl border p-4 text-left ${mode === item ? "border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-orange-soft)_10%,transparent)]" : "border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)]"}`}><p className="text-xs font-bold">{item}</p><p className="mt-1 text-[10px] text-[var(--bn-admin-orange)]">{item === "FIFO" ? "Oldest received batch first" : "Earliest expiry first"}</p></button>)}</div>{!canEdit && <p className="mt-3 text-[10px] text-[var(--bn-admin-orange)]">Staff can view this setting but cannot change it.</p>}</section><section className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-5"><h2 className="text-sm font-bold">Operating model</h2><div className="mt-4 space-y-2"><ReportRow label="App" value="BizNest FnB" /><ReportRow label="POS" value="Enabled" /><ReportRow label="Kitchen display" value="Enabled" /><ReportRow label="Station routing" value="Enabled" /><ReportRow label="Inventory & procurement" value="Connected" /></div></section></div></div>;
-}
-function SectionTitle({ title, description, action }: any) { return <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-2xl font-bold">{title}</h1><p className="mt-1 max-w-3xl text-sm text-[var(--bn-admin-orange)]">{description}</p></div>{action}</div>; }
-function Metric({ icon: Icon, label, value, sub }: any) { return <div className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4"><div className="flex items-center justify-between"><span className="text-[11px] font-medium text-[var(--bn-admin-orange)]">{label}</span><Icon className="h-4 w-4 text-[var(--bn-admin-orange)]" /></div><p className="mt-2 text-xl font-bold">{value}</p><p className="mt-1 text-[10px] text-[var(--bn-admin-orange)]">{sub}</p></div>; }
-function ReportRow({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between rounded-xl bg-[var(--bn-admin-surface-2)] px-3 py-2.5 text-xs"><span className="text-[var(--bn-admin-orange)]">{label}</span><span className="font-bold">{value}</span></div>; }
-function Empty({ text }: { text: string }) { return <div className="col-span-full rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_50%,transparent)] p-8 text-center text-xs text-[var(--bn-admin-orange)]">{text}</div>; }
-function LoadingPanel({ title }: { title: string }) { return <div className="flex min-h-[55vh] items-center justify-center text-sm text-[var(--bn-admin-orange)]">{title}…</div>; }
