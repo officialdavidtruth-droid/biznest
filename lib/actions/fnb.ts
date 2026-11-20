@@ -384,3 +384,15 @@ export async function createFnbDish(slug: string, input: { name: string; price: 
   revalidatePath(`/store/${slug}/admin/products`);
   return { success: true, data: { productId: created.data.productId, name } };
 }
+
+/** The signed-in operator's open shift (with live sales), for the register on the main dashboard. Null when FnB isn't installed. */
+export async function getFnbShiftState(slug: string) {
+  const a = await access(slug, "fnb:pos");
+  if (!a.success) return null;
+  const session = await auth();
+  if (!session?.user?.id) return null;
+  const shift = await prisma.fnbShift.findFirst({ where: { storeId: a.store.id, staffUserId: session.user.id, status: "OPEN" }, orderBy: { startedAt: "desc" }, select: { id: true, status: true, startedAt: true, endedAt: true, salesCount: true, salesTotal: true } });
+  if (!shift) return { currentShift: null };
+  const live = await prisma.order.aggregate({ where: { storeId: a.store.id, fnbShiftId: shift.id, channel: "POS", status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] } }, _count: { _all: true }, _sum: { total: true } });
+  return { currentShift: { ...shift, salesCount: live._count._all, salesTotal: Number(live._sum.total ?? 0) } };
+}

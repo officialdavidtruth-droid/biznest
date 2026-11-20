@@ -90,8 +90,8 @@ export function buildNavGroups(business: NavBusiness): Array<{
   const fnbInstalled = ["Restaurant", "Food & Groceries"].includes(canonicalType) && !!business.installedApps?.some((app) => app.key === "fnb-operations");
   if (business.sellsProducts) {
     sellNavItems.push(
-      ...(fnbInstalled ? [] : [{ label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" as const }]),
-      ...(fnbInstalled ? [] : [{ label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" as const }]),
+      { label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" as const },
+      { label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" as const },
       { label: terminology.catalogPageTitle, href: "/products", icon: Package, permission: "products", children: catalogChildren },
     );
   }

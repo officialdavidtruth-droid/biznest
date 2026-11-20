@@ -1,8 +1,7 @@
 // Route: /store/[slug]/admin/pos
 // Standalone Point of Sale — works for any store that sells products/services.
-// Only restaurants/food stores with the FnB plugin installed use the FnB
-// workspace's POS tab instead (shifts + kitchen display), and the sidebar
-// already hides this link for them, so we forward them there.
+// Restaurants with the FnB plugin installed also get a shift control here,
+// since their sales are tied to an open shift.
 import { notFound, redirect } from "next/navigation";
 import { Store } from "lucide-react";
 import { prisma } from "@/lib/prisma";
@@ -12,6 +11,8 @@ import { getPosCatalog, getPosDailySummary } from "@/lib/actions/pos";
 import { PosRegister } from "@/components/dashboard/pos-register";
 import { PosOpenTabs } from "@/components/dashboard/pos-open-tabs";
 import { getOpenPosTabs } from "@/lib/actions/pos-tabs";
+import { getFnbShiftState } from "@/lib/actions/fnb";
+import { ShiftControl } from "@/components/dashboard/fnb/service-panels";
 import { getInHouseReservations } from "@/lib/actions/folio";
 import { formatNumber } from "@/lib/i18n/locale";
 import { PLATFORM_COMMISSION_PERCENT } from "@/lib/constants/commission";
@@ -35,9 +36,10 @@ export default async function PosPage({ params }: { params: Promise<{ slug: stri
   if (!store) notFound();
 
   const isFoodBusiness = FOOD_TYPES.includes(store.businessType);
+  let shiftState: Awaited<ReturnType<typeof getFnbShiftState>> = null;
   if (isFoodBusiness) {
     const fnb = await getPluginEntitlement(store.id, "fnb-operations");
-    if (fnb.allowed && fnb.installed) redirect(`/store/${slug}/admin/fnb`);
+    if (fnb.allowed && fnb.installed) shiftState = await getFnbShiftState(slug);
   }
 
   const [catalog, summary, openTabs, inHouseRooms] = await Promise.all([
@@ -76,6 +78,7 @@ export default async function PosPage({ params }: { params: Promise<{ slug: stri
           </div>
         </div>
       </div>
+      {shiftState && <ShiftControl slug={slug} currentShift={shiftState.currentShift} recentShifts={[]} />}
       <PosRegister
         slug={slug}
         catalog={catalog}
