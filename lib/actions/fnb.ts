@@ -396,3 +396,44 @@ export async function getFnbShiftState(slug: string) {
   const live = await prisma.order.aggregate({ where: { storeId: a.store.id, fnbShiftId: shift.id, channel: "POS", status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] } }, _count: { _all: true }, _sum: { total: true } });
   return { currentShift: { ...shift, salesCount: live._count._all, salesTotal: Number(live._sum.total ?? 0) } };
 }
+
+/* ───────────── Tables (each with its own QR) ───────────── */
+export async function getFnbTables(slug: string): Promise<ActionResult<{ baseUrl: string; tables: { id: string; name: string; seats: number | null; token: string }[] }>> {
+  const a = await access(slug, "fnb:pos");
+  if (!a.success) return { success: false, error: a.error };
+  const store = await prisma.store.findUnique({ where: { id: a.store.id }, select: { slug: true, customDomain: true, customDomainStatus: true } });
+  if (!store) return { success: false, error: "Store not found." };
+  const { storeBaseUrl } = await import("@/lib/seo");
+  const tables = await prisma.fnbTable.findMany({ where: { storeId: a.store.id, active: true }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, seats: true, token: true } });
+  return { success: true, data: { baseUrl: storeBaseUrl(store), tables } };
+}
+
+export async function createFnbTables(slug: string, input: { name?: string; seats?: number | null; count?: number }): Promise<ActionResult<{ created: number }>> {
+  const a = await access(slug, "fnb:pos");
+  if (!a.success) return { success: false, error: a.error };
+  const seats = input.seats && input.seats > 0 ? Math.min(Math.floor(input.seats), 99) : null;
+  const names: string[] = [];
+  if (input.count && input.count > 1) {
+    const count = Math.min(Math.floor(input.count), 60);
+    const existing = await prisma.fnbTable.count({ where: { storeId: a.store.id } });
+    for (let i = 1; i <= count; i++) names.push(`Table ${existing + i}`);
+  } else {
+    const name = (input.name ?? "").trim().replace(/\s+/g, " ").slice(0, 40);
+    if (!name) return { success: false, error: "Give the table a name, like Table 1 or Patio 2." };
+    names.push(name);
+  }
+  const res = await prisma.fnbTable.createMany({ data: names.map((name) => ({ storeId: a.store.id, name, seats })), skipDuplicates: true });
+  if (res.count === 0) return { success: false, error: "A table with that name already exists." };
+  revalidatePath(`/store/${slug}/admin/fnb`);
+  revalidatePath(`/store/${slug}/admin/pos`);
+  return { success: true, data: { created: res.count } };
+}
+
+export async function removeFnbTable(slug: string, id: string): Promise<ActionResult<undefined>> {
+  const a = await access(slug, "fnb:pos");
+  if (!a.success) return { success: false, error: a.error };
+  await prisma.fnbTable.deleteMany({ where: { id, storeId: a.store.id } });
+  revalidatePath(`/store/${slug}/admin/fnb`);
+  revalidatePath(`/store/${slug}/admin/pos`);
+  return { success: true, data: undefined };
+}

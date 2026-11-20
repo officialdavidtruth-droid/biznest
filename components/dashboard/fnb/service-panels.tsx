@@ -161,7 +161,7 @@ export function TablesPanel({ reservations }: { reservations: any[] }) {
 export function PosPanel({ slug, pos, currentShift, recentShifts, refreshTabs }: { slug: string; pos: any; currentShift: any; recentShifts: any[]; refreshTabs: () => void }) {
   return <Page title="Register" sub={currentShift ? "Every sale is linked to your open shift." : "Start your shift to unlock the register."}>
     <ShiftControl slug={slug} currentShift={currentShift} recentShifts={recentShifts} />
-    {currentShift ? <><PosRegister slug={slug} catalog={pos.catalog} commissionRatePercent={pos.commissionRatePercent} inHouseRooms={pos.inHouseRooms ?? []} openTabs={pos.openTabs ?? []} onSaleComplete={refreshTabs} /><PosOpenTabs slug={slug} tabs={pos.openTabs ?? []} inHouseRooms={pos.inHouseRooms ?? []} onChanged={refreshTabs} /></> : <Empty icon={Clock3} title="Register is locked" text="Open a shift above, then you can ring up sales." />}
+    {currentShift ? <><PosRegister slug={slug} catalog={pos.catalog} commissionRatePercent={pos.commissionRatePercent} inHouseRooms={pos.inHouseRooms ?? []} openTabs={pos.openTabs ?? []} tables={pos.tables ?? []} onSaleComplete={refreshTabs} /><PosOpenTabs slug={slug} tabs={pos.openTabs ?? []} inHouseRooms={pos.inHouseRooms ?? []} onChanged={refreshTabs} /></> : <Empty icon={Clock3} title="Register is locked" text="Open a shift above, then you can ring up sales." />}
   </Page>;
 }
 

@@ -1072,6 +1072,7 @@ model Store {
   propertyFolioCharges PropertyFolioCharge[]
   orders        Order[]
   fnbShifts     FnbShift[]
+  fnbTables     FnbTable[]
   bookings      Booking[]
   deliveryZones DeliveryZone[]
   newsletterSubscribers NewsletterSubscriber[]
@@ -2175,6 +2176,22 @@ enum FnbShiftStatus {
 // One accountable register shift per FnB operator. Every POS sale is linked
 // to the operator's open shift so sales can be reconciled by staff and by
 // start/end time without changing the core Order model semantics.
+model FnbTable {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name      String
+  seats     Int?
+  // Unguessable code printed in the table's QR link; scanning it tags orders with this table.
+  token     String   @unique @default(cuid())
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, name])
+  @@index([storeId, active])
+}
+
 model FnbShift {
   id          String         @id @default(cuid())
   storeId     String

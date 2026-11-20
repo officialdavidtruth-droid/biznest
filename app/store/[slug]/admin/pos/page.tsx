@@ -37,9 +37,13 @@ export default async function PosPage({ params }: { params: Promise<{ slug: stri
 
   const isFoodBusiness = FOOD_TYPES.includes(store.businessType);
   let shiftState: Awaited<ReturnType<typeof getFnbShiftState>> = null;
+  let tables: { id: string; name: string }[] = [];
   if (isFoodBusiness) {
     const fnb = await getPluginEntitlement(store.id, "fnb-operations");
-    if (fnb.allowed && fnb.installed) shiftState = await getFnbShiftState(slug);
+    if (fnb.allowed && fnb.installed) {
+      shiftState = await getFnbShiftState(slug);
+      tables = await prisma.fnbTable.findMany({ where: { storeId: store.id, active: true }, orderBy: { createdAt: "asc" }, select: { id: true, name: true } });
+    }
   }
 
   const [catalog, summary, openTabs, inHouseRooms] = await Promise.all([
@@ -86,6 +90,7 @@ export default async function PosPage({ params }: { params: Promise<{ slug: stri
         showOrderType={isFoodBusiness}
         inHouseRooms={inHouseRooms}
         openTabs={openTabs}
+        tables={tables}
       />
       {(isFoodBusiness || openTabs.length > 0) && <PosOpenTabs slug={slug} tabs={openTabs} inHouseRooms={inHouseRooms} />}
     </div>

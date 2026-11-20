@@ -681,11 +681,21 @@ export async function startCheckout(
     );
   }
 
+  // A guest who scanned a table's QR code has a cookie naming that table;
+  // tag the order so the kitchen and cashier see where it came from.
+  let scannedTable: string | null = null;
+  try {
+    const { cookies } = await import("next/headers");
+    const token = (await cookies()).get(`bn_table_${storeSlug}`)?.value;
+    if (token) scannedTable = (await prisma.fnbTable.findFirst({ where: { token, storeId: store.id, active: true }, select: { name: true } }))?.name ?? null;
+  } catch { /* no request context or lookup failed — order is just not tagged */ }
+
   let order: Awaited<ReturnType<typeof prisma.order.create>>;
   try {
     order = await prisma.order.create({
       data: {
         storeId: store.id,
+        ...(scannedTable ? { fnbOrderType: "DINE_IN" as const, fnbTableLabel: scannedTable } : {}),
         buyerId:
           session.user.id,
         customerProfileId,

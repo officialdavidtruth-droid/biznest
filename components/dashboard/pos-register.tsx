@@ -38,6 +38,7 @@ export function PosRegister({
   showOrderType = true,
   inHouseRooms = [],
   openTabs = [],
+  tables = [],
   onSaleComplete,
 }: {
   slug: string;
@@ -49,6 +50,8 @@ export function PosRegister({
   inHouseRooms?: InHouseReservation[];
   /** Tables with a running bill, so a waiter can pick one and see what it's already at. */
   openTabs?: PosTabSummary[];
+  /** Tables the restaurant has listed (FnB → Tables); dine-in picks from these instead of typing. */
+  tables?: { id: string; name: string }[];
   /** Called after a sale is saved, for hosts that hold the tab list in their own state. */
   onSaleComplete?: () => void;
 }) {
@@ -788,11 +791,30 @@ export function PosRegister({
                   ))}
                 </div>
               </div>
-              <label className="block text-xs font-semibold text-muted-foreground">
-                Table / reference
-                <input list="pos-open-tables" value={tableLabel} onChange={(e) => setTableLabel(e.target.value)} placeholder={orderType === "DINE_IN" || chargeMode === "TABLE" ? "Table 12" : "Optional"} className={`${fieldClass} mt-1.5 font-normal`} />
-                <datalist id="pos-open-tables">{openTabs.map((t) => <option key={t.id} value={t.label} />)}</datalist>
-              </label>
+              {tables.length > 0 && (orderType === "DINE_IN" || chargeMode === "TABLE") ? (
+                <div>
+                  <p className="mb-1.5 text-xs font-semibold text-muted-foreground">Table</p>
+                  <div className="grid max-h-44 grid-cols-3 gap-1.5 overflow-y-auto sm:grid-cols-4">
+                    {tables.map((t) => {
+                      const hasTab = openTabs.some((o) => o.label.toLowerCase() === t.name.toLowerCase());
+                      const active = tableLabel.trim().toLowerCase() === t.name.toLowerCase();
+                      return (
+                        <button key={t.id} type="button" onClick={() => setTableLabel(active ? "" : t.name)} aria-pressed={active}
+                          className={`min-h-11 rounded-xl border px-2 text-sm font-semibold transition ${ring} ${active ? "border-[var(--bn-admin-orange)] bg-[var(--bn-admin-orange)] text-white" : hasTab ? "border-[var(--bn-admin-orange)]/50 bg-[var(--bn-admin-orange-soft)]/60 text-foreground" : "bg-background text-foreground hover:bg-muted"}`}>
+                          <span className="block truncate">{t.name}</span>
+                          {hasTab && !active && <span className="block text-[10px] font-medium text-muted-foreground">open tab</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <label className="block text-xs font-semibold text-muted-foreground">
+                  {orderType === "DINE_IN" || chargeMode === "TABLE" ? "Table / reference" : "Reference"}
+                  <input list="pos-open-tables" value={tableLabel} onChange={(e) => setTableLabel(e.target.value)} placeholder={orderType === "DINE_IN" || chargeMode === "TABLE" ? "Table 12" : "Optional"} className={`${fieldClass} mt-1.5 font-normal`} />
+                  <datalist id="pos-open-tables">{openTabs.map((t) => <option key={t.id} value={t.label} />)}</datalist>
+                </label>
+              )}
             </div>
           )}
 
