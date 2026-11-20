@@ -1073,6 +1073,7 @@ model Store {
   orders        Order[]
   fnbShifts     FnbShift[]
   fnbTables     FnbTable[]
+  tableReservations TableReservation[]
   bookings      Booking[]
   deliveryZones DeliveryZone[]
   newsletterSubscribers NewsletterSubscriber[]
@@ -2185,11 +2186,35 @@ model FnbTable {
   // Unguessable code printed in the table's QR link; scanning it tags orders with this table.
   token     String   @unique @default(cuid())
   active    Boolean  @default(true)
+  reservations TableReservation[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([storeId, name])
   @@index([storeId, active])
+}
+
+model TableReservation {
+  id        String    @id @default(cuid())
+  storeId   String
+  store     Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  tableId   String?
+  table     FnbTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  code      String
+  guestName String
+  phone     String
+  email     String?
+  partySize Int
+  startsAt  DateTime
+  endsAt    DateTime
+  // CONFIRMED | SEATED | COMPLETED | CANCELLED | NO_SHOW
+  status    String    @default("CONFIRMED")
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([storeId, startsAt])
+  @@index([tableId, startsAt])
 }
 
 model FnbShift {
