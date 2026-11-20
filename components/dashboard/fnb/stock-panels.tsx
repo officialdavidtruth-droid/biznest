@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { BarChart3, Boxes, Clock3, DollarSign, FileSignature, PackageCheck, Search, Trash2, Truck, Users, XCircle } from "lucide-react";
+import { BarChart3, Boxes, ChefHat, Clock3, DollarSign, FileSignature, PackageCheck, Search, Trash2, Truck, Users, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { recordFnbWaste, setFnbRotationMode } from "@/lib/actions/fnb";
 import { extractFnbRecipe } from "@/lib/fnb-utils";
@@ -93,12 +93,24 @@ export function WastagePanel({ slug, data }: { slug: string; data: any }) {
 }
 
 /* ───────────── Reports ───────────── */
-export function ReportsPanel({ data }: { data: any }) {
+export function ReportsPanel({ data, kitchenInstalled = true }: { data: any; kitchenInstalled?: boolean }) {
   const m = data.metrics;
   const dishes = data.products.map((p: any) => { const r = extractFnbRecipe(p.attributes); if (!r || r.ingredients.length === 0) return null; const batch = r.ingredients.reduce((s: number, i: any) => { const st = data.inventory.find((x: any) => x.id === i.inventoryItemId); const c = st?.costPrice ?? (st?.product?.isPublished === false ? st.product.price : 0); return s + (c || 0) * i.quantity; }, 0); const cost = batch / (r.yieldQty > 0 ? r.yieldQty : 1); const price = Number(p.price) || 0; return { name: p.name, cost, price, pct: price > 0 ? Math.round(((price - cost) / price) * 100) : 0 }; }).filter(Boolean) as Array<{ name: string; cost: number; price: number; pct: number }>;
   const tc = dishes.reduce((s, d) => s + d.cost, 0); const tp = dishes.reduce((s, d) => s + d.price, 0);
   const foodCost = tp > 0 ? (tc / tp) * 100 : null;
   const ranked = [...dishes].sort((a, b) => b.pct - a.pct);
+  const avg = m.ordersToday > 0 ? m.revenue / m.ordersToday : 0;
+  if (!kitchenInstalled) {
+    return <Page title="Reports" sub="How today's service is going.">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat icon={DollarSign} label="Sales today" value={money(m.revenue)} sub={`${m.ordersToday} orders`} />
+        <Stat icon={PackageCheck} label="Avg order" value={money(avg)} sub="Per paid order" tone="info" />
+        <Stat icon={Users} label="Reservations" value={m.reservationsToday} sub="Today" tone="info" />
+        <Stat icon={BarChart3} label="Orders" value={m.ordersToday} sub="Paid today" />
+      </div>
+      <Empty icon={ChefHat} title="Want food cost and stock reports?" text="Kitchen Management adds recipes, food cost, dish margins and stock reports." />
+    </Page>;
+  }
   return <Page title="Reports" sub="How the kitchen is doing, in numbers.">
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <Stat icon={DollarSign} label="Sales today" value={money(m.revenue)} sub={`${m.ordersToday} orders`} />

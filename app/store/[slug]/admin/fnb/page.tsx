@@ -16,7 +16,9 @@ export default async function FnbPage({ params }: { params: Promise<{ slug: stri
   const entitlement = await getPluginEntitlement(store.id, "fnb-operations");
   if (!entitlement.allowed || !entitlement.installed) redirect(`/store/${slug}/admin/apps`);
   if (!["Restaurant", "Food & Groceries"].includes(getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType }))) notFound();
+  const kitchen = await getPluginEntitlement(store.id, "kitchen-management");
+  const kitchenInstalled = Boolean(kitchen.allowed && kitchen.installed);
   const data = await getFnbDashboard(slug);
   if (!data) notFound();
-  return <FnbWorkspace slug={slug} data={{ ...data, posCommissionRatePercent: PLATFORM_COMMISSION_PERCENT }} />;
+  return <FnbWorkspace slug={slug} data={{ ...data, posCommissionRatePercent: PLATFORM_COMMISSION_PERCENT }} kitchenInstalled={kitchenInstalled} />;
 }

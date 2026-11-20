@@ -118,13 +118,25 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
   {
     key: "fnb-operations",
     name: "BizNest FnB",
-    description: "The complete restaurant operating system: POS, orders, kitchen display, menu, tables, reservations, recipes, food cost, inventory, procurement, suppliers, customers, waste and reports.",
+    description: "The front of house for restaurants: register (POS) and shifts, orders, menu, reservations, customers and sales reports.",
     category: "Industry",
     icon: "ChefHat",
     price: 0, // set by the super admin (/supaadmin/apps)
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["Restaurant", "Food & Groceries"],
     sortOrder: 65,
+    plans: ["Entrepreneurship", "Business Mogul"],
+  },
+  {
+    key: "kitchen-management",
+    name: "Kitchen Management",
+    description: "The back of house for restaurants: kitchen display with station routing, recipes and food cost, ingredient stock, purchasing, suppliers, waste tracking and stock rotation (FIFO/FEFO).",
+    category: "Industry",
+    icon: "ChefHat",
+    price: 0, // set by the super admin (/supaadmin/apps)
+    billingInterval: "MONTHLY",
+    eligibleBusinessTypes: ["Restaurant", "Food & Groceries"],
+    sortOrder: 67,
     plans: ["Entrepreneurship", "Business Mogul"],
   },
   {

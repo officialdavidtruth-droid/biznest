@@ -19,21 +19,12 @@ function useNow(ms = 30000) {
 }
 function where(o: any) { return `${o.channel === "POS" ? "In person" : label(String(o.channel || "Online"))}${o.fnbOrderType ? ` · ${label(o.fnbOrderType)}` : ""}${o.fnbTableLabel ? ` · ${o.fnbTableLabel}` : ""}`; }
 
-/* ───────────── Overview ───────────── */
-export function OverviewPanel({ slug, data, go }: { slug: string; data: any; go: (id: any) => void }) {
+/* ───────────── Overview (front of house) ───────────── */
+export function OverviewPanel({ slug, data, go, kitchenInstalled }: { slug: string; data: any; go: (id: any) => void; kitchenInstalled: boolean }) {
   const m = data.metrics;
-  const now = useNow(60000);
   const orders: any[] = data.orders;
-  const active = orders.filter((o) => ACTIVE.includes(o.kitchenStatus));
-  const stages: Array<{ id: string; text: string; tone: Tone }> = [{ id: "QUEUED", text: "New", tone: "info" }, { id: "STARTED", text: "Cooking", tone: "warn" }, { id: "READY", text: "Ready", tone: "ok" }, { id: "EXPO", text: "At pass", tone: "ok" }];
   const avg = m.ordersToday > 0 ? m.revenue / m.ordersToday : 0;
-  const alerts: Array<{ tone: Tone; text: string; to: any }> = [];
-  if (m.outOfStock > 0) alerts.push({ tone: "bad", text: `${m.outOfStock} ingredient${m.outOfStock > 1 ? "s" : ""} out of stock`, to: "inventory" });
-  if (m.lowStock > 0) alerts.push({ tone: "warn", text: `${m.lowStock} item${m.lowStock > 1 ? "s" : ""} running low`, to: "inventory" });
-  if (m.expired > 0) alerts.push({ tone: "bad", text: `${m.expired} expired batch${m.expired > 1 ? "es" : ""} to remove`, to: "wastage" });
-  if (m.expiringSoon > 0) alerts.push({ tone: "warn", text: `${m.expiringSoon} batch${m.expiringSoon > 1 ? "es" : ""} expiring within 7 days`, to: "inventory" });
-  if (m.recipeCount === 0) alerts.push({ tone: "info", text: "No recipes yet — add one to see food cost", to: "recipes" });
-  const oldest = active.length ? Math.max(...active.map((o) => minutesAgo(o.createdAt, now))) : 0;
+  const openTickets = orders.filter((o) => ACTIVE.includes(o.kitchenStatus)).length;
   return <Page title="Today" sub={`${data.storeName} · ${date(new Date())}`} action={<button onClick={() => go("pos")} className={btnPrimary}><ShoppingBag className="h-4 w-4" />Open register</button>}>
     <div className="overflow-hidden rounded-3xl p-5 text-white sm:p-6" style={{ background: "linear-gradient(135deg, var(--bn-admin-active-dark), var(--bn-admin-active) 70%, #22c55e)" }}>
       <p className="text-xs font-semibold text-white/80">Sales so far today</p>
@@ -45,25 +36,43 @@ export function OverviewPanel({ slug, data, go }: { slug: string; data: any; go:
       </div>
     </div>
 
-    <Section title="Kitchen right now" hint={active.length ? `Oldest ticket waiting ${oldest} min` : "No open tickets"} right={<button onClick={() => go("kitchen")} className="text-xs font-bold text-[var(--bn-admin-active)]">Open kitchen</button>}>
+    {kitchenInstalled
+      ? <a href={`/store/${slug}/admin/kitchen`} className={`${card} flex items-center gap-3 p-4`}><span style={toneStyle(openTickets ? "warn" : "ok")} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl"><ChefHat className="h-5 w-5" /></span><div className="min-w-0 flex-1"><p className="text-sm font-bold text-[var(--bn-admin-text-strong)]">Kitchen Management</p><p className="text-xs text-[var(--bn-admin-muted)]">{openTickets ? `${openTickets} ticket${openTickets > 1 ? "s" : ""} in the kitchen` : "No open tickets"}</p></div><span className="text-xs font-bold text-[var(--bn-admin-active)]">Open</span></a>
+      : <a href={`/store/${slug}/admin/apps`} className={`${card} flex items-center gap-3 p-4`}><span style={toneStyle("info")} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl"><ChefHat className="h-5 w-5" /></span><div className="min-w-0 flex-1"><p className="text-sm font-bold text-[var(--bn-admin-text-strong)]">Add Kitchen Management</p><p className="text-xs text-[var(--bn-admin-muted)]">Kitchen screen, recipes and food cost, stock, purchasing and waste.</p></div><span className="text-xs font-bold text-[var(--bn-admin-active)]">Get app</span></a>}
+
+    <Section title="Latest orders" right={<button onClick={() => go("orders")} className="text-xs font-bold text-[var(--bn-admin-active)]">See all</button>}>
+      {orders.length === 0 ? <p className="text-sm text-[var(--bn-admin-muted)]">Orders show up here as soon as the first sale is made.</p> : <div className="divide-y divide-[var(--bn-admin-border-soft)]">{orders.slice(0, 5).map((o) => <div key={o.id} className="flex items-center gap-3 py-2.5"><Avatar name={o.items?.[0] ? itemName(o.items[0]) : "O"} tone={statusTone(o.kitchenStatus)} /><div className="min-w-0 flex-1"><p className="truncate text-[13px] font-bold text-[var(--bn-admin-text-strong)]">{orderRef(o)} · {o.items.length} item{o.items.length === 1 ? "" : "s"}</p><p className="truncate text-[11px] text-[var(--bn-admin-muted)]">{where(o)} · {time(o.createdAt)}</p></div><div className="text-right"><p className="text-[13px] font-extrabold text-[var(--bn-admin-text-strong)]">{money(o.total)}</p>{kitchenInstalled && <Chip tone={statusTone(o.kitchenStatus)}>{label(o.kitchenStatus)}</Chip>}</div></div>)}</div>}
+    </Section>
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{[["Catalog", "products"], ["Staff", "staff"], ["Bookings", "bookings"]].map(([t, p]) => <Link key={p} href={`/store/${slug}/admin/${p}`} className={`${btnGhost} justify-center`}>{t}</Link>)}</div>
+  </Page>;
+}
+
+/* ───────────── Overview (kitchen management) ───────────── */
+export function KitchenOverviewPanel({ data, go }: { data: any; go: (id: any) => void }) {
+  const m = data.metrics;
+  const now = useNow(60000);
+  const active: any[] = data.orders.filter((o: any) => ACTIVE.includes(o.kitchenStatus));
+  const stages: Array<{ id: string; text: string; tone: Tone }> = [{ id: "QUEUED", text: "New", tone: "info" }, { id: "STARTED", text: "Cooking", tone: "warn" }, { id: "READY", text: "Ready", tone: "ok" }, { id: "EXPO", text: "At pass", tone: "ok" }];
+  const alerts: Array<{ tone: Tone; text: string; to: any }> = [];
+  if (m.outOfStock > 0) alerts.push({ tone: "bad", text: `${m.outOfStock} ingredient${m.outOfStock > 1 ? "s" : ""} out of stock`, to: "inventory" });
+  if (m.lowStock > 0) alerts.push({ tone: "warn", text: `${m.lowStock} item${m.lowStock > 1 ? "s" : ""} running low`, to: "inventory" });
+  if (m.expired > 0) alerts.push({ tone: "bad", text: `${m.expired} expired batch${m.expired > 1 ? "es" : ""} to remove`, to: "wastage" });
+  if (m.expiringSoon > 0) alerts.push({ tone: "warn", text: `${m.expiringSoon} batch${m.expiringSoon > 1 ? "es" : ""} expiring within 7 days`, to: "inventory" });
+  if (m.recipeCount === 0) alerts.push({ tone: "info", text: "No recipes yet — add one to see food cost", to: "recipes" });
+  const oldest = active.length ? Math.max(...active.map((o) => minutesAgo(o.createdAt, now))) : 0;
+  return <Page title="Kitchen today" sub={`${data.storeName} · ${date(new Date())}`} action={<button onClick={() => go("kitchen")} className={btnPrimary}><ChefHat className="h-4 w-4" />Open tickets</button>}>
+    <Section title="Kitchen right now" hint={active.length ? `Oldest ticket waiting ${oldest} min` : "No open tickets"}>
       <div className="grid grid-cols-4 gap-2">{stages.map((s) => { const n = active.filter((o) => o.kitchenStatus === s.id).length; return <button key={s.id} onClick={() => go("kitchen")} style={n ? toneStyle(s.tone) : undefined} className={`rounded-xl px-2 py-3 text-center ${n ? "" : "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-muted)]"}`}><p className="text-xl font-extrabold leading-none">{n}</p><p className="mt-1 text-[11px] font-bold">{s.text}</p></button>; })}</div>
     </Section>
-
     <Section title="Needs attention">
       {alerts.length === 0 ? <div className="flex items-center gap-2 text-sm text-[var(--bn-admin-muted)]"><CheckCircle2 className="h-4 w-4 text-[var(--bn-admin-active)]" />Stock and kitchen look healthy.</div> : <div className="space-y-2">{alerts.map((a, i) => <button key={i} onClick={() => go(a.to)} className="flex w-full items-center gap-3 rounded-xl bg-[var(--bn-admin-surface-2)] px-3 py-3 text-left"><span style={toneStyle(a.tone)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg"><AlertTriangle className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-[13px] font-semibold text-[var(--bn-admin-text)]">{a.text}</span><span className="text-xs font-bold text-[var(--bn-admin-muted)]">View</span></button>)}</div>}
     </Section>
-
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <Stat icon={Boxes} label="Stock value" value={money(m.stockValue)} sub={`${m.lowStock} low · ${m.outOfStock} out`} tone="info" />
       <Stat icon={ChefHat} label="Recipes" value={m.recipeCount} sub="Costed dishes" />
       <Stat icon={DollarSign} label="Waste logged" value={m.wasteUnits} sub="Units to date" tone="warn" />
-      <Stat icon={CalendarDays} label="Reservations" value={m.reservationsToday} sub="Today" tone="info" />
+      <Stat icon={PackageCheck} label="Open tickets" value={active.length} sub="In the kitchen" tone="warn" />
     </div>
-
-    <Section title="Latest orders" right={<button onClick={() => go("orders")} className="text-xs font-bold text-[var(--bn-admin-active)]">See all</button>}>
-      {orders.length === 0 ? <p className="text-sm text-[var(--bn-admin-muted)]">Orders show up here as soon as the first sale is made.</p> : <div className="divide-y divide-[var(--bn-admin-border-soft)]">{orders.slice(0, 4).map((o) => <div key={o.id} className="flex items-center gap-3 py-2.5"><Avatar name={o.items?.[0] ? itemName(o.items[0]) : "O"} tone={statusTone(o.kitchenStatus)} /><div className="min-w-0 flex-1"><p className="truncate text-[13px] font-bold text-[var(--bn-admin-text-strong)]">{orderRef(o)} · {o.items.length} item{o.items.length === 1 ? "" : "s"}</p><p className="truncate text-[11px] text-[var(--bn-admin-muted)]">{where(o)} · {time(o.createdAt)}</p></div><div className="text-right"><p className="text-[13px] font-extrabold text-[var(--bn-admin-text-strong)]">{money(o.total)}</p><Chip tone={statusTone(o.kitchenStatus)}>{label(o.kitchenStatus)}</Chip></div></div>)}</div>}
-    </Section>
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[["Inventory", "inventory"], ["Purchase orders", "purchase-orders"], ["Staff", "staff"], ["Catalog", "products"]].map(([t, p]) => <Link key={p} href={`/store/${slug}/admin/${p}`} className={`${btnGhost} justify-center`}>{t}</Link>)}</div>
   </Page>;
 }
 

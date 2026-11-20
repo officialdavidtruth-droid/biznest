@@ -189,8 +189,13 @@ export const PAGE_GUIDES: Record<string, PageGuide> = {
   ]),
   "/apps/fnb-operations": g("FnB Operations", "Run your restaurant service.", [
     s("Set up your menu", "Add dishes with prices so they can be ordered."),
-    s("Run service", "Orders go to the kitchen screen and move through preparing to ready."),
-    s("Review the day", "See what sold and how fast the kitchen worked."),
+    s("Run service", "Ring up sales at the register and track orders and reservations."),
+    s("Review the day", "See what sold and how much each order was worth."),
+  ]),
+  "/apps/kitchen-management": g("Kitchen Management", "Run the back of house.", [
+    s("Build recipes", "Add what goes into each dish to see its food cost and margin."),
+    s("Work the tickets", "Orders show on the kitchen screen and move from new to served."),
+    s("Control stock", "Track ingredients, purchasing, suppliers and waste."),
   ]),
   "/apps/pms": g("BizNest PMS", "Property management for hotels and lodging.", [
     s("Set up rooms", "Add your room types, rates and numbers."),

@@ -28,7 +28,7 @@ function dishCost(p: any, inventory: any[]): number | null {
 function marginTone(pct: number): Tone { return pct >= 65 ? "ok" : pct >= 50 ? "warn" : "bad"; }
 
 /* ───────────── Menu ───────────── */
-export function MenuPanel({ slug, products, inventory, role, go }: { slug: string; products: any[]; inventory: any[]; role: string; go: (id: any, dishId?: string) => void }) {
+export function MenuPanel({ slug, products, inventory, role, kitchenInstalled, kitchenHref }: { slug: string; products: any[]; inventory: any[]; role: string; kitchenInstalled: boolean; kitchenHref: string }) {
   const canEdit = role !== "STAFF";
   const router = useRouter();
   const [adding, setAdding] = useState(false);
@@ -37,9 +37,9 @@ export function MenuPanel({ slug, products, inventory, role, go }: { slug: strin
   const addDish = () => start(async () => {
     const r = await createFnbDish(slug, { name: d.name, price: Number(d.price), description: d.description, station: d.station, quantity: d.quantity ? Number(d.quantity) : 0 });
     if (!r.success) { toast.error(r.error); return; }
-    toast.success(`${r.data.name} added — now build its recipe`);
     setD({ name: "", price: "", description: "", station: "Hot Kitchen", quantity: "" }); setAdding(false);
-    router.refresh(); go("recipes", r.data.productId);
+    if (kitchenInstalled) { toast.success(`${r.data.name} added — now build its recipe`); window.location.assign(`${kitchenHref}?dish=${r.data.productId}#recipes`); return; }
+    toast.success(`${r.data.name} added to your menu`); router.refresh();
   });
   const [q, setQ] = useState("");
   const [st, setSt] = useState("All");
@@ -48,21 +48,21 @@ export function MenuPanel({ slug, products, inventory, role, go }: { slug: strin
   const usedStations = ["All", ...STATIONS.filter((s) => dishes.some((p) => (attrsOf(p).fnbStation || "Hot Kitchen") === s))];
   const saveStation = (productId: string, station: string) => { void (async () => { const r = await saveFnbStation(slug, productId, station); if (!r.success) toast.error(r.error); else toast.success("Kitchen station updated"); })(); };
   return <Page title="Menu" sub="Your dishes and where each one is cooked. Prices live in the catalog." action={canEdit ? <button onClick={() => setAdding((v) => !v)} className={btnPrimary}><Plus className="h-4 w-4" />{adding ? "Cancel" : "Add dish"}</button> : undefined}>
-    {adding && <Section title="New dish" hint="Add it here, then you'll go straight to its recipe.">
+    {adding && <Section title="New dish" hint={kitchenInstalled ? "Add it here, then you'll go straight to its recipe." : "Add it here and it goes on your menu."}>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Dish name"><input className={input} placeholder="e.g. Jollof rice & chicken" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></Field>
         <Field label="Price guests pay"><input className={input} type="number" inputMode="decimal" min="0" step="any" placeholder="e.g. 4500" value={d.price} onChange={(e) => setD({ ...d, price: e.target.value })} /></Field>
         <div className="sm:col-span-2"><Field label="Short description (optional)"><input className={input} maxLength={255} placeholder="What guests see on your menu" value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} /></Field></div>
         <Field label="Cooked at"><select className={input} value={d.station} onChange={(e) => setD({ ...d, station: e.target.value })}>{STATIONS.map((s) => <option key={s}>{s}</option>)}</select></Field>
-        <Field label="Portions ready (optional)" hint="Skip this if you'll add a recipe. Dishes with a recipe use ingredient stock."><input className={input} type="number" inputMode="numeric" min="0" value={d.quantity} onChange={(e) => setD({ ...d, quantity: e.target.value })} /></Field>
+        <Field label="Portions ready (optional)" hint={kitchenInstalled ? "Skip this if you'll add a recipe. Dishes with a recipe use ingredient stock." : "How many you can serve right now. Leave empty if unlimited is not needed."}><input className={input} type="number" inputMode="numeric" min="0" value={d.quantity} onChange={(e) => setD({ ...d, quantity: e.target.value })} /></Field>
       </div>
-      <button disabled={busy} onClick={addDish} className={`${btnPrimary} mt-4 w-full`}>{busy ? "Adding…" : "Add dish & build recipe"}</button>
+      <button disabled={busy} onClick={addDish} className={`${btnPrimary} mt-4 w-full`}>{busy ? "Adding…" : kitchenInstalled ? "Add dish & build recipe" : "Add dish"}</button>
     </Section>}
     <div className="relative"><Search className="pointer-events-none absolute left-3.5 top-3.5 h-4 w-4 text-[var(--bn-admin-muted)]" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search dishes" className={`${input} pl-10`} /></div>
     {usedStations.length > 2 && <Segmented scroll value={st} onChange={setSt} options={usedStations.map((s) => ({ id: s, label: s }))} />}
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{list.map((p) => {
       const a = attrsOf(p); const station = typeof a.fnbStation === "string" ? a.fnbStation : "Hot Kitchen";
-      const cost = dishCost(p, inventory); const pct = cost != null && p.price > 0 ? Math.round(((p.price - cost) / p.price) * 100) : null;
+      const cost = kitchenInstalled ? dishCost(p, inventory) : null; const pct = cost != null && p.price > 0 ? Math.round(((p.price - cost) / p.price) * 100) : null;
       return <div key={p.id} className={`${card} p-4`}>
         <div className="flex items-start gap-3">
           <Avatar name={p.name} />
@@ -70,7 +70,7 @@ export function MenuPanel({ slug, products, inventory, role, go }: { slug: strin
           <Chip tone={p.isPublished ? "ok" : "mute"} dot>{p.isPublished ? "On menu" : "Hidden"}</Chip>
         </div>
         <div className="mt-3 flex items-center gap-2">
-          {pct != null ? <Chip tone={marginTone(pct)}>{pct}% margin</Chip> : <button onClick={() => go("recipes")} className="rounded-full bg-[var(--bn-admin-surface-2)] px-2.5 py-1 text-[11px] font-bold text-[var(--bn-admin-muted)]">No recipe yet · add</button>}
+          {pct != null ? <Chip tone={marginTone(pct)}>{pct}% margin</Chip> : kitchenInstalled ? <a href={`${kitchenHref}?dish=${p.id}#recipes`} className="rounded-full bg-[var(--bn-admin-surface-2)] px-2.5 py-1 text-[11px] font-bold text-[var(--bn-admin-muted)]">No recipe yet · add</a> : <span />}
           <select disabled={!canEdit} defaultValue={station} onChange={(e) => saveStation(p.id, e.target.value)} aria-label={`Kitchen station for ${p.name}`} className="ml-auto min-h-9 rounded-lg border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface)] px-2 text-xs font-semibold text-[var(--bn-admin-text)] disabled:opacity-60">{STATIONS.map((s) => <option key={s}>{s}</option>)}</select>
         </div>
       </div>; })}

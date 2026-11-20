@@ -15,15 +15,15 @@ const PLUGIN_GATED: Record<string, string> = {
   hr: "hr-payroll",
   "fnb:pos": "fnb-operations",
   "fnb:orders": "fnb-operations",
-  "fnb:kitchen": "fnb-operations",
+  "fnb:kitchen": "kitchen-management",
   "fnb:menu": "fnb-operations",
-  "fnb:inventory": "fnb-operations",
-  "fnb:recipes": "fnb-operations",
-  "fnb:procurement": "fnb-operations",
-  "fnb:suppliers": "fnb-operations",
+  "fnb:inventory": "kitchen-management",
+  "fnb:recipes": "kitchen-management",
+  "fnb:procurement": "kitchen-management",
+  "fnb:suppliers": "kitchen-management",
   "fnb:customers": "fnb-operations",
   "fnb:reports": "fnb-operations",
-  "fnb:settings": "fnb-operations",
+  "fnb:settings": "kitchen-management",
 };
 
 export type AvailableStaffPermission = { id: string; label: string };

@@ -143,7 +143,7 @@ export function buildNavGroups(business: NavBusiness): Array<{
 
   const installedAppItems: NavItem[] = (business.installedApps ?? [])
     .filter((app) => app.key !== "pms" && app.key !== "blog")
-    .map((app) => ({ label: app.name, href: app.key === "fnb-operations" ? "/fnb" : app.key === "travel-agency" ? "/travel" : app.key === "blog" ? "/blog" : `/apps/${app.key}`, icon: Puzzle, permission: `plugin:${app.key}` as StaffPermissionId }));
+    .map((app) => ({ label: app.name, href: app.key === "fnb-operations" ? "/fnb" : app.key === "kitchen-management" ? "/kitchen" : app.key === "travel-agency" ? "/travel" : app.key === "blog" ? "/blog" : `/apps/${app.key}`, icon: Puzzle, permission: `plugin:${app.key}` as StaffPermissionId }));
 
   return [
     {
@@ -295,7 +295,7 @@ export function buildBottomTabItems(
   // Last-resort filler: never Dashboard, never the app store screens, and never the
   // PMS / F&B shells (those need a full page load, which a tab <Link> doesn't do).
   const rest = items.filter(
-    (i) => !preferred.includes(i) && i.href !== "" && !i.href.startsWith("/apps") && i.href !== "/pms" && i.href !== "/fnb"
+    (i) => !preferred.includes(i) && i.href !== "" && !i.href.startsWith("/apps") && i.href !== "/pms" && i.href !== "/fnb" && i.href !== "/kitchen"
   );
   const tabs = preferred.concat(rest).slice(0, 4);
   // A heavily restricted staff account can end up with almost nothing left. Dashboard is

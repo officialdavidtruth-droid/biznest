@@ -21,14 +21,17 @@ import type { StaffPermissionId } from "@/lib/access/staff-permissions";
 // and EXPO are mirrored to DELIVERED on Order.status, so it must be included.
 const KITCHEN_WORKABLE_ORDER_STATUSES: OrderStatus[] = ["PAID", "IN_PROGRESS", "DELIVERED"];
 
-async function access(slug: string, modulePermission?: StaffPermissionId) {
-  const a = await assertStorePermission(slug, "plugin:fnb-operations");
+type FnbPlugin = "fnb-operations" | "kitchen-management";
+const PLUGIN_LABEL: Record<FnbPlugin, string> = { "fnb-operations": "BizNest FnB", "kitchen-management": "Kitchen Management" };
+
+async function access(slug: string, modulePermission?: StaffPermissionId, pluginKey: FnbPlugin = "fnb-operations") {
+  const a = await assertStorePermission(slug, `plugin:${pluginKey}`);
   if (!a.success) return a;
-  const fnbEntitlement = await getPluginEntitlement(a.store.id, "fnb-operations");
+  const fnbEntitlement = await getPluginEntitlement(a.store.id, pluginKey);
   if (!fnbEntitlement.allowed) return { success: false as const, error: fnbEntitlement.reason };
-  if (!fnbEntitlement.installed) return { success: false as const, error: "Install BizNest FnB from Apps to use this workspace." };
+  if (!fnbEntitlement.installed) return { success: false as const, error: `Install ${PLUGIN_LABEL[pluginKey]} from Apps to use this workspace.` };
   if (!["Restaurant", "Food & Groceries"].includes(getCanonicalBusinessType({ businessCategory: a.store.business?.category, storeBusinessType: a.store.businessType }))) {
-    return { success: false as const, error: "BizNest FnB is available to restaurant and food/grocery businesses." };
+    return { success: false as const, error: `${PLUGIN_LABEL[pluginKey]} is available to restaurant and food/grocery businesses.` };
   }
   // Existing staff who were granted the app-level entitlement keep full FnB
   // access. Once any granular fnb:* permission is configured, staff are
@@ -52,8 +55,11 @@ async function access(slug: string, modulePermission?: StaffPermissionId) {
   return { ...a, fnbModules };
 }
 
-export async function getFnbDashboard(slug: string) {
-  const a = await access(slug);
+export async function getFnbDashboard(slug: string) { return buildDashboard(slug, "fnb-operations"); }
+export async function getKitchenDashboard(slug: string) { return buildDashboard(slug, "kitchen-management"); }
+
+async function buildDashboard(slug: string, pluginKey: FnbPlugin) {
+  const a = await access(slug, undefined, pluginKey);
   if (!a.success) return null;
   const storeId = a.store.id;
   // "Today" is the store's local day, not the server's.
@@ -150,7 +156,7 @@ export async function advanceFnbOrderStatus(
   orderId: string,
   kitchenStatus: "STARTED" | "READY" | "EXPO" | "SERVED"
 ): Promise<ActionResult> {
-  const a = await access(slug, "fnb:kitchen");
+  const a = await access(slug, "fnb:kitchen", "kitchen-management");
   if (!a.success) return { success: false, error: a.error };
   const order = await prisma.order.findFirst({
     where: { id: orderId, storeId: a.store.id },
@@ -235,7 +241,7 @@ export async function endFnbShift(slug: string): Promise<ActionResult<{ id: stri
 }
 
 export async function setFnbRotationMode(slug: string, mode: FnbRotationMode): Promise<ActionResult> {
-  const a = await access(slug, "fnb:settings");
+  const a = await access(slug, "fnb:settings", "kitchen-management");
   if (!a.success) return { success: false, error: a.error };
   if (a.role === "STAFF") return { success: false, error: "Only the store owner or manager can change stock rotation." };
   const current = a.store.enabledModules && typeof a.store.enabledModules === "object" && !Array.isArray(a.store.enabledModules) ? a.store.enabledModules as Record<string, unknown> : {};
@@ -245,7 +251,7 @@ export async function setFnbRotationMode(slug: string, mode: FnbRotationMode): P
 }
 
 export async function saveFnbRecipe(slug: string, productId: string, recipe: { yieldQty: number; ingredients: Array<{ inventoryItemId: string; quantity: number; unit: string }> }): Promise<ActionResult> {
-  const a = await access(slug, "fnb:recipes");
+  const a = await access(slug, "fnb:recipes", "kitchen-management");
   if (!a.success) return { success: false, error: a.error };
   if (a.role === "STAFF") return { success: false, error: "Only the store owner or manager can edit recipes and food cost." };
   if (!Number.isFinite(recipe.yieldQty) || recipe.yieldQty <= 0) return { success: false, error: "Recipe yield must be greater than zero." };
@@ -293,7 +299,7 @@ export async function saveFnbStation(slug: string, productId: string, station: s
 }
 
 export async function recordFnbWaste(slug: string, inventoryItemId: string, quantity: number, reason: string): Promise<ActionResult<{ quantity: number }>> {
-  const a = await access(slug, "fnb:inventory");
+  const a = await access(slug, "fnb:inventory", "kitchen-management");
   if (!a.success) return { success: false, error: a.error };
   if (!Number.isInteger(quantity) || quantity <= 0) return { success: false, error: "Waste quantity must be a positive whole number." };
   const cleanReason = reason.trim().slice(0, 240);
@@ -325,7 +331,7 @@ export async function recordFnbWaste(slug: string, inventoryItemId: string, quan
  * It is never published, so guests don't see it on the menu.
  */
 export async function createFnbIngredient(slug: string, input: { name: string; unit: string; quantity: number; costPerUnit: number }): Promise<ActionResult<{ inventoryItemId: string; name: string }>> {
-  const a = await access(slug, "fnb:inventory");
+  const a = await access(slug, "fnb:inventory", "kitchen-management");
   if (!a.success) return { success: false, error: a.error };
   if (a.role === "STAFF") return { success: false, error: "Only the store owner or manager can add ingredients." };
   const name = input.name.trim();
