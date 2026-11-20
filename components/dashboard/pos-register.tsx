@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Search, ScanBarcode, Minus, Plus, Trash2, X, ShoppingBag, Banknote, CreditCard, ArrowLeftRight, UserRound, ChevronDown, Receipt, Loader2, PackageX, WifiOff } from "lucide-react";
+import { Search, ArrowLeft, ScanBarcode, Minus, Plus, Trash2, X, ShoppingBag, Banknote, CreditCard, ArrowLeftRight, UserRound, ChevronDown, Receipt, Loader2, PackageX, WifiOff } from "lucide-react";
 import { createPosSale, lookupPosBarcode, searchPosCustomers, type PosCatalogItem, type PosCustomerMatch } from "@/lib/actions/pos";
 import { posTenderTypes } from "@/lib/validations/pos";
 import type { InHouseReservation } from "@/lib/actions/folio";
@@ -56,6 +56,8 @@ export function PosRegister({
   const [query, setQuery] = useState("");
   const [barcode, setBarcode] = useState("");
   const [kindFilter, setKindFilter] = useState<"all" | "product" | "service">("all");
+  // null = show the category tiles first; a name = show only that category's items.
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [customerOpen, setCustomerOpen] = useState(false);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   const [pickingVariantsFor, setPickingVariantsFor] = useState<string | null>(null);
@@ -168,7 +170,27 @@ export function PosRegister({
     );
   }, [catalog, query]);
 
-  const visible = useMemo(() => (kindFilter === "all" ? filtered : filtered.filter((item) => item.kind === kindFilter)), [filtered, kindFilter]);
+  const byKind = useMemo(() => (kindFilter === "all" ? filtered : filtered.filter((item) => item.kind === kindFilter)), [filtered, kindFilter]);
+
+  const UNCATEGORISED = "Other items";
+  const categoryTiles = useMemo(() => {
+    const map = new Map<string, { name: string; count: number; image: string | null }>();
+    for (const item of catalog) {
+      const name = item.category ?? UNCATEGORISED;
+      const cur = map.get(name) ?? { name, count: 0, image: null };
+      cur.count += 1;
+      if (!cur.image && item.image) cur.image = item.image;
+      map.set(name, cur);
+    }
+    return [...map.values()].sort((a, b) => (a.name === UNCATEGORISED ? 1 : b.name === UNCATEGORISED ? -1 : a.name.localeCompare(b.name)));
+  }, [catalog]);
+
+  // Tiles first when the store has categories; searching or picking one jumps straight to items.
+  const showCategoryTiles = categoryTiles.length > 1 && activeCategory === null && !query.trim() && kindFilter === "all";
+  const visible = useMemo(
+    () => (activeCategory === null ? byKind : byKind.filter((item) => (item.category ?? UNCATEGORISED) === activeCategory)),
+    [byKind, activeCategory]
+  );
 
   function addLine(line: CartLine) {
     setCart((prev) => {
@@ -495,7 +517,39 @@ export function PosRegister({
           </div>
         </div>
 
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-3">
+        {showCategoryTiles && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
+            {categoryTiles.map((c) => (
+              <button
+                key={c.name}
+                type="button"
+                onClick={() => setActiveCategory(c.name)}
+                className={`flex flex-col overflow-hidden rounded-2xl border bg-background text-left shadow-sm transition hover:border-[var(--bn-admin-orange)] active:scale-[0.98] ${ring}`}
+              >
+                <span className="grid h-24 w-full place-items-center bg-muted">
+                  {c.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={c.image} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-2xl font-bold text-muted-foreground">{c.name.slice(0, 1).toUpperCase()}</span>
+                  )}
+                </span>
+                <span className="px-3 py-2.5">
+                  <span className="block truncate text-[15px] font-semibold">{c.name}</span>
+                  <span className="text-xs text-muted-foreground">{c.count} {c.count === 1 ? "item" : "items"}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!showCategoryTiles && activeCategory !== null && (
+          <button type="button" onClick={() => setActiveCategory(null)} className={`inline-flex items-center gap-1.5 rounded-full border bg-background px-3.5 py-2 text-sm font-medium ${ring}`}>
+            <ArrowLeft className="h-4 w-4" /> All categories <span className="text-muted-foreground">/ {activeCategory}</span>
+          </button>
+        )}
+
+        <div className={`grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-3 ${showCategoryTiles ? "hidden" : ""}`}>
           {visible.map((item) => {
             const outOfStock = !item.hasVariants && item.quantity !== null && item.quantity <= 0;
             const lowStock = !item.hasVariants && item.quantity !== null && item.quantity > 0 && item.quantity <= 5;

@@ -69,6 +69,8 @@ export type PosCatalogItem = {
   id: string;
   name: string;
   image: string | null;
+  /** Primary category name, null when uncategorised. */
+  category: string | null;
   price: number; // base price; ignored client-side once a variant is picked
   currency: string;
   sku: string | null;
@@ -96,11 +98,12 @@ export async function getPosCatalog(slug: string): Promise<PosCatalogItem[]> {
   const [products, services] = await Promise.all([
     prisma.product.findMany({
       where: { storeId: access.store.id, type: "PHYSICAL", archivedAt: null },
-      include: { inventory: true, variants: { where: { isActive: true } } },
+      include: { inventory: true, category: { select: { name: true } }, variants: { where: { isActive: true } } },
       orderBy: { name: "asc" },
     }),
     prisma.service.findMany({
       where: { storeId: access.store.id },
+      include: { category: { select: { name: true } } },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -112,6 +115,7 @@ export async function getPosCatalog(slug: string): Promise<PosCatalogItem[]> {
     id: p.id,
     name: p.name,
     image: p.images[0] ?? null,
+    category: p.category?.name ?? null,
     price: Number(p.price),
     currency: p.currency,
     sku: p.inventory?.sku ?? null,
@@ -133,6 +137,7 @@ export async function getPosCatalog(slug: string): Promise<PosCatalogItem[]> {
     id: s.id,
     name: s.name,
     image: s.images[0] ?? null,
+    category: s.category?.name ?? null,
     price: Number(s.price),
     currency: s.currency,
     sku: null,

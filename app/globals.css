@@ -1729,3 +1729,31 @@ html.bn-admin-dark .bn-admin-app .border-emerald-200,
 html.bn-admin-dark .bn-admin-app .border-green-200,
 html.bn-admin-dark .bn-admin-app .border-sky-200,
 html.bn-admin-dark .bn-admin-app .border-rose-200 { border-color: rgba(148,163,184,.3) !important; }
+/* dark mode: readable accent text (dark greens/ambers on dark backgrounds were too dim) */
+html.bn-admin-dark { --bn-admin-orange: #4ade80; --bn-admin-orange-dark: #86efac; --bn-admin-danger: #f87171; }
+html.bn-admin-dark .bn-admin-app .text-emerald-600,
+html.bn-admin-dark .bn-admin-app .text-emerald-700,
+html.bn-admin-dark .bn-admin-app .text-emerald-800,
+html.bn-admin-dark .bn-admin-app .text-emerald-900,
+html.bn-admin-dark .bn-admin-app .text-emerald-950,
+html.bn-admin-dark .bn-admin-app .text-green-600,
+html.bn-admin-dark .bn-admin-app .text-green-700,
+html.bn-admin-dark .bn-admin-app .text-green-800,
+html.bn-admin-dark .bn-admin-app .text-\[\#0f6410\],
+html.bn-admin-dark .bn-admin-app .text-\[\#14301A\] { color: #6ee7a0 !important; }
+html.bn-admin-dark .bn-admin-app .text-amber-600,
+html.bn-admin-dark .bn-admin-app .text-amber-700,
+html.bn-admin-dark .bn-admin-app .text-amber-800,
+html.bn-admin-dark .bn-admin-app .text-amber-900,
+html.bn-admin-dark .bn-admin-app .text-orange-600,
+html.bn-admin-dark .bn-admin-app .text-orange-700 { color: #fbbf24 !important; }
+html.bn-admin-dark .bn-admin-app .text-red-500,
+html.bn-admin-dark .bn-admin-app .text-red-800,
+html.bn-admin-dark .bn-admin-app .text-rose-600 { color: #fca5a5 !important; }
+html.bn-admin-dark .bn-admin-app .text-sky-600,
+html.bn-admin-dark .bn-admin-app .text-blue-600 { color: #7dd3fc !important; }
+html.bn-admin-dark .bn-admin-app .text-violet-600 { color: #c4b5fd !important; }
+html.bn-admin-dark .bn-admin-app [class*="text-[var(--bn-admin-orange)]"],
+html.bn-admin-dark .bn-admin-app .text-primary { color: #4ade80 !important; }
+html.bn-admin-dark .bn-admin-app .bg-emerald-600,
+html.bn-admin-dark .bn-admin-app .bg-emerald-700 { background: #15803d !important; color: #fff !important; }
