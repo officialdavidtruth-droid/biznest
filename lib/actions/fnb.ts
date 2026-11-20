@@ -72,7 +72,7 @@ export async function getFnbDashboard(slug: string) {
     prisma.order.aggregate({ where: todayOrderWhere, _count: { _all: true }, _sum: { total: true } }),
     prisma.booking.findMany({ where: { storeId, scheduledAt: { gte: start, lt: end }, status: { notIn: ["CANCELLED"] } }, orderBy: { scheduledAt: "asc" }, take: 50, select: { id: true, scheduledAt: true, status: true, guestName: true, partySize: true } }),
     prisma.product.findMany({ where: { storeId, type: "PHYSICAL" }, select: { id: true, name: true, price: true, currency: true, images: true, attributes: true, isPublished: true, inventory: { select: { id: true, quantity: true, lowStockThreshold: true, costPrice: true } } }, orderBy: { name: "asc" }, take: 300 }),
-    prisma.inventoryItem.findMany({ where: { storeId }, select: { id: true, productId: true, quantity: true, lowStockThreshold: true, costPrice: true, product: { select: { name: true, price: true, currency: true, isPublished: true } } }, orderBy: { product: { name: "asc" } } }),
+    prisma.inventoryItem.findMany({ where: { storeId }, select: { id: true, productId: true, quantity: true, lowStockThreshold: true, costPrice: true, product: { select: { name: true, price: true, currency: true, isPublished: true, attributes: true } } }, orderBy: { product: { name: "asc" } } }),
     prisma.inventoryBatch.findMany({ where: { storeId, quantityRemaining: { gt: 0 } }, orderBy: [{ receivedAt: "asc" }, { id: "asc" }], take: 300, select: { id: true, batchNumber: true, quantityReceived: true, quantityRemaining: true, unitCost: true, receivedAt: true, expiryDate: true, inventoryItem: { select: { id: true, product: { select: { name: true } } } }, variant: { select: { label: true, product: { select: { name: true } } } } } }),
     prisma.purchaseOrder.findMany({ where: { storeId }, orderBy: { createdAt: "desc" }, take: 30, select: { id: true, poNumber: true, status: true, subtotal: true, currency: true, supplier: { select: { name: true } }, items: { select: { quantityOrdered: true, quantityReceived: true } } } }),
     prisma.supplier.findMany({ where: { storeId, isArchived: false }, orderBy: { name: "asc" }, take: 200, select: { id: true, name: true, contactName: true, phone: true, email: true } }),
@@ -113,9 +113,11 @@ export async function getFnbDashboard(slug: string) {
   const revenue = Number(todayTotals._sum.total ?? 0);
   const activeOrders = orders.filter((o) => ["QUEUED", "STARTED", "READY", "EXPO"].includes(o.kitchenStatus)).length;
   const completedOrders = orders.filter((o) => ["SERVED"].includes(o.kitchenStatus)).length;
+  // A dish with a recipe draws on its ingredients, so its own stock count (usually 0) is not real stock.
+  const stocked = inventory.filter((i) => !extractFnbRecipe(i.product.attributes));
   const stockValue = inventory.reduce((sum, i) => sum + (i.costPrice == null ? 0 : Number(i.costPrice) * i.quantity), 0);
-  const lowStock = inventory.filter((i) => i.quantity > 0 && i.quantity <= i.lowStockThreshold).length;
-  const outOfStock = inventory.filter((i) => i.quantity === 0).length;
+  const lowStock = stocked.filter((i) => i.quantity > 0 && i.quantity <= i.lowStockThreshold).length;
+  const outOfStock = stocked.filter((i) => i.quantity === 0).length;
   const expiringSoon = batches.filter((b) => b.expiryDate && b.expiryDate >= now && b.expiryDate <= seven).length;
   const expired = batches.filter((b) => b.expiryDate && b.expiryDate < now).length;
   const batchValue = batches.reduce((sum, b) => sum + (b.unitCost == null ? 0 : Number(b.unitCost) * b.quantityRemaining), 0);
@@ -131,7 +133,7 @@ export async function getFnbDashboard(slug: string) {
     orders: orders.map((o) => ({ ...o, total: Number(o.total), items: o.items.map((i) => ({ ...i, fnbStation: i.fnbStation || (i.variant?.product?.attributes && typeof i.variant.product.attributes === "object" && !Array.isArray(i.variant.product.attributes) && typeof (i.variant.product.attributes as Record<string, unknown>).fnbStation === "string" ? String((i.variant.product.attributes as Record<string, unknown>).fnbStation) : i.product?.attributes && typeof i.product.attributes === "object" && !Array.isArray(i.product.attributes) && typeof (i.product.attributes as Record<string, unknown>).fnbStation === "string" ? String((i.product.attributes as Record<string, unknown>).fnbStation) : "Hot Kitchen") })) })),
     reservations,
     products: products.map((p) => ({ ...p, price: Number(p.price), inventory: p.inventory ? { ...p.inventory, costPrice: p.inventory.costPrice == null ? null : Number(p.inventory.costPrice) } : null })),
-    inventory: inventory.map((i) => ({ ...i, costPrice: i.costPrice == null ? null : Number(i.costPrice), product: { ...i.product, price: Number(i.product.price) } })),
+    inventory: inventory.map((i) => ({ ...i, isDish: !stocked.includes(i), costPrice: i.costPrice == null ? null : Number(i.costPrice), product: { ...i.product, price: Number(i.product.price) } })),
     batches: batches.map((b) => ({ ...b, unitCost: b.unitCost == null ? null : Number(b.unitCost) })),
     purchaseOrders: purchaseOrders.map((po) => ({ ...po, subtotal: Number(po.subtotal) })),
     suppliers,
@@ -262,8 +264,10 @@ export async function saveFnbRecipe(slug: string, productId: string, recipe: { y
   const current = product.attributes && typeof product.attributes === "object" && !Array.isArray(product.attributes) ? product.attributes as Record<string, unknown> : {};
   await prisma.product.update({ where: { id: product.id }, data: { attributes: { ...current, fnbRecipe: { yieldQty: recipe.yieldQty, ingredients: clean } } } });
   // Hidden (unpublished) items used in a recipe are kitchen ingredients: keep them off the POS register.
-  const hidden = await prisma.product.findMany({ where: { storeId: a.store.id, isPublished: false, inventory: { id: { in: ids } } }, select: { id: true, attributes: true } });
+  const hidden = await prisma.product.findMany({ where: { storeId: a.store.id, isPublished: false, inventory: { id: { in: ids } } }, select: { id: true, price: true, attributes: true } });
   for (const h of hidden) {
+    // An ingredient added through the menu form carries its unit cost as the price; use it as the stock cost too.
+    await prisma.inventoryItem.updateMany({ where: { productId: h.id, costPrice: null }, data: { costPrice: h.price } });
     const attrs = h.attributes && typeof h.attributes === "object" && !Array.isArray(h.attributes) ? h.attributes as Record<string, unknown> : {};
     if (!attrs.fnbIngredient) await prisma.product.update({ where: { id: h.id }, data: { attributes: { ...attrs, fnbIngredient: true } } });
   }
