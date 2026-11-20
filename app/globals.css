@@ -1770,3 +1770,18 @@ html.bn-admin-dark .bn-admin-app .bg-destructive { background: #dc2626 !importan
 html.bn-admin-dark .bn-admin-app [class*="bg-[var(--bn-admin-orange)]"],
 html.bn-admin-dark .bn-admin-app [class*="bg-[var(--bn-admin-orange)]"] * { color: #04230e !important; }
 html.bn-admin-dark .bn-admin-app [class*="bg-[var(--bn-admin-orange)]"] { background: #4ade80 !important; }
+/* dark mode: partial-opacity light tints, grey text and the phone tab bar */
+html.bn-admin-dark .bn-fbar { --fb-ink: #4ade80; --fb-core: #16a34a; --fb-core-fg: #fff; filter: drop-shadow(0 -3px 14px rgba(0,0,0,.5)); }
+html.bn-admin-dark .bn-admin-app [class*="bg-gray-50"],
+html.bn-admin-dark .bn-admin-app [class*="bg-slate-50"],
+html.bn-admin-dark .bn-admin-app [class*="bg-zinc-50"],
+html.bn-admin-dark .bn-admin-app [class*="bg-neutral-50"] { background-color: #10161e !important; }
+html.bn-admin-dark .bn-admin-app [class*="bg-gray-100"],
+html.bn-admin-dark .bn-admin-app [class*="bg-slate-100"] { background-color: #1a232e !important; }
+html.bn-admin-dark .bn-admin-app .text-gray-400,
+html.bn-admin-dark .bn-admin-app .text-slate-400,
+html.bn-admin-dark .bn-admin-app .text-zinc-500,
+html.bn-admin-dark .bn-admin-app .text-neutral-500 { color: #93a1b3 !important; }
+html.bn-admin-dark .bn-admin-app [class*="bg-white"] { background-color: #131a23 !important; }
+html.bn-admin-dark .bn-admin-app .bg-emerald-600 { background-color: #22c55e !important; }
+html.bn-admin-dark .bn-admin-app .bg-amber-400 { background-color: #fbbf24 !important; }
