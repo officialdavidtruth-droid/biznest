@@ -11,6 +11,7 @@ import { settleQuoteDeposit } from "@/lib/payments/settle-quote-deposit";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { settleOrderPayment } from "@/lib/payments/settle-order";
 import { NextResponse } from "next/server";
+import { handleFlutterwaveVirtualAccount } from "@/lib/payments/virtual-account-webhook";
 import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
@@ -109,6 +110,12 @@ export async function POST(req: Request) {
   }
 
   const { id: transactionId, tx_ref: txRef } = event.data;
+
+  // A customer paid into a store's dedicated account number (platform account only).
+  if (!storeId) {
+    const virtual = await handleFlutterwaveVirtualAccount(event);
+    if (virtual) return virtual;
+  }
 
   // Keep the two worlds apart (same rule as the Paystack webhook).
   const knownPayment = await prisma.payment.findUnique({ where: { reference: txRef }, select: { storeId: true, usesStoreGateway: true } });

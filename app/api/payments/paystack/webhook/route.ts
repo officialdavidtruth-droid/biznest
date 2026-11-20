@@ -8,6 +8,7 @@ import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { settleOrderPayment } from "@/lib/payments/settle-order";
 import { addPeriod, paidPeriod } from "@/lib/billing/period";
 import { NextResponse } from "next/server";
+import { handlePaystackVirtualAccount } from "@/lib/payments/virtual-account-webhook";
 import { logError } from "@/lib/observability/log";
 import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
@@ -64,6 +65,12 @@ export async function POST(req: Request) {
     event = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
+
+  // Dedicated store account numbers live on the platform account only.
+  if (!storeId) {
+    const virtual = await handlePaystackVirtualAccount(event as { event?: string; data?: Record<string, unknown> });
+    if (virtual) return virtual;
   }
 
   // Vendor payout (Transfer API) outcomes belong to the platform account only.

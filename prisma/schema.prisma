@@ -769,6 +769,7 @@ enum DomainStatus {
 }
 
 model Store {
+  virtualAccounts StoreVirtualAccount[]
   // Customer chat setup: { autoReply: boolean, humanHandoff: boolean, faqs: [{ id, topic, question, answer, enabled }] }. Null = niche defaults.
   messagingConfig Json?
   timezone      String      @default("Africa/Lagos")
@@ -2561,6 +2562,8 @@ enum PaymentPurpose {
   TICKET_PURCHASE
   JOB_PAYMENT
   AD_CAMPAIGN
+  // A customer paid straight into a store's dedicated account number (see lib/payments/virtual-account.ts).
+  STORE_TRANSFER
 }
 
 enum PaymentStatus {
@@ -6333,4 +6336,24 @@ model FleetLog {
 
   @@index([storeId, loggedAt])
   @@index([vehicleId, loggedAt])
+}
+
+/// A permanent bank account number issued to one store by the active payment gateway.
+/// Money paid into it is recorded as a Payment (purpose STORE_TRANSFER) and paid out to the vendor.
+/// The BVN/NIN used to open it is never stored here.
+model StoreVirtualAccount {
+  id            String          @id @default(cuid())
+  storeId       String
+  store         Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  provider      PaymentProvider
+  accountNumber String
+  bankName      String
+  accountName   String
+  // Our own reference sent to the gateway when the account was opened (unique per account).
+  reference     String          @unique
+  status        String          @default("ACTIVE")
+  createdAt     DateTime        @default(now())
+
+  @@unique([provider, accountNumber])
+  @@index([storeId])
 }

@@ -19,6 +19,7 @@ import { settleTailoringPayment } from "@/lib/payments/settle-tailoring";
 import { settleSubscriptionUpgrade } from "@/lib/payments/settle-subscription";
 import { settleAdPayment } from "@/lib/payments/settle-ad";
 import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
+import { handleKorapayVirtualAccount } from "@/lib/payments/virtual-account-webhook";
 
 /**
  * Server-to-server confirmation from Korapay (charge.success / charge.failed /
@@ -78,6 +79,10 @@ export async function POST(req: Request) {
   }
 
   if (event.event !== "charge.success") return NextResponse.json({ received: true });
+
+  // A customer paid into a store's dedicated account number (no Payment row exists yet for these).
+  const virtual = await handleKorapayVirtualAccount(event as { event?: string; data?: Record<string, unknown> });
+  if (virtual) return virtual;
 
   // Never trust the webhook payload's amount/status alone: re-verify with Kora.
   const verification = await verifyKorapayTransaction(reference);

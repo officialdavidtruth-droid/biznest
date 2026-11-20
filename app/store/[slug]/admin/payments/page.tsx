@@ -15,6 +15,8 @@ import { RefundClawbackCard } from "@/components/dashboard/refund-clawback-card"
 import { moneyFormatter } from "@/lib/utils/format-money";
 import { getPendingTransfers } from "@/lib/actions/manual-payment";
 import { CustomerPaymentMessage } from "@/components/dashboard/customer-payment-message";
+import { DedicatedAccountCard } from "@/components/dashboard/dedicated-account-card";
+import { getStoreVirtualAccounts } from "@/lib/actions/virtual-account";
 import { PendingTransfersList } from "@/components/dashboard/pending-transfers-list";
 
 export default async function PaymentsPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -98,6 +100,12 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
           )}
         </div>
       </section>
+
+      {canEditPayments && (
+        <section className="mt-8">
+          <DedicatedAccountCard slug={slug} accounts={await getStoreVirtualAccounts(slug)} />
+        </section>
+      )}
 
       <PendingTransfersList slug={slug} transfers={pendingTransfers} />
 
