@@ -88,7 +88,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [payWith, setPayWith] = useState<"card" | "wallet" | "transfer">("card");
   const [transferAvailable, setTransferAvailable] = useState(false);
-  useEffect(() => { getCheckoutTransferOffer(slug).then(setTransferAvailable).catch(() => setTransferAvailable(false)); }, [slug]);
+  useEffect(() => { getCheckoutTransferOffer(slug).then((v) => { setTransferAvailable(v); if (v) setPayWith((cur) => (cur === "card" ? "transfer" : cur)); }).catch(() => setTransferAvailable(false)); }, [slug]);
   useEffect(() => {
     getCheckoutWalletBalance(slug).then((w) => setWalletBalance(w ? w.balance : null)).catch(() => setWalletBalance(null));
   }, [slug]);
