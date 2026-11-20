@@ -1700,3 +1700,32 @@ html.bn-admin-dark .bn-admin-app .bg-slate-300 { background: #3a4757 !important;
 html.bn-admin-dark .bn-admin-mobile-bottom { background: #0f151d !important; border-color: #263140 !important; }
 html.bn-admin-dark .bn-admin-app header { background: #0f151d !important; border-color: #263140 !important; }
 html.bn-admin-dark .bn-admin-app ::-webkit-scrollbar-thumb { background: #334155; }
+/* dark mode: remaining light tints */
+html.bn-admin-dark .bn-admin-app .bg-emerald-50,
+html.bn-admin-dark .bn-admin-app .bg-green-50,
+html.bn-admin-dark .bn-admin-app .bg-green-100,
+html.bn-admin-dark .bn-admin-app .bg-teal-100 { background: rgba(16,185,129,.16) !important; }
+html.bn-admin-dark .bn-admin-app .bg-sky-50,
+html.bn-admin-dark .bn-admin-app .bg-blue-100,
+html.bn-admin-dark .bn-admin-app .bg-blue-50 { background: rgba(14,165,233,.16) !important; }
+html.bn-admin-dark .bn-admin-app .bg-violet-50,
+html.bn-admin-dark .bn-admin-app .bg-violet-100,
+html.bn-admin-dark .bn-admin-app .bg-indigo-100 { background: rgba(139,92,246,.2) !important; }
+html.bn-admin-dark .bn-admin-app .bg-rose-50,
+html.bn-admin-dark .bn-admin-app .bg-rose-100 { background: rgba(244,63,94,.16) !important; }
+html.bn-admin-dark .bn-admin-app .bg-slate-200 { background: #2a3646 !important; }
+html.bn-admin-dark .bn-admin-app .text-green-700,
+html.bn-admin-dark .bn-admin-app .text-green-800,
+html.bn-admin-dark .bn-admin-app .text-teal-700 { color: #6ee7b7 !important; }
+html.bn-admin-dark .bn-admin-app .text-sky-700,
+html.bn-admin-dark .bn-admin-app .text-blue-700,
+html.bn-admin-dark .bn-admin-app .text-blue-800 { color: #7dd3fc !important; }
+html.bn-admin-dark .bn-admin-app .text-violet-700,
+html.bn-admin-dark .bn-admin-app .text-violet-800,
+html.bn-admin-dark .bn-admin-app .text-indigo-700 { color: #c4b5fd !important; }
+html.bn-admin-dark .bn-admin-app .text-rose-700,
+html.bn-admin-dark .bn-admin-app .text-rose-800 { color: #fda4af !important; }
+html.bn-admin-dark .bn-admin-app .border-emerald-200,
+html.bn-admin-dark .bn-admin-app .border-green-200,
+html.bn-admin-dark .bn-admin-app .border-sky-200,
+html.bn-admin-dark .bn-admin-app .border-rose-200 { border-color: rgba(148,163,184,.3) !important; }
