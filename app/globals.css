@@ -1757,3 +1757,16 @@ html.bn-admin-dark .bn-admin-app [class*="text-[var(--bn-admin-orange)]"],
 html.bn-admin-dark .bn-admin-app .text-primary { color: #4ade80 !important; }
 html.bn-admin-dark .bn-admin-app .bg-emerald-600,
 html.bn-admin-dark .bn-admin-app .bg-emerald-700 { background: #15803d !important; color: #fff !important; }
+/* dark mode: fixes from the contrast audit */
+html.bn-admin-dark .bn-admin-app .text-amber-950,
+html.bn-admin-dark .bn-admin-app .text-orange-950 { color: #fde68a !important; }
+html.bn-admin-dark .bn-admin-app .text-red-950,
+html.bn-admin-dark .bn-admin-app .text-red-800 { color: #fecaca !important; }
+html.bn-admin-dark .bn-admin-app .text-indigo-800,
+html.bn-admin-dark .bn-admin-app .text-teal-800 { color: #a5b4fc !important; }
+html.bn-admin-dark .bn-admin-app .text-destructive-foreground { color: #fff !important; }
+html.bn-admin-dark .bn-admin-app .bg-destructive { background: #dc2626 !important; }
+/* solid green buttons are bright in dark mode, so their label must be dark */
+html.bn-admin-dark .bn-admin-app [class*="bg-[var(--bn-admin-orange)]"],
+html.bn-admin-dark .bn-admin-app [class*="bg-[var(--bn-admin-orange)]"] * { color: #04230e !important; }
+html.bn-admin-dark .bn-admin-app [class*="bg-[var(--bn-admin-orange)]"] { background: #4ade80 !important; }
