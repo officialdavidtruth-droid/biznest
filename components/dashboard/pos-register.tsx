@@ -526,17 +526,17 @@ export function PosRegister({
                 onClick={() => setActiveCategory(c.name)}
                 className={`flex flex-col overflow-hidden rounded-2xl border bg-background text-left shadow-sm transition hover:border-[var(--bn-admin-orange)] active:scale-[0.98] ${ring}`}
               >
-                <span className="grid h-24 w-full place-items-center bg-muted">
+                <span className="relative block w-full overflow-hidden bg-muted" style={{ height: 96 }}>
                   {c.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={c.image} alt="" className="h-full w-full object-cover" />
+                    <img src={c.image} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : (
-                    <span className="text-2xl font-bold text-muted-foreground">{c.name.slice(0, 1).toUpperCase()}</span>
+                    <span className="absolute inset-0 grid place-items-center text-2xl font-bold text-muted-foreground">{c.name.slice(0, 1).toUpperCase()}</span>
                   )}
                 </span>
-                <span className="px-3 py-2.5">
+                <span className="block px-3 py-2.5">
                   <span className="block truncate text-[15px] font-semibold">{c.name}</span>
-                  <span className="text-xs text-muted-foreground">{c.count} {c.count === 1 ? "item" : "items"}</span>
+                  <span className="block text-xs text-muted-foreground">{c.count} {c.count === 1 ? "item" : "items"}</span>
                 </span>
               </button>
             ))}
