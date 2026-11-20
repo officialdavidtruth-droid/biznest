@@ -53,6 +53,7 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
   ]);
 
   const pendingTransfers = await getPendingTransfers(slug);
+  const virtualAccounts = canEditPayments ? await getStoreVirtualAccounts(slug) : [];
   const gross = Number(paidTotal._sum.total ?? 0);
   const commission = Number(paidTotal._sum.commission ?? 0);
 
@@ -103,15 +104,17 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
 
       {canEditPayments && (
         <section className="mt-8">
-          <DedicatedAccountCard slug={slug} accounts={await getStoreVirtualAccounts(slug)} />
+          <DedicatedAccountCard slug={slug} accounts={virtualAccounts} />
         </section>
       )}
 
       <PendingTransfersList slug={slug} transfers={pendingTransfers} />
 
-      <div className="mt-8">
-        <CustomerPaymentMessage storeName={store.name} />
-      </div>
+      {virtualAccounts.length === 0 && (
+        <div className="mt-8">
+          <CustomerPaymentMessage storeName={store.name} />
+        </div>
+      )}
 
       {ownGateway && (
         <section className="mt-8">
