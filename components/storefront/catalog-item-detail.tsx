@@ -8,7 +8,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { MapPin, Search, Star } from "lucide-react";
 import { ShareButton } from "@/components/storefront/share-button";
-import { MenuLinks } from "@/components/storefront/store-menu";
+import { MenuLinks, FooterLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
 import { AccountLink } from "@/components/storefront/account-link";
 import { BookingWidget } from "@/components/storefront/booking-widget";
@@ -346,7 +346,7 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
 
       {!externalChrome && <footer className="hr-footer">
         <div><div className="hr-footer-brand"><span>{store.name?.[0] || "S"}</span><b>{store.name}</b></div><p>Quality, care and exceptional service designed around you.</p></div>
-        <div><b>Quick Links</b><Link href={`/store/${slug}`}>Home</Link><Link href={catalogHref}>{terminology.catalog}</Link><Link href={`/store/${slug}/account`}>Account</Link></div>
+        <div><b>Quick Links</b><FooterLinks slug={slug} fallback={[["Home","/"],[terminology.catalog,"/catalog"]]}/><Link href={`/store/${slug}/account`}>Account</Link></div>
         <div><b>Contact</b>{phone && <a href={`tel:${phone}`}>{phone}</a>}{email && <a href={`mailto:${email}`}>{email}</a>}{!phone && !email && <Link href={`/store/${slug}/contact`}>Contact us</Link>}</div>
         <div><b>Newsletter</b><span>Get updates, offers and new arrivals.</span><NewsletterInlineForm slug={slug} inputPlaceholder="Your email">Subscribe</NewsletterInlineForm></div>
       </footer>}

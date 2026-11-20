@@ -9,6 +9,7 @@ import { storeHref as href } from "@/lib/utils/store-href";
 import { formatMoney } from "@/lib/utils/format-money";
 import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
 import { FooterSocial } from "@/components/storefront/footer-social";
+import { FooterLinks, LegalLinks } from "@/components/storefront/store-menu";
 import type { HotelContent, HotelRoom } from "@/lib/hotel-content";
 
 type Store = { name: string; logoUrl?: string | null; bannerUrl?: string | null; address?: string | null; phone?: string | null; contactPhone?: string | null; email?: string | null; contactEmail?: string | null; business?: { description?: string | null } | null };
@@ -245,7 +246,7 @@ export function RefFooter({ layout, store, slug, content }: { layout: "aspire" |
     <div className="rhf-grid">
       <div className="rhf-col"><div className="rhf-brand">{store.name}</div>{desc ? <p>{desc}</p> : <p>Thoughtful rooms, warm service and an unhurried pace.</p>}
         {hasSocial && <FooterSocial className="rhf-social" social={social} />}</div>
-      <div className="rhf-col"><h4>Quick Links</h4>{links.map(([l, h]) => <Link key={l} href={href(slug, h)}>{l}</Link>)}</div>
+      <div className="rhf-col"><h4>Quick Links</h4><FooterLinks slug={slug} fallback={links} /></div>
       <div className="rhf-col"><h4>Contact</h4>
         <span>{businessAddress(store) || "Address not published"}</span>
         {phone ? <a href={`tel:${phone}`}>{phone}</a> : null}
@@ -254,7 +255,7 @@ export function RefFooter({ layout, store, slug, content }: { layout: "aspire" |
       <div className="rhf-col"><h4>Newsletter</h4><p>Exclusive offers and updates, straight to your inbox.</p>
         <NewsletterInlineForm slug={slug} className="rhf-news" inputPlaceholder="Your email address">Join</NewsletterInlineForm></div>
     </div>
-    <div className="rhf-bottom"><span>© {new Date().getFullYear()} {store.name}. All rights reserved.</span><span><Link href={href(slug, "/policies")}>Privacy &amp; Policies</Link></span></div>
+    <div className="rhf-bottom"><span>© {new Date().getFullYear()} {store.name}. All rights reserved.</span><LegalLinks slug={slug} /></div>
   </footer>;
 }
 

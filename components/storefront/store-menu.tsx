@@ -8,15 +8,46 @@ import { isMenuItemActive, storePath, type ResolvedMenuItem } from "@/lib/storef
 const MenuContext = createContext<ResolvedMenuItem[] | null>(null);
 
 /** Supplies the owner's custom header menu (or null = use template defaults). */
-export function StoreMenuProvider({ menu, footerMenu = null, children }: { menu: ResolvedMenuItem[] | null; footerMenu?: ResolvedMenuItem[] | null; children: ReactNode }) {
+export function StoreMenuProvider({ menu, footerMenu = null, hasPolicies = false, children }: { menu: ResolvedMenuItem[] | null; footerMenu?: ResolvedMenuItem[] | null; hasPolicies?: boolean; children: ReactNode }) {
   return (
     <MenuContext.Provider value={menu && menu.length ? menu : null}>
-      <FooterMenuContext.Provider value={footerMenu && footerMenu.length ? footerMenu : null}>{children}</FooterMenuContext.Provider>
+      <FooterMenuContext.Provider value={footerMenu && footerMenu.length ? footerMenu : null}>
+        <PoliciesContext.Provider value={hasPolicies}>{children}</PoliciesContext.Provider>
+      </FooterMenuContext.Provider>
     </MenuContext.Provider>
   );
 }
 
 const FooterMenuContext = createContext<ResolvedMenuItem[] | null>(null);
+const PoliciesContext = createContext(false);
+
+/**
+ * Footer link list for a template. The footer menu (the owner's, or the automatic one of real pages) wins;
+ * `fallback` only renders where there is no provider (previews) or for hotels, which keep their own pages.
+ * Renders bare links so each template's own `footer a` styling applies.
+ */
+export function FooterLinks({ slug, fallback }: { slug: string; fallback: FallbackLink[] }) {
+  const owner = useFooterMenu();
+  const items = owner ?? fallback.map(([label, path]) => ({ label, href: fallbackHref(slug, path), external: false, newTab: false }));
+  return (
+    <>
+      {items.map((i, n) =>
+        i.external || i.newTab ? (
+          <a key={`${i.label}-${n}`} href={i.href} {...(i.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}>{i.label}</a>
+        ) : (
+          <Link key={`${i.label}-${n}`} href={i.href}>{i.label}</Link>
+        ),
+      )}
+    </>
+  );
+}
+
+/** "Terms & Privacy" link for the copyright line. Renders nothing until the owner has written the policies page. */
+export function LegalLinks({ slug, label = "Terms & Privacy" }: { slug: string; label?: string }) {
+  const has = useContext(PoliciesContext);
+  if (!has) return null;
+  return <Link href={storePath(slug, "/policies")}>{label}</Link>;
+}
 
 /** The owner's footer menu (Dashboard > Menus > Footer) as plain links, or null = the template keeps its own footer links. */
 export function useFooterMenu(): { label: string; href: string; external: boolean; newTab: boolean }[] | null {

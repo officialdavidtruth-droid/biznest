@@ -183,3 +183,22 @@ export function buildAutoHeaderMenu(
   out.push(link("auto-contact", "Contact", storePath(slug, "/contact")));
   return out;
 }
+
+/**
+ * The footer for a store whose owner has not built one: only pages that really exist.
+ * Home, the catalog (named for the business: Menu, Shop, Services...), About and Blog once written,
+ * Contact, and the terms/privacy page once the owner has written it.
+ */
+export function buildAutoFooterMenu(
+  slug: string,
+  have: { about: boolean; blog: boolean; policies: boolean },
+  catalogLabel = "Shop",
+): ResolvedMenuItem[] {
+  const link = (id: string, label: string, path: string): ResolvedMenuItem => ({ id, label, href: storePath(slug, path), external: false, newTab: false, children: [] });
+  const out = [link("f-home", "Home", "/"), link("f-catalog", catalogLabel, "/catalog")];
+  if (have.about) out.push(link("f-about", "About", "/about"));
+  if (have.blog) out.push(link("f-blog", "Blog", "/blog"));
+  out.push(link("f-contact", "Contact", "/contact"));
+  if (have.policies) out.push(link("f-policies", "Terms & Privacy", "/policies"));
+  return out;
+}

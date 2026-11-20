@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Mail, Phone, MapPin, Clock3, MessageCircle, Instagram, Facebook, Twitter, ArrowRight } from "lucide-react";
 import type { StoreBranding } from "@/lib/actions/store-branding";
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
+import { FooterLinks, LegalLinks } from "@/components/storefront/store-menu";
 import { businessAddress, businessHours } from "@/lib/storefront/business-details";
 
 // Every template's *-chrome.tsx wraps its own themed footer around
@@ -17,13 +18,6 @@ export function StoreFooter({ store, slug }: { store: NonNullable<StoreBranding>
   const address = businessAddress({ address: store.address, business: { city: store.city, state: store.state } });
   const hours = businessHours(store);
 
-  const quickLinks = [
-    { href: `/${slug}`, label: "Home" },
-    { href: `/${slug}/account`, label: "My Account" },
-    { href: `/${slug}/orders/track`, label: "Track Order" },
-    { href: `/${slug}/cart`, label: "Cart" },
-  ];
-
   return (
     <footer className="mt-16 border-t border-slate-200 bg-slate-50">
       <div className="mx-auto max-w-6xl px-6 py-12">
@@ -38,7 +32,7 @@ export function StoreFooter({ store, slug }: { store: NonNullable<StoreBranding>
               <span className="text-base font-bold text-slate-900">{store.name}</span>
             </div>
             <p className="mt-3 max-w-xs text-sm text-slate-500">
-              Thanks for shopping with {store.name}. Your orders, wishlist and account are always one tap away.
+              Thanks for visiting {store.name}. Your orders and account are always one tap away.
             </p>
             {(social.instagram || social.facebook || social.twitter || waHref) && (
               <div className="mt-4 flex items-center gap-3">
@@ -69,15 +63,9 @@ export function StoreFooter({ store, slug }: { store: NonNullable<StoreBranding>
           {/* Quick links */}
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Quick Links</p>
-            <ul className="mt-3 space-y-2">
-              {quickLinks.map((l) => (
-                <li key={l.href}>
-                  <Link href={l.href} className="group flex items-center gap-1.5 text-sm text-slate-600 transition hover:text-slate-900">
-                    <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" style={{ color: accent }} />
-                    {l.label}
-                  </Link>
-                </li>
-              ))}
+            <ul className="mt-3 space-y-2 [&_a]:flex [&_a]:items-center [&_a]:gap-1.5 [&_a]:text-sm [&_a]:text-slate-600 [&_a]:transition hover:[&_a]:text-slate-900">
+              <FooterLinks slug={slug} fallback={[["Home", "/"], ["Contact", "/contact"]]} />
+              <Link href={`/store/${slug}/account`}>My Account</Link>
             </ul>
           </div>
 
@@ -134,7 +122,7 @@ export function StoreFooter({ store, slug }: { store: NonNullable<StoreBranding>
 
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-6 text-xs text-slate-400 sm:flex-row">
           <p>&copy; {new Date().getFullYear()} {store.name}. All rights reserved.</p>
-          <p>Built with BizNest</p>
+          <span className="flex items-center gap-3"><LegalLinks slug={slug} /><span>Built with BizNest</span></span>
         </div>
       </div>
     </footer>

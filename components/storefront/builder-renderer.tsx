@@ -3,7 +3,8 @@
 import { starFill, starEmpty } from "@/lib/utils/stars";
 import { nicheHeroPhoto, nicheSamplePhoto } from "@/lib/niche-imagery";
 import { readableAccentText } from "@/lib/utils/readable-accent";
-import { MenuLinks, useFooterMenu, type FallbackLink } from "@/components/storefront/store-menu";
+import { MenuLinks, useFooterMenu, LegalLinks, type FallbackLink } from "@/components/storefront/store-menu";
+import { FooterSocial } from "@/components/storefront/footer-social";
 import { useStoreCategories } from "@/components/storefront/store-categories";
 import { BuilderDepartures } from "@/components/storefront/builder-departures";
 import type { PublicTravelPackage } from "@/lib/travel-public";
@@ -30,7 +31,7 @@ type CatalogItem = {
 type Review = { id: string; rating: number; comment: string | null; author: { name: string | null } | null };
 
 type BuilderStore = {
-  name: string; slug: string; logoUrl: string | null; bannerUrl?: string | null; contactEmail: string | null; contactPhone: string | null; whatsappNumber?: string | null;
+  name: string; slug: string; logoUrl: string | null; bannerUrl?: string | null; contactEmail: string | null; contactPhone: string | null; whatsappNumber?: string | null; socialLinks?: Record<string, string | null | undefined> | null;
   business: { description: string | null; category?: string | null; businessSubcategory?: string | null; sellsProducts?: boolean; offersServices?: boolean; city?: string | null; state?: string | null; country?: string | null };
 };
 
@@ -557,7 +558,7 @@ export function BuilderFooter({ store, d, visible, storeLinks }: { store: Builde
         <strong style={{ fontSize: 24, fontFamily: d.headingFont }}>{store.name}</strong>
         <p style={{ opacity: .72, maxWidth: 520, margin: "12px auto 20px", lineHeight: 1.7, fontSize: 13 }}>{desc}</p>
         <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap", marginBottom: 24 }}>{navLinks.map((l) => <a key={l.label} href={l.href} style={link}>{l.label}</a>)}</div>
-        <div style={{ borderTop: "1px solid rgba(255,255,255,.14)", paddingTop: 18, fontSize: 12, opacity: .6 }}>© {year} {store.name} · {contact}</div>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,.14)", paddingTop: 18, fontSize: 12, opacity: .6, display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap" }}><span>© {year} {store.name} · {contact}</span><LegalLinks slug={store.slug} /></div>
       </div>
     </footer>
   );
@@ -583,9 +584,9 @@ export function BuilderFooter({ store, d, visible, storeLinks }: { store: Builde
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.2fr", gap: 36 }} className="bn-grid">
           <div><strong style={{ fontSize: 22, fontFamily: d.headingFont }}>{store.name}</strong><p style={{ opacity: .72, maxWidth: 380, lineHeight: 1.7, fontSize: 13 }}>{desc}</p></div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}><b style={{ fontSize: 12, letterSpacing: ".14em", textTransform: "uppercase" }}>Explore</b>{navLinks.map((l) => <a key={l.label} href={l.href} style={link}>{l.label}</a>)}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}><b style={{ fontSize: 12, letterSpacing: ".14em", textTransform: "uppercase" }}>Contact</b><span style={link}>{store.contactEmail || "—"}</span><span style={link}>{store.contactPhone || ""}</span></div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}><b style={{ fontSize: 12, letterSpacing: ".14em", textTransform: "uppercase" }}>Contact</b>{store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={link}>{store.contactEmail}</a>}{store.contactPhone && <a href={`tel:${store.contactPhone}`} style={link}>{store.contactPhone}</a>}{!store.contactEmail && !store.contactPhone && <a href={`/store/${store.slug}/contact`} style={link}>Contact us</a>}<FooterSocial social={store.socialLinks} style={{ opacity: .85, marginTop: 4 }} /></div>
         </div>
-        <div style={{ borderTop: "1px solid rgba(255,255,255,.14)", marginTop: 36, paddingTop: 18, fontSize: 12, opacity: .6 }}>© {year} {store.name}. All rights reserved.</div>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,.14)", marginTop: 36, paddingTop: 18, fontSize: 12, opacity: .6, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><span>© {year} {store.name}. All rights reserved.</span><LegalLinks slug={store.slug} /></div>
       </div>
     </footer>
   );

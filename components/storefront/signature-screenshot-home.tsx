@@ -1,7 +1,9 @@
 import { storeHref as href } from "@/lib/utils/store-href";
 import { formatMoney } from "@/lib/utils/format-money";
 import React from "react";
-import { MenuLinks } from "@/components/storefront/store-menu";
+import { MenuLinks, FooterLinks, LegalLinks } from "@/components/storefront/store-menu";
+import { FooterSocial } from "@/components/storefront/footer-social";
+import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
 import Link from "next/link";
 import { CartLink } from "@/components/storefront/cart-link";
 import { AccountLink } from "@/components/storefront/account-link";
@@ -48,7 +50,7 @@ function Shell({children,nav,...p}:Props & {children:React.ReactNode;nav:React.R
 }
 function Footer({p,dark=false}:{p:Props;dark?:boolean}){
   const {store,slug}=p;
-  return <footer className={`ss-footer ${dark?"ss-footer-dark":""}`}><div><div className="ss-brand">{store.logoUrl?<img src={store.logoUrl} alt={store.name}/>:<span className="ss-logo">{store.name?.[0]}</span>}<b>{store.name}</b></div><p>{store.business?.description||"Quality, service and experiences designed around you."}</p></div><div><b>Quick Links</b><Link href={href(slug)}>Home</Link><Link href={href(slug,"/catalog")}>Catalog</Link><Link href={href(slug,"/account")}>Account</Link></div><div><b>Contact</b>{info(p).phone&&<a href={`tel:${info(p).phone}`}>{info(p).phone}</a>}{info(p).email&&<a href={`mailto:${info(p).email}`}>{info(p).email}</a>}{info(p).address&&<span>{info(p).address}</span>}{Object.entries(info(p).social).filter(([,v])=>v).map(([k,v])=><a key={k} href={String(v)} target="_blank" rel="noopener noreferrer" style={{textTransform:"capitalize"}}>{k}</a>)}</div><div><b>Newsletter</b><p>Get updates, offers and new arrivals.</p><input placeholder="Your email"/><button className="ss-main-btn" type="button">Subscribe</button></div></footer>;
+  return <footer className={`ss-footer ${dark?"ss-footer-dark":""}`}><div><div className="ss-brand">{store.logoUrl?<img src={store.logoUrl} alt={store.name}/>:<span className="ss-logo">{store.name?.[0]}</span>}<b>{store.name}</b></div><p>{store.business?.description||"Quality, service and experiences designed around you."}</p></div><div><b>Quick Links</b><FooterLinks slug={slug} fallback={[["Home","/"],["Catalog","/catalog"],["Contact","/contact"]]}/><Link href={href(slug,"/account")}>Account</Link></div><div><b>Contact</b>{info(p).phone&&<a href={`tel:${info(p).phone}`}>{info(p).phone}</a>}{info(p).email&&<a href={`mailto:${info(p).email}`}>{info(p).email}</a>}{info(p).address&&<span>{info(p).address}</span>}<FooterSocial social={info(p).social}/></div><div><b>Newsletter</b><p>Get updates, offers and new arrivals.</p><NewsletterInlineForm slug={slug} inputPlaceholder="Your email">Subscribe</NewsletterInlineForm><LegalLinks slug={slug}/></div></footer>;
 }
 function ProductCards({p,items,title,label,mode}:{p:Props;items:Item[];title:string;label?:string;mode?:string}){
   return <section className={`ss-rail ${mode?`ss-rail-${mode}`:""}`}><div className="ss-section-head"><div>{label&&<small>{label}</small>}<h2>{title}</h2></div><Link href={href(p.slug,"/catalog")}>View All →</Link></div><div className="ss-grid">{items.slice(0,5).map(i=><Link href={href(p.slug,`/${i.kind}/${i.id}`)} key={i.id} className="ss-card"><div className="ss-card-image" style={img(i.image)}/><div><small>{i.categoryName||i.kind}</small><h3>{i.name}</h3><p>{i.description||""}</p><strong>{money(i)}</strong><span className="ss-card-btn">{i.isBookable?"Book Now":"Add to Cart"}</span></div></Link>)}</div></section>;

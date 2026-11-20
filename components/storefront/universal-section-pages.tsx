@@ -1,5 +1,6 @@
 import React from "react";
-import { MenuLinks } from "@/components/storefront/store-menu";
+import { MenuLinks, FooterLinks, LegalLinks, type FallbackLink } from "@/components/storefront/store-menu";
+import { FooterSocial } from "@/components/storefront/footer-social";
 import Link from "next/link";
 import { PageBlocks } from "@/components/storefront/page-blocks";
 import type { PageBlock } from "@/lib/storefront/page-blocks";
@@ -168,10 +169,10 @@ export function Header({store,slug,active,accent,dark=false,radius}:{store:any;s
 }
 
 export function Footer({store,slug,accent}:{store:any;slug:string;accent:string}){
- return <footer className="bn-universal-footer"><div className="bn-universal-footer-grid"><div><div className="bn-universal-footer-brand"><span className="bn-universal-logo">{store.logoUrl?<img src={store.logoUrl} alt=""/>:<span>{store.name?.[0] || "B"}</span>}</span><strong>{store.name}</strong></div><p>{store.business?.description || "Professional solutions for people and businesses."}</p><div className="bn-footer-social">{Object.entries((store.socialLinks||{}) as Record<string,string>).slice(0,5).map(([k,v])=>v?<a key={k} href={String(v)} target="_blank" rel="noreferrer">{k.slice(0,2).toUpperCase()}</a>:null)}</div></div>
- <div><h4>Quick Links</h4>{navLinksFor(store).map(([l,p])=><Link key={l} href={`/store/${slug}${p?`/${p}`:''}`}>{l}</Link>)}</div>
+ return <footer className="bn-universal-footer"><div className="bn-universal-footer-grid"><div><div className="bn-universal-footer-brand"><span className="bn-universal-logo">{store.logoUrl?<img src={store.logoUrl} alt=""/>:<span>{store.name?.[0] || "B"}</span>}</span><strong>{store.name}</strong></div><p>{store.business?.description || "Professional solutions for people and businesses."}</p><FooterSocial className="bn-footer-social" social={store.socialLinks}/></div>
+ <div><h4>Quick Links</h4><FooterLinks slug={slug} fallback={navLinksFor(store).map(([l,p])=>[l,p?`/${p}`:"/"] as FallbackLink)}/></div>
  <div><h4>Contact Us</h4>{store.contactPhone&&<a href={`tel:${store.contactPhone}`}><Phone size={14}/>{store.contactPhone}</a>}{store.contactEmail&&<a href={`mailto:${store.contactEmail}`}><Mail size={14}/>{store.contactEmail}</a>}<span><MapPin size={14}/>{[store.business?.city,store.business?.state,store.business?.country].filter(Boolean).join(", ") || "Online business"}</span></div>
- <div><h4>Stay Updated</h4><p>Get the latest updates, offers and useful information.</p><NewsletterInlineForm slug={slug} className="bn-newsletter" buttonStyle={{background:accent}}><ArrowRight size={16}/></NewsletterInlineForm></div></div><div className="bn-universal-copyright"><span>© {new Date().getFullYear()} {store.name}. All rights reserved.</span><span>Privacy Policy &nbsp; Terms of Service</span></div></footer>
+ <div><h4>Stay Updated</h4><p>Get the latest updates, offers and useful information.</p><NewsletterInlineForm slug={slug} className="bn-newsletter" buttonStyle={{background:accent}}><ArrowRight size={16}/></NewsletterInlineForm></div></div><div className="bn-universal-copyright"><span>© {new Date().getFullYear()} {store.name}. All rights reserved.</span><LegalLinks slug={slug}/></div></footer>
 }
 
 function Hero({store,slug,active,copy,accent,hero,archetype="editorial",children}:{store:any;slug:string;active:string;copy:any;accent:string;hero:string|null;archetype?:Archetype;children:React.ReactNode}){
