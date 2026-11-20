@@ -40,6 +40,16 @@ export function DedicatedAccountCard({ slug, accounts }: { slug: string; account
         </div>
       </div>
 
+      <div className="mt-4 rounded-xl bg-muted/60 p-3.5 text-sm">
+        <p className="font-semibold">How it works</p>
+        <ol className="mt-1.5 list-decimal space-y-1 pl-5 text-muted-foreground">
+          <li>Customers send money to this account number. The account name shows your store name.</li>
+          <li>BizNest receives it, takes any fee on your plan, and sends the rest to the bank account you connected above.</li>
+          <li>This number is only for receiving. Your money never stays here, so no need to withdraw from it.</li>
+        </ol>
+        <p className="mt-2 text-xs text-muted-foreground">Connect your bank account above first. If you haven't, payouts wait and are sent once you connect it.</p>
+      </div>
+
       {list.length > 0 ? (
         <ul className="mt-4 space-y-3">
           {list.map((a) => (
@@ -58,7 +68,7 @@ export function DedicatedAccountCard({ slug, accounts }: { slug: string; account
               )}
             </li>
           ))}
-          <li className="text-xs text-muted-foreground">Anything customers send to this number is paid out to your connected bank account.</li>
+          <li className="text-xs text-muted-foreground">Share this number with customers. Whatever they send is paid out to your connected bank account.</li>
         </ul>
       ) : (
         <div className="mt-4 space-y-3">
