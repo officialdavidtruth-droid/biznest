@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X, ExternalLink, LayoutGrid, ChevronDown } from "lucide-react";
 import { FloatingTabBar } from "@/components/app/floating-tab-bar";
 import { TourLauncherButton, TOUR_DRAWER_EVENT } from "@/components/dashboard/onboarding-tour";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { buildNavGroups, buildBottomTabItems, filterNavGroupsForRole, type InstalledAppNav, type NavItem } from "@/lib/constants/dashboard-nav";
 import type { StoreAccessRole } from "@/lib/access/store-access";
 import type { SiteMode } from "@/lib/site-mode";
@@ -119,6 +120,7 @@ export function MobileDashboardChrome({
           </p>
         </div>
         <div className="flex items-center gap-1">
+          <ThemeToggle />
           {(!staffRole || staffRole === "OWNER") && <TourLauncherButton />}
           <span data-tour="notifications" className="inline-flex">
             <NotificationBell notifications={notifications} unreadCount={unreadCount} />

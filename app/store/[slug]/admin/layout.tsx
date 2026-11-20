@@ -15,6 +15,7 @@ import { findNavItemForPath } from "@/lib/constants/dashboard-nav";
 import { ThemeProvider, ThemeFlashGuard } from "@/components/theme/theme-provider";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { OnboardingTour, TourLauncherButton } from "@/components/dashboard/onboarding-tour";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { buildTourSteps } from "@/lib/onboarding-tour";
 import { PageGuideButton } from "@/components/app/page-guide";
 import { isTrialLapsed, expireLapsedTrial } from "@/lib/billing/trial";
@@ -244,6 +245,7 @@ export default async function StoreAdminLayout({
                   : `${store.name} business`}
               </p>
               <div className="flex items-center gap-1">
+                <ThemeToggle />
                 {role === "OWNER" && <TourLauncherButton />}
                 <span data-tour="notifications" className="inline-flex">
                   <NotificationBell notifications={notifications} unreadCount={unreadCount} />

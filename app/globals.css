@@ -1590,3 +1590,113 @@ header.sticky { box-shadow: 0 1px 0 rgba(15, 100, 16, 0.06), 0 8px 24px -18px rg
   .bn-admin-app .rounded-xl.border, .bn-admin-app .rounded-2xl.border { transition: none; }
   header.sticky a[aria-label="BizNest home"]:hover img { transform: none; }
 }
+
+/* ================================================================
+   Dashboard dark mode. Applied when <html> has .bn-admin-dark (see components/theme/theme-provider.tsx).
+   The light admin theme above hard-codes white/slate with !important, so every surface is re-mapped here.
+   ================================================================ */
+html.bn-admin-dark {
+  color-scheme: dark;
+  --background: 215 28% 8%;
+  --foreground: 210 25% 92%;
+  --muted: 215 22% 14%;
+  --muted-foreground: 215 14% 68%;
+  --border: 215 18% 22%;
+  --destructive: 0 72% 62%;
+  --bn-admin-page: #0b1017;
+  --bn-admin-surface: #131a23;
+  --bn-admin-surface-2: #1a232e;
+  --bn-admin-text: #e6edf3;
+  --bn-admin-text-strong: #f8fafc;
+  --bn-admin-muted: #93a1b3;
+  --bn-admin-border: #263140;
+  --bn-admin-border-soft: #1f2935;
+  --bn-admin-orange-soft: rgba(34,197,94,.14);
+  --bn-admin-danger-soft: rgba(220,38,38,.14);
+  --bn-admin-danger-line: rgba(248,113,113,.35);
+}
+html.bn-admin-dark body { background: #0b1017; }
+html.bn-admin-dark .bn-admin-app {
+  --bn-surface: #131a23; --bn-page: #0b1017; --bn-line: #263140; --bn-line-soft: #1d2733; --bn-muted: #93a1b3;
+  background: #0b1017 !important; color: #e6edf3 !important;
+}
+html.bn-admin-dark .bn-admin-app main { background: #0b1017 !important; scrollbar-color: #334155 transparent; }
+html.bn-admin-dark .bn-admin-app .bn-admin-sidebar { background: #070b10 !important; border-color: #1b2430 !important; }
+html.bn-admin-dark .bn-admin-app h1,
+html.bn-admin-dark .bn-admin-app h2,
+html.bn-admin-dark .bn-admin-app h3 { color: #f1f5f9; }
+html.bn-admin-dark .bn-admin-app input,
+html.bn-admin-dark .bn-admin-app select,
+html.bn-admin-dark .bn-admin-app textarea {
+  background: #0f151d !important; border-color: #2a3646 !important; color: #e6edf3 !important;
+}
+html.bn-admin-dark .bn-admin-app input::placeholder,
+html.bn-admin-dark .bn-admin-app textarea::placeholder { color: #6b7a8d !important; }
+html.bn-admin-dark .bn-admin-app input:focus,
+html.bn-admin-dark .bn-admin-app select:focus,
+html.bn-admin-dark .bn-admin-app textarea:focus { border-color: #22c55e !important; outline-color: rgba(34,197,94,.3) !important; }
+html.bn-admin-dark .bn-admin-app option { background: #131a23; color: #e6edf3; }
+html.bn-admin-dark .bn-admin-app .bg-card,
+html.bn-admin-dark .bn-admin-app .bg-background,
+html.bn-admin-dark .bn-admin-app .bg-white { background: #131a23 !important; }
+html.bn-admin-dark .bn-admin-app .bg-muted\/40,
+html.bn-admin-dark .bn-admin-app .bg-muted\/30,
+html.bn-admin-dark .bn-admin-app .bg-muted\/20,
+html.bn-admin-dark .bn-admin-app .bg-muted\/50,
+html.bn-admin-dark .bn-admin-app .bg-slate-50,
+html.bn-admin-dark .bn-admin-app .bg-gray-50 { background: #10161e !important; }
+html.bn-admin-dark .bn-admin-app .bg-muted,
+html.bn-admin-dark .bn-admin-app .bg-slate-100,
+html.bn-admin-dark .bn-admin-app .bg-gray-100 { background: #1a232e !important; }
+html.bn-admin-dark .bn-admin-app .hover\:bg-muted:hover { background: #1a232e !important; }
+html.bn-admin-dark .bn-admin-app .text-muted-foreground,
+html.bn-admin-dark .bn-admin-app .text-slate-500,
+html.bn-admin-dark .bn-admin-app .text-slate-600,
+html.bn-admin-dark .bn-admin-app .text-gray-500,
+html.bn-admin-dark .bn-admin-app .text-gray-600 { color: #93a1b3 !important; }
+html.bn-admin-dark .bn-admin-app .text-slate-700,
+html.bn-admin-dark .bn-admin-app .text-slate-800,
+html.bn-admin-dark .bn-admin-app .text-slate-900,
+html.bn-admin-dark .bn-admin-app .text-gray-700,
+html.bn-admin-dark .bn-admin-app .text-gray-800,
+html.bn-admin-dark .bn-admin-app .text-gray-900,
+html.bn-admin-dark .bn-admin-app .text-foreground { color: #e6edf3 !important; }
+html.bn-admin-dark .bn-admin-app .text-primary { color: #5dd881 !important; }
+html.bn-admin-dark .bn-admin-app .border-border,
+html.bn-admin-dark .bn-admin-app .border-slate-200,
+html.bn-admin-dark .bn-admin-app .border-slate-300,
+html.bn-admin-dark .bn-admin-app .border-gray-200,
+html.bn-admin-dark .bn-admin-app .border-gray-300 { border-color: #263140 !important; }
+html.bn-admin-dark .bn-admin-app .divide-border > :not([hidden]) ~ :not([hidden]),
+html.bn-admin-dark .bn-admin-app .divide-y > :not([hidden]) ~ :not([hidden]) { border-color: #263140 !important; }
+html.bn-admin-dark .bn-admin-app .rounded-lg.border,
+html.bn-admin-dark .bn-admin-app .rounded-xl.border,
+html.bn-admin-dark .bn-admin-app .rounded-2xl.border { border-color: #263140 !important; box-shadow: none !important; }
+html.bn-admin-dark .bn-admin-app table thead { background: #10161e !important; }
+html.bn-admin-dark .bn-admin-app table th { color: #93a1b3 !important; }
+html.bn-admin-dark .bn-admin-app table td { color: #cbd5e1; border-color: #1d2733 !important; }
+html.bn-admin-dark .bn-admin-app table tbody tr:hover { background: #17212c !important; }
+html.bn-admin-dark .bn-admin-app .bg-primary\/15,
+html.bn-admin-dark .bn-admin-app .bg-primary\/5 { background: rgba(34,197,94,.14) !important; }
+/* status pills used across the redesigned pages */
+html.bn-admin-dark .bn-admin-app .bg-emerald-100 { background: rgba(16,185,129,.18) !important; }
+html.bn-admin-dark .bn-admin-app .text-emerald-800,
+html.bn-admin-dark .bn-admin-app .text-emerald-700 { color: #6ee7b7 !important; }
+html.bn-admin-dark .bn-admin-app .bg-amber-100,
+html.bn-admin-dark .bn-admin-app .bg-amber-50,
+html.bn-admin-dark .bn-admin-app .bg-yellow-50 { background: rgba(245,158,11,.16) !important; }
+html.bn-admin-dark .bn-admin-app .text-amber-800,
+html.bn-admin-dark .bn-admin-app .text-amber-900 { color: #fcd34d !important; }
+html.bn-admin-dark .bn-admin-app .bg-sky-100 { background: rgba(14,165,233,.18) !important; }
+html.bn-admin-dark .bn-admin-app .text-sky-800 { color: #7dd3fc !important; }
+html.bn-admin-dark .bn-admin-app .bg-red-100,
+html.bn-admin-dark .bn-admin-app .bg-red-50 { background: rgba(239,68,68,.16) !important; }
+html.bn-admin-dark .bn-admin-app .text-red-700,
+html.bn-admin-dark .bn-admin-app .text-red-600 { color: #fca5a5 !important; }
+html.bn-admin-dark .bn-admin-app .border-amber-200,
+html.bn-admin-dark .bn-admin-app .border-yellow-200 { border-color: rgba(245,158,11,.4) !important; }
+html.bn-admin-dark .bn-admin-app .bg-slate-300 { background: #3a4757 !important; }
+/* mobile chrome */
+html.bn-admin-dark .bn-admin-mobile-bottom { background: #0f151d !important; border-color: #263140 !important; }
+html.bn-admin-dark .bn-admin-app header { background: #0f151d !important; border-color: #263140 !important; }
+html.bn-admin-dark .bn-admin-app ::-webkit-scrollbar-thumb { background: #334155; }
