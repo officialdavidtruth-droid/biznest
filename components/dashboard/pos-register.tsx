@@ -57,6 +57,8 @@ export function PosRegister({
   const [barcode, setBarcode] = useState("");
   const [kindFilter, setKindFilter] = useState<"all" | "product" | "service">("all");
   // null = show the category tiles first; a name = show only that category's items.
+  // false = pick items; true = payment step (cart + tender), opened with "Proceed to pay".
+  const [paying, setPaying] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [customerOpen, setCustomerOpen] = useState(false);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
@@ -300,6 +302,7 @@ export function PosRegister({
     });
   }
 
+  useEffect(() => { if (cart.length === 0) setPaying(false); }, [cart.length]);
   const subtotal = cart.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
   const estimatedCommission = roundMoney(subtotal * (commissionRatePercent / 100));
   const netToKeep = roundMoney(subtotal - estimatedCommission);
@@ -357,6 +360,7 @@ export function PosRegister({
         setQueue(listQueue(slug));
         toast.success(`Saved offline — ${currency} ${formatNumber(total)}. It will be recorded when you're back online.`);
         setCart([]);
+        setPaying(false);
         setCustomerName("");
         setCustomerPhone("");
         setCustomerEmail("");
@@ -389,6 +393,7 @@ export function PosRegister({
         : undefined,
     );
     setCart([]);
+    setPaying(false);
     setCustomerName("");
     setCustomerPhone("");
     setOrderType("DINE_IN");
@@ -426,7 +431,7 @@ export function PosRegister({
         : "Charge";
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start" onClickCapture={refocusBarcodeUnlessTyping}>
+    <div className={`grid grid-cols-1 gap-5 ${paying ? "mx-auto w-full max-w-xl" : ""}`} onClickCapture={refocusBarcodeUnlessTyping}>
       {(!online || queue.length > 0) && (
         <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3.5 text-sm text-amber-900 lg:col-span-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -462,7 +467,7 @@ export function PosRegister({
       )}
 
       {/* Catalog */}
-      <section className="min-w-0 pb-24 lg:pb-0" aria-label="Items to sell">
+      <section className={`min-w-0 pb-24 ${paying ? "hidden" : ""}`} aria-label="Items to sell">
         <div className="sticky top-0 z-20 -mx-1 space-y-3 bg-background/90 px-1 pb-3 pt-1 backdrop-blur supports-[backdrop-filter]:bg-background/75">
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative flex-1">
@@ -518,7 +523,7 @@ export function PosRegister({
         </div>
 
         {showCategoryTiles && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {categoryTiles.map((c) => (
               <button
                 key={c.name}
@@ -549,7 +554,7 @@ export function PosRegister({
           </button>
         )}
 
-        <div className={`grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-3 ${showCategoryTiles ? "hidden" : ""}`}>
+        <div className={`grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 ${showCategoryTiles ? "hidden" : ""}`}>
           {visible.map((item) => {
             const outOfStock = !item.hasVariants && item.quantity !== null && item.quantity <= 0;
             const lowStock = !item.hasVariants && item.quantity !== null && item.quantity > 0 && item.quantity <= 5;
@@ -646,7 +651,13 @@ export function PosRegister({
       </section>
 
       {/* Cart */}
-      <aside id="pos-cart" aria-label="Current sale" className="flex flex-col rounded-3xl border bg-background shadow-sm lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+      {paying && (
+      <aside id="pos-cart" aria-label="Current sale" className="flex flex-col rounded-3xl border bg-background shadow-sm">
+        <div className="px-5 pt-4">
+          <button type="button" onClick={() => setPaying(false)} className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium ${ring}`}>
+            <ArrowLeft className="h-4 w-4" /> Back to items
+          </button>
+        </div>
         <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-5">
           <div className="flex items-center gap-2.5">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]"><ShoppingBag className="h-[18px] w-[18px]" /></span>
@@ -656,7 +667,7 @@ export function PosRegister({
             </div>
           </div>
           {cart.length > 0 && (
-            <button type="button" onClick={() => setCart([])} className={`rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive ${ring}`}>
+            <button type="button" onClick={() => { setCart([]); setPaying(false); }} className={`rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive ${ring}`}>
               Clear all
             </button>
           )}
@@ -884,16 +895,18 @@ export function PosRegister({
           </button>
         </div>
       </aside>
+      )}
 
-      {/* Phone: jump to the cart without scrolling the whole catalogue */}
-      {cart.length > 0 && (
+      {/* Proceed to pay: shown once something is in the cart, on every screen size */}
+      {!paying && cart.length > 0 && (
         <button
           type="button"
-          onClick={() => document.getElementById("pos-cart")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          className="fixed inset-x-4 bottom-4 z-40 flex items-center justify-between rounded-2xl bg-[var(--bn-admin-orange)] px-5 py-3.5 text-white shadow-xl lg:hidden"
+          onClick={() => { setPaying(true); window.scrollTo({ top: 0 }); }}
+          className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-xl items-center justify-between rounded-2xl bg-[var(--bn-admin-orange)] px-5 py-3.5 text-white shadow-xl"
+          style={{ backgroundColor: "#0f6410" }}
         >
           <span className="flex items-center gap-2 text-sm font-semibold"><ShoppingBag className="h-5 w-5" />{itemCount} {itemCount === 1 ? "item" : "items"}</span>
-          <span className="text-base font-bold tabular-nums">View cart · {currency} {formatNumber(subtotal)}</span>
+          <span className="text-base font-bold tabular-nums">Proceed to pay · {currency} {formatNumber(subtotal)}</span>
         </button>
       )}
     </div>
