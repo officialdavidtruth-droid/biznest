@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookOpen, Boxes, ChefHat, FileSignature, Home, Settings2, Trash2, Truck } from "lucide-react";
+import { BookOpen, Boxes, ChefHat, Home, Settings2, Trash2 } from "lucide-react";
 import { setFnbCurrency } from "@/components/dashboard/fnb/ui";
 import { AppShell, type NavGroup } from "@/components/dashboard/fnb/shell";
 import { KitchenOverviewPanel, KitchenPanel } from "@/components/dashboard/fnb/service-panels";
 import { RecipesPanel } from "@/components/dashboard/fnb/menu-panels";
-import { InventoryPanel, ProcurementPanel, SettingsPanel, SupplierPanel, WastagePanel } from "@/components/dashboard/fnb/stock-panels";
+import { InventoryPanel, SettingsPanel, WastagePanel } from "@/components/dashboard/fnb/stock-panels";
 
-export type KitchenTab = "overview" | "kitchen" | "recipes" | "inventory" | "procurement" | "suppliers" | "wastage" | "settings";
+export type KitchenTab = "overview" | "kitchen" | "recipes" | "inventory" | "wastage" | "settings";
 
 const groups: Array<NavGroup<KitchenTab>> = [
   { title: "Kitchen", items: [{ id: "overview", label: "Today", icon: Home }, { id: "kitchen", label: "Tickets", icon: ChefHat }, { id: "recipes", label: "Recipes & cost", icon: BookOpen }] },
-  { title: "Stock", items: [{ id: "inventory", label: "Stock", icon: Boxes }, { id: "procurement", label: "Purchasing", icon: FileSignature }, { id: "suppliers", label: "Suppliers", icon: Truck }, { id: "wastage", label: "Waste", icon: Trash2 }] },
+  { title: "Ingredients", items: [{ id: "inventory", label: "Ingredient stock", icon: Boxes }, { id: "wastage", label: "Waste", icon: Trash2 }] },
   { title: "Setup", items: [{ id: "settings", label: "Settings", icon: Settings2 }] },
 ];
 const all = groups.flatMap((g) => g.items);
@@ -37,8 +37,6 @@ export function KitchenWorkspace({ slug, data }: { slug: string; data: any }) {
     {tab === "kitchen" && <KitchenPanel slug={slug} orders={data.orders} />}
     {tab === "recipes" && <RecipesPanel key={dish ?? "none"} initialId={dish} slug={slug} products={data.products} inventory={data.inventory} role={data.role} />}
     {tab === "inventory" && <InventoryPanel slug={slug} data={data} />}
-    {tab === "procurement" && <ProcurementPanel slug={slug} purchaseOrders={data.purchaseOrders} />}
-    {tab === "suppliers" && <SupplierPanel slug={slug} suppliers={data.suppliers} />}
     {tab === "wastage" && <WastagePanel slug={slug} data={data} />}
     {tab === "settings" && <SettingsPanel slug={slug} role={data.role} mode={data.mode} />}
   </AppShell>;

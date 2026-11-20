@@ -26,6 +26,9 @@ const PLUGIN_GATED: Record<string, string> = {
   "fnb:settings": "kitchen-management",
 };
 
+/** Covered by the main dashboard's own permissions (orders, catalog, customers, analytics, inventory, procurement); not offered again for the add-ons. */
+const COVERED_BY_CORE = new Set(["fnb:orders", "fnb:menu", "fnb:customers", "fnb:reports", "fnb:inventory", "fnb:procurement", "fnb:suppliers"]);
+
 export type AvailableStaffPermission = { id: string; label: string };
 
 /**
@@ -68,6 +71,7 @@ export async function getAvailableStaffPermissions(storeId: string): Promise<Ava
   }
 
   return STAFF_PERMISSIONS.filter((p) => {
+    if (COVERED_BY_CORE.has(p.id)) return false;
     const requiredApp = PLUGIN_GATED[p.id];
     return requiredApp ? installedKeys.has(requiredApp) : inNav.has(p.id);
   }).map((p) => ({ id: p.id, label: p.label }));
