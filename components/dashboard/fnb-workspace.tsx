@@ -29,13 +29,15 @@ export function FnbWorkspace({ slug, data }: { slug: string; data: any }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [sheet, setSheet] = useState(false);
   const [pos, setPos] = useState<any>(null);
+  const [recipeFocus, setRecipeFocus] = useState<string | null>(null);
 
   const loadPos = async () => {
     if (pos) return;
     const [catalog, summary, openTabs, inHouseRooms] = await Promise.all([getPosCatalog(slug), getPosDailySummary(slug), getOpenPosTabs(slug), getInHouseReservations(slug)]);
     setPos({ catalog, summary, openTabs, inHouseRooms, commissionRatePercent: data.posCommissionRatePercent ?? 8 });
   };
-  const go = (next: Tab) => {
+  const go = (next: Tab, dishId?: string) => {
+    setRecipeFocus(dishId ?? null);
     setTab(next); setSheet(false);
     try { history.replaceState(null, "", `#${next}`); } catch {}
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
@@ -75,7 +77,7 @@ export function FnbWorkspace({ slug, data }: { slug: string; data: any }) {
         {tab === "pos" && (pos ? <PosPanel slug={slug} pos={pos} currentShift={data.currentShift} recentShifts={data.recentShifts} refreshTabs={refreshTabs} /> : <div className="grid min-h-[50vh] place-items-center text-sm text-[var(--bn-admin-muted)]">Opening the register…</div>)}
         {tab === "tables" && <TablesPanel reservations={data.reservations} />}
         {tab === "menu" && <MenuPanel slug={slug} products={data.products} inventory={data.inventory} role={data.role} go={go} />}
-        {tab === "recipes" && <RecipesPanel slug={slug} products={data.products} inventory={data.inventory} role={data.role} />}
+        {tab === "recipes" && <RecipesPanel key={recipeFocus ?? "none"} initialId={recipeFocus} slug={slug} products={data.products} inventory={data.inventory} role={data.role} />}
         {tab === "inventory" && <InventoryPanel slug={slug} data={data} />}
         {tab === "procurement" && <ProcurementPanel slug={slug} purchaseOrders={data.purchaseOrders} />}
         {tab === "suppliers" && <SupplierPanel slug={slug} suppliers={data.suppliers} />}

@@ -103,6 +103,9 @@ export async function listProductsPage(slug: string, query: ProductListQuery = {
   const size = (PRODUCT_PAGE_SIZES as readonly number[]).includes(query.size ?? 0) ? (query.size as number) : 20;
 
   const where: Prisma.ProductWhereInput = { storeId, archivedAt: query.status === "archived" ? { not: null } : null };
+  // Restaurant ingredients are stock, not menu items; they live under Inventory.
+  const hiddenIngredients = await prisma.product.findMany({ where: { storeId, attributes: { path: ["fnbIngredient"], equals: true } }, select: { id: true } });
+  if (hiddenIngredients.length) where.AND = [{ id: { notIn: hiddenIngredients.map((x) => x.id) } }];
   const q = query.q?.trim();
   if (q) where.name = { contains: q, mode: "insensitive" };
   // A product shows up under every category it is listed in, not just its primary one.
@@ -160,10 +163,12 @@ export async function getProductStats(slug: string) {
   if (!access.success) return null;
   const storeId = access.store.id;
 
+  const ingredientIds = (await prisma.product.findMany({ where: { storeId, attributes: { path: ["fnbIngredient"], equals: true } }, select: { id: true } })).map((x) => x.id);
+  const notIngredient = ingredientIds.length ? { id: { notIn: ingredientIds } } : {};
   const [total, published, outPlain, outVariant, byCategory] = await Promise.all([
-    prisma.product.count({ where: { storeId, archivedAt: null } }),
-    prisma.product.count({ where: { storeId, archivedAt: null, isPublished: true } }),
-    prisma.product.count({ where: { storeId, archivedAt: null, type: "PHYSICAL", hasVariants: false, inventory: { is: { quantity: { lte: 0 } } } } }),
+    prisma.product.count({ where: { storeId, archivedAt: null, ...notIngredient } }),
+    prisma.product.count({ where: { storeId, archivedAt: null, isPublished: true, ...notIngredient } }),
+    prisma.product.count({ where: { storeId, archivedAt: null, type: "PHYSICAL", hasVariants: false, ...notIngredient, inventory: { is: { quantity: { lte: 0 } } } } }),
     prisma.product.count({ where: { storeId, archivedAt: null, type: "PHYSICAL", hasVariants: true, variants: { none: { isActive: true, quantity: { gt: 0 } } } } }),
     // Distinct products per category, counting both the primary category and extra links.
     prisma.$queryRaw<{ categoryId: string; n: bigint }[]>`

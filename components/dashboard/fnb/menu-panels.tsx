@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ArrowLeft, ChefHat, Plus, Search, Trash2, UtensilsCrossed } from "lucide-react";
 import { toast } from "sonner";
-import { createFnbIngredient, saveFnbRecipe, saveFnbStation } from "@/lib/actions/fnb";
+import { createFnbDish, createFnbIngredient, saveFnbRecipe, saveFnbStation } from "@/lib/actions/fnb";
 import { extractFnbRecipe } from "@/lib/fnb-utils";
 import { Avatar, Chip, Empty, Field, Meter, Page, Section, Segmented, btnGhost, btnPrimary, card, input, money, toneStyle, type Tone } from "./ui";
 
@@ -29,15 +28,36 @@ function dishCost(p: any, inventory: any[]): number | null {
 function marginTone(pct: number): Tone { return pct >= 65 ? "ok" : pct >= 50 ? "warn" : "bad"; }
 
 /* ───────────── Menu ───────────── */
-export function MenuPanel({ slug, products, inventory, role, go }: { slug: string; products: any[]; inventory: any[]; role: string; go: (id: any) => void }) {
+export function MenuPanel({ slug, products, inventory, role, go }: { slug: string; products: any[]; inventory: any[]; role: string; go: (id: any, dishId?: string) => void }) {
   const canEdit = role !== "STAFF";
+  const router = useRouter();
+  const [adding, setAdding] = useState(false);
+  const [busy, start] = useTransition();
+  const [d, setD] = useState({ name: "", price: "", description: "", station: "Hot Kitchen", quantity: "" });
+  const addDish = () => start(async () => {
+    const r = await createFnbDish(slug, { name: d.name, price: Number(d.price), description: d.description, station: d.station, quantity: d.quantity ? Number(d.quantity) : 0 });
+    if (!r.success) { toast.error(r.error); return; }
+    toast.success(`${r.data.name} added — now build its recipe`);
+    setD({ name: "", price: "", description: "", station: "Hot Kitchen", quantity: "" }); setAdding(false);
+    router.refresh(); go("recipes", r.data.productId);
+  });
   const [q, setQ] = useState("");
   const [st, setSt] = useState("All");
   const dishes = products.filter((p) => !isIngredientProduct(p));
   const list = dishes.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()) && (st === "All" || (attrsOf(p).fnbStation || "Hot Kitchen") === st));
   const usedStations = ["All", ...STATIONS.filter((s) => dishes.some((p) => (attrsOf(p).fnbStation || "Hot Kitchen") === s))];
   const saveStation = (productId: string, station: string) => { void (async () => { const r = await saveFnbStation(slug, productId, station); if (!r.success) toast.error(r.error); else toast.success("Kitchen station updated"); })(); };
-  return <Page title="Menu" sub="Your dishes and where each one is cooked. Prices live in the catalog." action={canEdit ? <Link href={`/store/${slug}/admin/products`} className={btnPrimary}><Plus className="h-4 w-4" />Add dish</Link> : undefined}>
+  return <Page title="Menu" sub="Your dishes and where each one is cooked. Prices live in the catalog." action={canEdit ? <button onClick={() => setAdding((v) => !v)} className={btnPrimary}><Plus className="h-4 w-4" />{adding ? "Cancel" : "Add dish"}</button> : undefined}>
+    {adding && <Section title="New dish" hint="Add it here, then you'll go straight to its recipe.">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Dish name"><input className={input} placeholder="e.g. Jollof rice & chicken" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></Field>
+        <Field label="Price guests pay"><input className={input} type="number" inputMode="decimal" min="0" step="any" placeholder="e.g. 4500" value={d.price} onChange={(e) => setD({ ...d, price: e.target.value })} /></Field>
+        <div className="sm:col-span-2"><Field label="Short description (optional)"><input className={input} maxLength={255} placeholder="What guests see on your menu" value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} /></Field></div>
+        <Field label="Cooked at"><select className={input} value={d.station} onChange={(e) => setD({ ...d, station: e.target.value })}>{STATIONS.map((s) => <option key={s}>{s}</option>)}</select></Field>
+        <Field label="Portions ready (optional)" hint="Skip this if you'll add a recipe. Dishes with a recipe use ingredient stock."><input className={input} type="number" inputMode="numeric" min="0" value={d.quantity} onChange={(e) => setD({ ...d, quantity: e.target.value })} /></Field>
+      </div>
+      <button disabled={busy} onClick={addDish} className={`${btnPrimary} mt-4 w-full`}>{busy ? "Adding…" : "Add dish & build recipe"}</button>
+    </Section>}
     <div className="relative"><Search className="pointer-events-none absolute left-3.5 top-3.5 h-4 w-4 text-[var(--bn-admin-muted)]" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search dishes" className={`${input} pl-10`} /></div>
     {usedStations.length > 2 && <Segmented scroll value={st} onChange={setSt} options={usedStations.map((s) => ({ id: s, label: s }))} />}
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{list.map((p) => {
@@ -61,10 +81,10 @@ export function MenuPanel({ slug, products, inventory, role, go }: { slug: strin
 /* ───────────── Recipes & food cost ───────────── */
 type Row = { inventoryItemId: string; quantity: string; unit: string };
 
-export function RecipesPanel({ slug, products: allProducts, inventory, role }: { slug: string; products: any[]; inventory: any[]; role: string }) {
+export function RecipesPanel({ slug, products: allProducts, inventory, role, initialId }: { slug: string; products: any[]; inventory: any[]; role: string; initialId?: string | null }) {
   const products = allProducts.filter((p) => !isIngredientProduct(p));
   const canEdit = role !== "STAFF";
-  const [productId, setProductId] = useState<string | null>(null);
+  const [productId, setProductId] = useState<string | null>(initialId ?? null);
   const product = products.find((p) => p.id === productId) || null;
   return <Page title="Recipes & food cost" sub="Build each dish from your ingredients to see what it costs and what you keep.">
     <div className="grid gap-5 lg:grid-cols-[340px_1fr]">

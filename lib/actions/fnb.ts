@@ -350,3 +350,31 @@ export async function createFnbIngredient(slug: string, input: { name: string; u
   revalidatePath(`/store/${slug}/admin/inventory`);
   return { success: true, data: { inventoryItemId: inv.id, name: `${name} (${unit})` } };
 }
+
+export async function createFnbDish(slug: string, input: { name: string; price: number; description?: string; station: string; quantity?: number }): Promise<ActionResult<{ productId: string; name: string }>> {
+  const a = await access(slug, "fnb:menu");
+  if (!a.success) return { success: false, error: a.error };
+  if (a.role === "STAFF") return { success: false, error: "Only the store owner or manager can add dishes." };
+  const name = input.name.trim();
+  if (name.length < 2) return { success: false, error: "Give the dish a name." };
+  if (!Number.isFinite(input.price) || input.price <= 0) return { success: false, error: "Enter the price guests pay, above 0." };
+  const quantity = input.quantity ?? 0;
+  if (!Number.isInteger(quantity) || quantity < 0) return { success: false, error: "Portions ready must be a whole number." };
+  const station = ["Hot Kitchen", "Grill", "Cold", "Drinks", "Pizza", "Dessert", "Expo"].includes(input.station) ? input.station : "Hot Kitchen";
+  const description = (input.description || "").trim() || `${name}, freshly prepared to order.`;
+  const created = await createProduct(slug, {
+    name,
+    type: "PHYSICAL",
+    description,
+    price: input.price,
+    currency: a.store.currency,
+    images: [],
+    isPublished: true,
+    quantity,
+    attributes: { fnbStation: station },
+  } as Parameters<typeof createProduct>[1]);
+  if (!created.success) return { success: false, error: created.error };
+  revalidatePath(`/store/${slug}/admin/fnb`);
+  revalidatePath(`/store/${slug}/admin/products`);
+  return { success: true, data: { productId: created.data.productId, name } };
+}
