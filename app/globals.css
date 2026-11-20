@@ -1739,8 +1739,7 @@ html.bn-admin-dark .bn-admin-app .text-emerald-950,
 html.bn-admin-dark .bn-admin-app .text-green-600,
 html.bn-admin-dark .bn-admin-app .text-green-700,
 html.bn-admin-dark .bn-admin-app .text-green-800,
-html.bn-admin-dark .bn-admin-app .text-\[\#0f6410\],
-html.bn-admin-dark .bn-admin-app .text-\[\#14301A\] { color: #6ee7a0 !important; }
+html.bn-admin-dark .bn-admin-app .text-\[\#0f6410\] { color: #6ee7a0 !important; }
 html.bn-admin-dark .bn-admin-app .text-amber-600,
 html.bn-admin-dark .bn-admin-app .text-amber-700,
 html.bn-admin-dark .bn-admin-app .text-amber-800,
@@ -1785,3 +1784,9 @@ html.bn-admin-dark .bn-admin-app .text-neutral-500 { color: #93a1b3 !important; 
 html.bn-admin-dark .bn-admin-app [class*="bg-white"] { background-color: #131a23 !important; }
 html.bn-admin-dark .bn-admin-app .bg-emerald-600 { background-color: #22c55e !important; }
 html.bn-admin-dark .bn-admin-app .bg-amber-400 { background-color: #fbbf24 !important; }
+/* dark mode: the Browse tab uses cream cards with dark-green text */
+html.bn-admin-dark .bn-admin-app [class*="bg-[#FBF6E9]"],
+html.bn-admin-dark .bn-admin-app [class*="bg-[#fbf6e9]"] { background-color: #131a23 !important; }
+html.bn-admin-dark .bn-admin-app .text-\[\#14301A\],
+html.bn-admin-dark .bn-admin-app [class*="text-[#14301A]"] { color: #e6edf3 !important; }
+html.bn-admin-dark .bn-admin-app [class*="bg-[#14301A]"] { background-color: #1f3a27 !important; }
