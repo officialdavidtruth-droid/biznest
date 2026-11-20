@@ -1790,3 +1790,6 @@ html.bn-admin-dark .bn-admin-app [class*="bg-[#fbf6e9]"] { background-color: #13
 html.bn-admin-dark .bn-admin-app .text-\[\#14301A\],
 html.bn-admin-dark .bn-admin-app [class*="text-[#14301A]"] { color: #e6edf3 !important; }
 html.bn-admin-dark .bn-admin-app [class*="bg-[#14301A]"] { background-color: #1f3a27 !important; }
+html.bn-admin-dark .bn-admin-app [class*="text-[#1d6b3a]"],
+html.bn-admin-dark .bn-admin-app [class*="text-[#1D6B3A]"] { color: #6ee7a0 !important; }
+html.bn-admin-dark .bn-admin-app [class*="text-[#14301A]/"] { color: #a7b4c4 !important; }
