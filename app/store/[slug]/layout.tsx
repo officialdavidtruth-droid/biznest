@@ -5,8 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { StoreMenuProvider } from "@/components/storefront/store-menu";
 import { StoreCategoriesProvider } from "@/components/storefront/store-categories";
-import { isStaleMenu, resolveMenuRows } from "@/lib/storefront-menu";
-import { isStorePageAvailable } from "@/lib/store-pages";
+import { isStaleMenu, resolveMenuRows, buildAutoHeaderMenu } from "@/lib/storefront-menu";
+import { getBusinessTerminology } from "@/lib/business-terminology";
+import { getStoreKind, isStorePageAvailable } from "@/lib/store-pages";
 import { hasPageContent } from "@/lib/storefront/page-blocks";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { PromoPopup } from "@/components/storefront/promo-popup";
@@ -153,7 +154,7 @@ export default async function StoreLayout({
         select: { id: true, name: true, slug: true, parentId: true, description: true, imageUrl: true, _count: { select: { products: { where: { isPublished: true } }, services: { where: { isPublished: true } } } } },
       },
       // Blog and Gallery exist only once the owner has written them, so menu links to them need this.
-      pages: { where: { isPublished: true, slug: { in: ["blog", "gallery"] } }, select: { slug: true, content: true } },
+      pages: { where: { isPublished: true, slug: { in: ["blog", "gallery", "about"] } }, select: { slug: true, content: true } },
       // Any published post makes /blog a real page too (posts are core, no page needs to be "written").
       articles: { where: { publishedAt: { not: null, lte: new Date() } }, take: 1, select: { id: true } },
       // Owner-built header menu (Dashboard > Menus). Empty = templates use their own default links.
@@ -250,7 +251,11 @@ export default async function StoreLayout({
     const resolved = resolveMenuRows(kept, slug, exists.categories);
     return isStaleMenu(rows.length, kept.length, resolved.length) ? null : resolved;
   };
-  const headerMenu = menuFor("header");
+  // No owner-built menu: Home, the vendor's own categories, About (once written) and Contact, so every
+  // template shows what the business really has instead of hardcoded Shop/Menu links. Hotels keep their template nav.
+  const hasOwnHeaderMenu = !!exists?.menuItems.some((m) => m.location === "header");
+  const isHotel = !!exists && getStoreKind({ businessCategory: exists.business?.category ?? null, businessSubcategory: exists.business?.businessSubcategory ?? null, storeBusinessType: exists.businessType, templateName: exists.template?.name ?? null } as any) === "hotel";
+  const headerMenu = menuFor("header") ?? (exists && !hasOwnHeaderMenu && !isHotel ? buildAutoHeaderMenu(slug, exists.categories, { about: writtenPages.has("about"), blog: writtenPages.has("blog") }, (() => { const t = getBusinessTerminology(exists.business?.category, exists.business?.businessSubcategory); return t.catalog === "Products" ? "Shop" : t.catalog; })()) : null);
   const footerMenu = menuFor("footer");
 
   // Free trial: no card billing yet and the trial end is still ahead.

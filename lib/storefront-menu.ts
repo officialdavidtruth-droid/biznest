@@ -155,3 +155,31 @@ export function isMenuItemActive(item: { href: string; external: boolean; childr
 export function isStaleMenu(totalRows: number, keptRows: number, resolvedTopLevel: number): boolean {
   return totalRows > 0 && keptRows < totalRows && resolvedTopLevel <= 1;
 }
+
+/**
+ * Default header menu for a store whose owner has not built one: Home, the owner's own top-level categories
+ * (only ones that have something published; the first few so the bar stays tidy), About once they have written
+ * it, a Blog link once they have posts, and Contact. Sub-categories become the dropdown.
+ */
+export function buildAutoHeaderMenu(
+  slug: string,
+  categories: { id: string; name: string; slug?: string | null; parentId?: string | null; _count?: { products: number; services: number } }[],
+  have: { about: boolean; blog: boolean },
+  catalogLabel = "Shop",
+  maxCategories = 5,
+): ResolvedMenuItem[] {
+  const filled = (c: (typeof categories)[number]) => !c._count || c._count.products + c._count.services > 0;
+  const catHref = (c: (typeof categories)[number]) => `/store/${slug}/category/${c.slug || c.id}`;
+  const link = (id: string, label: string, href: string, children: ResolvedMenuItem[] = []): ResolvedMenuItem => ({ id, label, href, external: false, newTab: false, children });
+  const top = categories.filter((c) => !c.parentId && filled(c)).slice(0, maxCategories);
+  const out: ResolvedMenuItem[] = [link("auto-home", "Home", storePath(slug, "/"))];
+  for (const c of top) {
+    const kids = categories.filter((k) => k.parentId === c.id && filled(k)).map((k) => link(`auto-${k.id}`, k.name, catHref(k)));
+    out.push(link(`auto-${c.id}`, c.name, catHref(c), kids));
+  }
+  if (top.length === 0) out.push(link("auto-catalog", catalogLabel, storePath(slug, "/catalog")));
+  if (have.about) out.push(link("auto-about", "About", storePath(slug, "/about")));
+  if (have.blog) out.push(link("auto-blog", "Blog", storePath(slug, "/blog")));
+  out.push(link("auto-contact", "Contact", storePath(slug, "/contact")));
+  return out;
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { GRID_GAP, GRID_MIN, type PageSkin } from "@/lib/storefront/page-skin";
+import { getBusinessTerminology } from "@/lib/business-terminology";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, ChevronRight, Compass, LayoutGrid, List, MessageCircle, Search, SlidersHorizontal, X } from "lucide-react";
@@ -55,6 +56,10 @@ export function CatalogExperience({
 }) {
   const experience = getBusinessExperience(store.business.category, { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices }, store.business.businessSubcategory);
   const isService = experience.mode === "service";
+  // A restaurant's catalog is its menu, a property business's is its listings: only plain retail says "Shop" and "products".
+  const terms = getBusinessTerminology(store.business.category, store.business.businessSubcategory);
+  const retail = terms.catalog === "Products";
+  const noun = terms.catalog.toLowerCase();
   const hdr = skin?.header ?? "line";
   const centred = hdr === "centre";
   const solidBand = hdr === "band";
@@ -133,11 +138,11 @@ export function CatalogExperience({
   }, [filterOpen]);
   const activeCount = (cat ? 1 : 0) + (kind !== "all" ? 1 : 0) + (priceLimited ? 1 : 0);
 
-  const pageTitle = mode === "search" ? (q.trim() ? `Results for “${q.trim()}”` : "Search") : mode === "category" && heading ? (cat ?? heading) : (cat ?? (isService ? "All services" : "All products"));
+  const pageTitle = mode === "search" ? (q.trim() ? `Results for “${q.trim()}”` : "Search") : mode === "category" && heading ? (cat ?? heading) : (cat ?? (isService ? "All services" : retail ? "All products" : `Our ${noun}`));
 
   function reset() { setQ(""); setCat(null); setKind("all"); setMaxPrice(null); }
 
-  const title = isService ? "Services" : "Shop";
+  const title = isService ? "Services" : retail ? "Shop" : terms.catalog;
   const radius = d.radius;
   const line = `${d.text}1f`;
   const storeLinks = [
@@ -177,7 +182,7 @@ export function CatalogExperience({
           </nav>
           <div style={{ display: "flex", alignItems: "center", justifyContent: centred ? "center" : undefined, gap: 10, fontSize: 12, fontWeight: 800, letterSpacing: ".16em", textTransform: "uppercase", color: solidBand ? bandFg : d.accent, marginBottom: 12 }}>
             <span aria-hidden style={{ width: 28, height: 2, background: d.accent, borderRadius: 2 }} />
-            {mode === "search" ? "Search" : mode === "category" ? "Category" : isService ? "Our services" : "The collection"}
+            {mode === "search" ? "Search" : mode === "category" ? "Category" : isService ? "Our services" : retail ? "The collection" : terms.catalog}
           </div>
           <h1 style={{ fontFamily: d.headingFont, fontSize: "clamp(34px,5.4vw,60px)", lineHeight: 1.05, letterSpacing: titleWeight === 300 ? "0" : "-.035em", fontWeight: titleWeight, margin: centred ? "0 auto" : 0, color: bandFg, maxWidth: 900 }}>{pageTitle}</h1>
           <p style={{ margin: centred ? "14px auto 0" : "14px 0 0", color: bandMuted, fontSize: 17, lineHeight: 1.6, maxWidth: 620 }}>
@@ -185,7 +190,7 @@ export function CatalogExperience({
               ? mode === "category" ? `No listings in ${heading ?? "this category"} yet.` : "New items are on the way."
               : mode === "search" && q.trim()
                 ? `${results.length} ${results.length === 1 ? "result" : "results"} found.`
-                : mode === "category" ? `Browse everything in ${heading ?? "this category"}.` : `Browse the full ${isService ? "list of services" : "collection"} from ${store.name}.`}
+                : mode === "category" ? `Browse everything in ${heading ?? "this category"}.` : `Browse the full ${isService ? "list of services" : retail ? "collection" : noun} from ${store.name}.`}
           </p>
         </div>
       </section>
@@ -196,7 +201,7 @@ export function CatalogExperience({
           <label className="cx-search" style={{ position: "relative", flex: "1 1 260px", maxWidth: 440 }}>
             <span className="sr-only" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Search {title.toLowerCase()}</span>
             <Search size={16} aria-hidden style={{ position: "absolute", left: 13, top: 13, color: d.muted }} />
-            <input className="cx-focus" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${isService ? "services" : "products"}`} style={{ ...control, width: "100%", paddingLeft: 38, paddingRight: q ? 38 : 12 }} />
+            <input className="cx-focus" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${isService ? "services" : retail ? "products" : `the ${noun}`}`} style={{ ...control, width: "100%", paddingLeft: 38, paddingRight: q ? 38 : 12 }} />
             {q && <button type="button" aria-label="Clear search" onClick={() => setQ("")} style={{ position: "absolute", right: 8, top: 8, border: 0, background: "transparent", color: d.muted, cursor: "pointer", padding: 4 }}><X size={16} /></button>}
           </label>
 
