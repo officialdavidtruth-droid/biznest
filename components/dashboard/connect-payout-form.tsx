@@ -166,6 +166,9 @@ export function ConnectPayoutForm({
           <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="payout-number">Account number</label>
           <input
             id="payout-number"
+            name="bank_account_no"
+            type="text"
+            data-lpignore="true"
             value={accountNumber}
             onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
             placeholder="10-digit account number"
