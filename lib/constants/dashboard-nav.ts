@@ -87,7 +87,6 @@ export function buildNavGroups(business: NavBusiness): Array<{
     // Display sections are a layout tool; Simple mode keeps just categories.
     ...(showAdvanced ? [{ label: `${terminology.catalogSingular} Sections`, href: "/menu-sections", icon: Rows3, permission: "products" as StaffPermissionId }] : []),
   ];
-  const fnbInstalled = ["Restaurant", "Food & Groceries"].includes(canonicalType) && !!business.installedApps?.some((app) => app.key === "fnb-operations");
   if (business.sellsProducts) {
     sellNavItems.push(
       { label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" as const },
