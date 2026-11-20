@@ -46,7 +46,7 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
       } catch (err) {
         const statusCode = (err as { statusCode?: number }).statusCode;
         const body = String((err as { body?: unknown }).body ?? "");
-        if (statusCode === 404 || statusCode === 410 || (statusCode === 400 && /VapidPkHashMismatch/i.test(body))) {
+        if (statusCode === 404 || statusCode === 410 || statusCode === 401 || statusCode === 403 || (statusCode === 400 && /VapidPkHashMismatch/i.test(body))) {
           // Subscription expired or was revoked on the device -- prune it
           // rather than retrying it forever.
           await prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
