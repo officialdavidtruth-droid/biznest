@@ -89,8 +89,9 @@ function PosPanel({ slug, pos, currentShift, recentShifts, refreshTabs }: { slug
 }
 
 function ShiftControl({ slug, currentShift, recentShifts }: { slug: string; currentShift: any; recentShifts: any[] }) {
+  const router = useRouter();
   const [busy, start] = useTransition();
-  const run = () => start(async () => { const r = currentShift ? await endFnbShift(slug) : await startFnbShift(slug); if (!r.success) toast.error(r.error); else { toast.success(currentShift && "salesCount" in r.data ? `Shift ended — ${r.data.salesCount} sales, ${money(r.data.salesTotal)}.` : "Shift started."); window.location.reload(); } });
+  const run = () => start(async () => { const r = currentShift ? await endFnbShift(slug) : await startFnbShift(slug); if (!r.success) toast.error(r.error); else { toast.success(currentShift && "salesCount" in r.data ? `Shift ended — ${r.data.salesCount} sales, ${money(r.data.salesTotal)}.` : "Shift started."); router.refresh(); } });
   return <section className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_70%,transparent)] p-4"><div className="flex flex-col gap-4 xl:flex-row xl:items-center"><div className="min-w-0 flex-1"><p className="text-xs font-bold">{currentShift ? "Shift is open" : "No active shift"}</p><p className="mt-1 text-[11px] text-[var(--bn-admin-orange)]">{currentShift ? `Started ${date(currentShift.startedAt)} at ${time(currentShift.startedAt)} · ${currentShift.salesCount} sales · ${money(currentShift.salesTotal)}` : "Start a shift before accepting POS orders."}</p></div><button disabled={busy} onClick={run} className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50 ${currentShift ? "bg-[var(--bn-admin-active)]" : "bg-[var(--bn-admin-active)]"}`}>{currentShift ? "End Shift" : "Start Shift"}</button></div>{recentShifts.length > 0 && <div className="mt-4 border-t border-[var(--bn-admin-border)] pt-3"><p className="text-[10px] font-bold uppercase tracking-wider text-[var(--bn-admin-orange)]">Recent staff shifts</p><div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">{recentShifts.slice(0, 4).map((s: any) => <div key={s.id} className="rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] px-3 py-2"><p className="truncate text-[11px] font-semibold">{s.staffUser?.name || s.staffUser?.email || "Operator"}</p><p className="mt-1 text-[10px] text-[var(--bn-admin-orange)]">{date(s.startedAt)} · {s.status === "OPEN" ? "Open" : `Ended ${s.endedAt ? time(s.endedAt) : ""}`}</p><p className="mt-1 text-[10px] text-[var(--bn-admin-orange)]">{s.salesCount} sales · {money(s.salesTotal)}</p></div>)}</div></div>}</section>;
 }
 
@@ -116,7 +117,7 @@ function KitchenPanel({ slug, orders }: { slug: string; orders: any[] }) {
   const advance = (order: any, next: "STARTED" | "READY" | "EXPO" | "SERVED") => {
     void (async () => {
       const r = await advanceFnbOrderStatus(slug, order.id, next);
-      if (!r.success) toast.error(r.error); else { toast.success(next === "SERVED" ? "Order served" : `Ticket moved to ${label(next)}`); window.location.reload(); }
+      if (!r.success) toast.error(r.error); else { toast.success(next === "SERVED" ? "Order served" : `Ticket moved to ${label(next)}`); router.refresh(); }
     })();
   };
   return <div className="space-y-5">
