@@ -21,10 +21,10 @@ import type { StaffPermissionId } from "@/lib/access/staff-permissions";
 // and EXPO are mirrored to DELIVERED on Order.status, so it must be included.
 const KITCHEN_WORKABLE_ORDER_STATUSES: OrderStatus[] = ["PAID", "IN_PROGRESS", "DELIVERED"];
 
-type FnbPlugin = "fnb-operations" | "kitchen-management";
-const PLUGIN_LABEL: Record<FnbPlugin, string> = { "fnb-operations": "BizNest FnB", "kitchen-management": "Kitchen Management" };
+type FnbPlugin = "kitchen-management";
+const PLUGIN_LABEL: Record<FnbPlugin, string> = { "kitchen-management": "Kitchen Management" };
 
-async function access(slug: string, modulePermission?: StaffPermissionId, pluginKey: FnbPlugin = "fnb-operations") {
+async function access(slug: string, modulePermission?: StaffPermissionId, pluginKey: FnbPlugin = "kitchen-management") {
   const a = await assertStorePermission(slug, `plugin:${pluginKey}`);
   if (!a.success) return a;
   const fnbEntitlement = await getPluginEntitlement(a.store.id, pluginKey);
@@ -55,7 +55,6 @@ async function access(slug: string, modulePermission?: StaffPermissionId, plugin
   return { ...a, fnbModules };
 }
 
-export async function getFnbDashboard(slug: string) { return buildDashboard(slug, "fnb-operations"); }
 export async function getKitchenDashboard(slug: string) { return buildDashboard(slug, "kitchen-management"); }
 
 async function buildDashboard(slug: string, pluginKey: FnbPlugin) {
@@ -208,38 +207,6 @@ export async function advanceFnbOrderStatus(
   return { success: true, data: undefined };
 }
 
-export async function startFnbShift(slug: string): Promise<ActionResult<{ id: string; startedAt: Date }>> {
-  const a = await access(slug, "fnb:pos");
-  if (!a.success) return { success: false, error: a.error };
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) return { success: false, error: "You must be signed in." };
-  try {
-    const shift = await prisma.fnbShift.create({ data: { storeId: a.store.id, staffUserId: userId } });
-    revalidatePath(`/store/${slug}/admin/fnb`);
-    return { success: true, data: { id: shift.id, startedAt: shift.startedAt } };
-  } catch (err: any) {
-    if (err?.code === "P2002") return { success: false, error: "You already have an open shift. End it before starting another." };
-    throw err;
-  }
-}
-
-export async function endFnbShift(slug: string): Promise<ActionResult<{ id: string; endedAt: Date; salesCount: number; salesTotal: number }>> {
-  const a = await access(slug, "fnb:pos");
-  if (!a.success) return { success: false, error: a.error };
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) return { success: false, error: "You must be signed in." };
-  const shift = await prisma.fnbShift.findFirst({ where: { storeId: a.store.id, staffUserId: userId, status: "OPEN" }, select: { id: true } });
-  if (!shift) return { success: false, error: "You do not have an open shift." };
-  const endedAt = new Date();
-  const sales = await prisma.order.aggregate({ where: { storeId: a.store.id, fnbShiftId: shift.id, channel: "POS", status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] } }, _count: { _all: true }, _sum: { total: true } });
-  const result = await prisma.fnbShift.updateMany({ where: { id: shift.id, storeId: a.store.id, staffUserId: userId, status: "OPEN" }, data: { status: "CLOSED", endedAt, salesCount: sales._count._all, salesTotal: sales._sum.total ?? 0 } });
-  if (result.count === 0) return { success: false, error: "This shift was already closed." };
-  revalidatePath(`/store/${slug}/admin/fnb`);
-  return { success: true, data: { id: shift.id, endedAt, salesCount: sales._count._all, salesTotal: Number(sales._sum.total ?? 0) } };
-}
-
 export async function setFnbRotationMode(slug: string, mode: FnbRotationMode): Promise<ActionResult> {
   const a = await access(slug, "fnb:settings", "kitchen-management");
   if (!a.success) return { success: false, error: a.error };
@@ -385,55 +352,3 @@ export async function createFnbDish(slug: string, input: { name: string; price: 
   return { success: true, data: { productId: created.data.productId, name } };
 }
 
-/** The signed-in operator's open shift (with live sales), for the register on the main dashboard. Null when FnB isn't installed. */
-export async function getFnbShiftState(slug: string) {
-  const a = await access(slug, "fnb:pos");
-  if (!a.success) return null;
-  const session = await auth();
-  if (!session?.user?.id) return null;
-  const shift = await prisma.fnbShift.findFirst({ where: { storeId: a.store.id, staffUserId: session.user.id, status: "OPEN" }, orderBy: { startedAt: "desc" }, select: { id: true, status: true, startedAt: true, endedAt: true, salesCount: true, salesTotal: true } });
-  if (!shift) return { currentShift: null };
-  const live = await prisma.order.aggregate({ where: { storeId: a.store.id, fnbShiftId: shift.id, channel: "POS", status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] } }, _count: { _all: true }, _sum: { total: true } });
-  return { currentShift: { ...shift, salesCount: live._count._all, salesTotal: Number(live._sum.total ?? 0) } };
-}
-
-/* ───────────── Tables (each with its own QR) ───────────── */
-export async function getFnbTables(slug: string): Promise<ActionResult<{ baseUrl: string; tables: { id: string; name: string; seats: number | null; token: string }[] }>> {
-  const a = await access(slug, "fnb:pos");
-  if (!a.success) return { success: false, error: a.error };
-  const store = await prisma.store.findUnique({ where: { id: a.store.id }, select: { slug: true, customDomain: true, customDomainStatus: true } });
-  if (!store) return { success: false, error: "Store not found." };
-  const { storeBaseUrl } = await import("@/lib/seo");
-  const tables = await prisma.fnbTable.findMany({ where: { storeId: a.store.id, active: true }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, seats: true, token: true } });
-  return { success: true, data: { baseUrl: storeBaseUrl(store), tables } };
-}
-
-export async function createFnbTables(slug: string, input: { name?: string; seats?: number | null; count?: number }): Promise<ActionResult<{ created: number }>> {
-  const a = await access(slug, "fnb:pos");
-  if (!a.success) return { success: false, error: a.error };
-  const seats = input.seats && input.seats > 0 ? Math.min(Math.floor(input.seats), 99) : null;
-  const names: string[] = [];
-  if (input.count && input.count > 1) {
-    const count = Math.min(Math.floor(input.count), 60);
-    const existing = await prisma.fnbTable.count({ where: { storeId: a.store.id } });
-    for (let i = 1; i <= count; i++) names.push(`Table ${existing + i}`);
-  } else {
-    const name = (input.name ?? "").trim().replace(/\s+/g, " ").slice(0, 40);
-    if (!name) return { success: false, error: "Give the table a name, like Table 1 or Patio 2." };
-    names.push(name);
-  }
-  const res = await prisma.fnbTable.createMany({ data: names.map((name) => ({ storeId: a.store.id, name, seats })), skipDuplicates: true });
-  if (res.count === 0) return { success: false, error: "A table with that name already exists." };
-  revalidatePath(`/store/${slug}/admin/fnb`);
-  revalidatePath(`/store/${slug}/admin/pos`);
-  return { success: true, data: { created: res.count } };
-}
-
-export async function removeFnbTable(slug: string, id: string): Promise<ActionResult<undefined>> {
-  const a = await access(slug, "fnb:pos");
-  if (!a.success) return { success: false, error: a.error };
-  await prisma.fnbTable.deleteMany({ where: { id, storeId: a.store.id } });
-  revalidatePath(`/store/${slug}/admin/fnb`);
-  revalidatePath(`/store/${slug}/admin/pos`);
-  return { success: true, data: undefined };
-}

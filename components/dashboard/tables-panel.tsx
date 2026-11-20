@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import QRCode from "qrcode";
 import { Download, Plus, Printer, QrCode, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
-import { createFnbTables, getFnbTables, removeFnbTable } from "@/lib/actions/fnb";
-import { Empty, Field, Page, btnGhost, btnPrimary, card, input } from "./ui";
+import { createStoreTables, getStoreTables, removeStoreTable } from "@/lib/actions/tables";
+import { Empty, Field, Page, btnGhost, btnPrimary, card, input } from "@/components/dashboard/fnb/ui";
 
 type Table = { id: string; name: string; seats: number | null; token: string };
 
@@ -22,7 +22,7 @@ function TableQr({ url, name }: { url: string; name: string }) {
   );
 }
 
-export function FnbTablesPanel({ slug }: { slug: string }) {
+export function TablesPanel({ slug }: { slug: string }) {
   const [tables, setTables] = useState<Table[] | null>(null);
   const [baseUrl, setBaseUrl] = useState("");
   const [name, setName] = useState("");
@@ -31,7 +31,7 @@ export function FnbTablesPanel({ slug }: { slug: string }) {
   const [busy, start] = useTransition();
 
   const load = useCallback(async () => {
-    const r = await getFnbTables(slug);
+    const r = await getStoreTables(slug);
     if (!r.success) { toast.error(r.error); return; }
     setTables(r.data.tables); setBaseUrl(r.data.baseUrl);
   }, [slug]);
@@ -40,7 +40,7 @@ export function FnbTablesPanel({ slug }: { slug: string }) {
   const add = (e: React.FormEvent) => {
     e.preventDefault();
     start(async () => {
-      const r = await createFnbTables(slug, { name, seats: seats ? Number(seats) : null });
+      const r = await createStoreTables(slug, { name, seats: seats ? Number(seats) : null });
       if (!r.success) { toast.error(r.error); return; }
       setName(""); setSeats(""); toast.success("Table added."); load();
     });
@@ -49,14 +49,14 @@ export function FnbTablesPanel({ slug }: { slug: string }) {
     const count = Number(bulk);
     if (!count || count < 2) return toast.error("Enter how many tables to add, like 10.");
     start(async () => {
-      const r = await createFnbTables(slug, { count, seats: seats ? Number(seats) : null });
+      const r = await createStoreTables(slug, { count, seats: seats ? Number(seats) : null });
       if (!r.success) { toast.error(r.error); return; }
       setBulk(""); toast.success(`${r.data.created} tables added.`); load();
     });
   };
   const remove = (t: Table) => {
     if (!window.confirm(`Remove ${t.name}? Its QR code will stop working.`)) return;
-    start(async () => { const r = await removeFnbTable(slug, t.id); if (!r.success) { toast.error(r.error); return; } load(); });
+    start(async () => { const r = await removeStoreTable(slug, t.id); if (!r.success) { toast.error(r.error); return; } load(); });
   };
 
   return (

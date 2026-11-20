@@ -3,7 +3,7 @@ import {
   CreditCard, BarChart3, Star, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
   LayoutTemplate, Globe, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
-  ClipboardList, Clock, Receipt, PlusCircle, Layers, Rows3, Puzzle, ListTree, Share2, Newspaper, Rss, Megaphone, Bell,
+  ClipboardList, Clock, Receipt, PlusCircle, Layers, Rows3, Puzzle, ListTree, Share2, Newspaper, Rss, Megaphone, Bell, QrCode,
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -87,6 +87,13 @@ export function buildNavGroups(business: NavBusiness): Array<{
     // Display sections are a layout tool; Simple mode keeps just categories.
     ...(showAdvanced ? [{ label: `${terminology.catalogSingular} Sections`, href: "/menu-sections", icon: Rows3, permission: "products" as StaffPermissionId }] : []),
   ];
+  // Restaurants get their table list (with a QR code per table) under Reservations.
+  const reservationsItem: NavItem = {
+    label: terminology.reservationLabel, href: "/bookings", icon: ClipboardList, permission: "products",
+    ...(isRestaurantBusiness(canonicalType) ? { children: [
+      { label: "Tables & QR codes", href: "/tables", icon: QrCode, permission: "products" as StaffPermissionId },
+    ] } : {}),
+  };
   if (business.sellsProducts) {
     sellNavItems.push(
       { label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" as const },
@@ -97,7 +104,7 @@ export function buildNavGroups(business: NavBusiness): Array<{
   if (business.offersServices) {
     sellNavItems.push(
       { label: "Services", href: "/services", icon: Wrench, permission: "products", ...(business.sellsProducts ? {} : { children: [categoriesChild] }) },
-      { label: terminology.reservationLabel, href: "/bookings", icon: ClipboardList, permission: "products" },
+      reservationsItem,
       { label: "Calendar", href: "/calendar", icon: CalendarDays, permission: "products" },
     );
   }
@@ -105,7 +112,7 @@ export function buildNavGroups(business: NavBusiness): Array<{
   // core booking link for restaurants, but only surface the vertical app
   // when the canonical fnb-operations entitlement is actually installed.
   if (isRestaurantBusiness(canonicalType)) {
-    if (!business.offersServices) sellNavItems.push({ label: terminology.reservationLabel, href: "/bookings", icon: ClipboardList, permission: "products" });
+    if (!business.offersServices) sellNavItems.push(reservationsItem);
   }
   // The category picked at onboarding can add one more trade-specific tool
   // (e.g. "Bookings" for a salon, "Delivery zones" for a restaurant) — but
@@ -142,7 +149,7 @@ export function buildNavGroups(business: NavBusiness): Array<{
 
   const installedAppItems: NavItem[] = (business.installedApps ?? [])
     .filter((app) => app.key !== "pms" && app.key !== "blog")
-    .map((app) => ({ label: app.name, href: app.key === "fnb-operations" ? "/fnb" : app.key === "kitchen-management" ? "/kitchen" : app.key === "travel-agency" ? "/travel" : app.key === "blog" ? "/blog" : `/apps/${app.key}`, icon: Puzzle, permission: `plugin:${app.key}` as StaffPermissionId }));
+    .map((app) => ({ label: app.name, href: app.key === "kitchen-management" ? "/kitchen" : app.key === "travel-agency" ? "/travel" : app.key === "blog" ? "/blog" : `/apps/${app.key}`, icon: Puzzle, permission: `plugin:${app.key}` as StaffPermissionId }));
 
   return [
     {

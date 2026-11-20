@@ -459,13 +459,8 @@ export async function createPosSale(
   // later) — POS just never deducts it from the cash in hand.
   const commissionRate = PLATFORM_COMMISSION_PERCENT;
   const isFoodBusiness = ["Restaurant", "Food & Groceries"].includes(getCanonicalBusinessType({ businessCategory: access.store.business?.category, storeBusinessType: store.businessType }));
-  // POS works on its own for every store. Staff shifts and kitchen tickets are
-  // FnB-plugin features, so they're only enforced when FnB is actually installed.
-  let requiresShift = false;
-  if (isFoodBusiness) {
-    const fnbEntitlement = await getPluginEntitlement(store.id, "fnb-operations");
-    requiresShift = Boolean(fnbEntitlement.allowed && fnbEntitlement.installed);
-  }
+  // POS never requires a shift.
+  const requiresShift = false;
   const fnbMode = isFoodBusiness ? getFnbRotationMode(store.enabledModules) : "FIFO";
   const consumeStock = fnbMode === "FEFO" ? consumeFefoStockTx : consumeFifoStockTx;
   const { subtotal, commission, total } = calculateOrderTotals(

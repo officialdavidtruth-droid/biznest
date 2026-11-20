@@ -27,11 +27,6 @@ export async function getProcurementGate(slug: string): Promise<ProcurementGate>
     const access = await assertStorePermission(slug, "plugin:kitchen-management");
     return access.success ? { ok: true } : { ok: false, reason: "denied", message: access.error };
   }
-  const fnb = await getPluginEntitlement(store.id, "fnb-operations");
-  if (fnb.allowed && fnb.installed) {
-    const access = await assertStorePermission(slug, "plugin:fnb-operations");
-    return access.success ? { ok: true } : { ok: false, reason: "denied", message: access.error };
-  }
 
   return {
     ok: false,

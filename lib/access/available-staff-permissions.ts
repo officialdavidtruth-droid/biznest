@@ -13,21 +13,16 @@ const PLUGIN_GATED: Record<string, string> = {
   finance: "financial-control",
   "finance:audit": "financial-control",
   hr: "hr-payroll",
-  "fnb:pos": "fnb-operations",
-  "fnb:orders": "fnb-operations",
   "fnb:kitchen": "kitchen-management",
-  "fnb:menu": "fnb-operations",
   "fnb:inventory": "kitchen-management",
   "fnb:recipes": "kitchen-management",
   "fnb:procurement": "kitchen-management",
   "fnb:suppliers": "kitchen-management",
-  "fnb:customers": "fnb-operations",
-  "fnb:reports": "fnb-operations",
   "fnb:settings": "kitchen-management",
 };
 
 /** Covered by the main dashboard's own permissions (orders, catalog, customers, analytics, inventory, procurement); not offered again for the add-ons. */
-const COVERED_BY_CORE = new Set(["fnb:orders", "fnb:menu", "fnb:customers", "fnb:reports", "fnb:inventory", "fnb:procurement", "fnb:suppliers"]);
+const COVERED_BY_CORE = new Set(["fnb:pos", "fnb:orders", "fnb:menu", "fnb:customers", "fnb:reports", "fnb:inventory", "fnb:procurement", "fnb:suppliers"]);
 
 export type AvailableStaffPermission = { id: string; label: string };
 

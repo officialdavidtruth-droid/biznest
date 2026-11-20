@@ -187,11 +187,6 @@ export const PAGE_GUIDES: Record<string, PageGuide> = {
     s("Fill in titles and descriptions", "These are what people see in search results."),
     s("Check the score", "Fix the items flagged to improve your ranking."),
   ]),
-  "/apps/fnb-operations": g("FnB Operations", "Run your restaurant service.", [
-    s("Set up your menu", "Add dishes with prices so they can be ordered."),
-    s("Run service", "Ring up sales at the register and track orders and reservations."),
-    s("Review the day", "See what sold and how much each order was worth."),
-  ]),
   "/apps/kitchen-management": g("Kitchen Management", "Run the back of house.", [
     s("Build recipes", "Add what goes into each dish to see its food cost and margin."),
     s("Work the tickets", "Orders show on the kitchen screen and move from new to served."),

@@ -51,11 +51,10 @@ export default async function StoreAdminLayout({
   const installedAppNav = installedApps.map((x: { plugin: { key: string; name: string; icon: string | null } }) => x.plugin);
   const adminSubpath = (await headers()).get("x-bn-admin-subpath") ?? "/";
   const isPmsRoute = adminSubpath === "/pms" || adminSubpath.startsWith("/pms/");
-  const isFnbRoute = adminSubpath === "/fnb" || adminSubpath.startsWith("/fnb/");
   const isKitchenRoute = adminSubpath === "/kitchen" || adminSubpath.startsWith("/kitchen/");
   // Only PMS and F&B use their own full-screen shell; all other apps render
   // inside the normal admin dashboard (sidebar + top bar).
-  const isPluginWorkspaceRoute = isPmsRoute || isFnbRoute || isKitchenRoute;
+  const isPluginWorkspaceRoute = isPmsRoute || isKitchenRoute;
   if (role === null) redirect("/");
 
   // No free tier — a store isn't usable until it's on a paid plan. Staff
@@ -94,7 +93,7 @@ export default async function StoreAdminLayout({
 
     const subpath = adminSubpath;
     const pluginMatch = subpath.match(/^\/apps\/([^/]+)/);
-    const pluginKey = pluginMatch?.[1] ?? (isPmsRoute ? "pms" : isFnbRoute ? "fnb-operations" : isKitchenRoute ? "kitchen-management" : null);
+    const pluginKey = pluginMatch?.[1] ?? (isPmsRoute ? "pms" : isKitchenRoute ? "kitchen-management" : null);
     if (pluginKey) {
       // A staff member without the plugin permission never sees this area at all,
       // installed or not -- that's real access control, not the "redirect away"
@@ -102,10 +101,10 @@ export default async function StoreAdminLayout({
       const auditorOnly = pluginKey === "financial-control" && hasStorePermission(role, staffPermissions, "finance:audit");
       if (!auditorOnly && !hasStorePermission(role, staffPermissions, `plugin:${pluginKey}`)) redirect(`/${slug}/admin`);
       // PMS and FNB are full dedicated workspaces reached via this same layout
-      // (isPmsRoute/isFnbRoute), so an uninstalled visit still bounces out here.
+      // (isPmsRoute/isKitchenRoute), so an uninstalled visit still bounces out here.
       // Every other plugin now renders its own inline "install this app" message
       // instead (see PluginInstallGate), so don't redirect those away.
-      const isDedicatedPluginRoute = pluginKey === "pms" || pluginKey === "fnb-operations" || pluginKey === "kitchen-management";
+      const isDedicatedPluginRoute = pluginKey === "pms" || pluginKey === "kitchen-management";
       if (isDedicatedPluginRoute) {
         const installed = installedAppNav.some((app) => app.key === pluginKey);
         if (!installed) redirect(`/${slug}/admin`);
@@ -126,7 +125,7 @@ export default async function StoreAdminLayout({
   const siteMode = normalizeSiteMode(store.siteMode);
 
   if (isPluginWorkspaceRoute) {
-    const scopeId = isPmsRoute ? "bn-pms-theme-scope" : isFnbRoute ? "bn-fnb-theme-scope" : isKitchenRoute ? "bn-fnb-theme-scope" : "bn-plugin-theme-scope";
+    const scopeId = isPmsRoute ? "bn-pms-theme-scope" : isKitchenRoute ? "bn-fnb-theme-scope" : "bn-plugin-theme-scope";
     return (
       <>
         <ThemeFlashGuard scopeId={scopeId} />

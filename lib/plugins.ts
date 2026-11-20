@@ -116,21 +116,9 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     plans: ["Entrepreneurship", "Business Mogul"],
   },
   {
-    key: "fnb-operations",
-    name: "BizNest FnB",
-    description: "The front of house for restaurants: register (POS) and shifts, orders, menu, reservations, customers and sales reports.",
-    category: "Industry",
-    icon: "ChefHat",
-    price: 0, // set by the super admin (/supaadmin/apps)
-    billingInterval: "MONTHLY",
-    eligibleBusinessTypes: ["Restaurant", "Food & Groceries"],
-    sortOrder: 65,
-    plans: ["Entrepreneurship", "Business Mogul"],
-  },
-  {
     key: "kitchen-management",
     name: "Kitchen Management",
-    description: "The back of house for restaurants: kitchen display with station routing, recipes and food cost, ingredient stock, purchasing, suppliers, waste tracking and stock rotation (FIFO/FEFO).",
+    description: "The back of house for restaurants: kitchen display with station routing, recipes and food cost, ingredient stock, waste tracking and stock rotation (FIFO/FEFO).",
     category: "Industry",
     icon: "ChefHat",
     price: 0, // set by the super admin (/supaadmin/apps)

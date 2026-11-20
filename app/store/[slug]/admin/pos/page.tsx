@@ -1,18 +1,14 @@
 // Route: /store/[slug]/admin/pos
 // Standalone Point of Sale — works for any store that sells products/services.
-// Restaurants with the FnB plugin installed also get a shift control here,
-// since their sales are tied to an open shift.
+// Restaurants also get their table list (Reservations → Tables) as a picker for dine-in.
 import { notFound, redirect } from "next/navigation";
 import { Store } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { getPluginEntitlement } from "@/lib/plugins";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getPosCatalog, getPosDailySummary } from "@/lib/actions/pos";
 import { PosRegister } from "@/components/dashboard/pos-register";
 import { PosOpenTabs } from "@/components/dashboard/pos-open-tabs";
 import { getOpenPosTabs } from "@/lib/actions/pos-tabs";
-import { getFnbShiftState } from "@/lib/actions/fnb";
-import { ShiftControl } from "@/components/dashboard/fnb/service-panels";
 import { getInHouseReservations } from "@/lib/actions/folio";
 import { formatNumber } from "@/lib/i18n/locale";
 import { PLATFORM_COMMISSION_PERCENT } from "@/lib/constants/commission";
@@ -36,15 +32,9 @@ export default async function PosPage({ params }: { params: Promise<{ slug: stri
   if (!store) notFound();
 
   const isFoodBusiness = FOOD_TYPES.includes(store.businessType);
-  let shiftState: Awaited<ReturnType<typeof getFnbShiftState>> = null;
-  let tables: { id: string; name: string }[] = [];
-  if (isFoodBusiness) {
-    const fnb = await getPluginEntitlement(store.id, "fnb-operations");
-    if (fnb.allowed && fnb.installed) {
-      shiftState = await getFnbShiftState(slug);
-      tables = await prisma.fnbTable.findMany({ where: { storeId: store.id, active: true }, orderBy: { createdAt: "asc" }, select: { id: true, name: true } });
-    }
-  }
+  const tables = isFoodBusiness
+    ? await prisma.fnbTable.findMany({ where: { storeId: store.id, active: true }, orderBy: { createdAt: "asc" }, select: { id: true, name: true } })
+    : [];
 
   const [catalog, summary, openTabs, inHouseRooms] = await Promise.all([
     getPosCatalog(slug),
@@ -82,7 +72,6 @@ export default async function PosPage({ params }: { params: Promise<{ slug: stri
           </div>
         </div>
       </div>
-      {shiftState && <ShiftControl slug={slug} currentShift={shiftState.currentShift} recentShifts={[]} />}
       <PosRegister
         slug={slug}
         catalog={catalog}
