@@ -100,7 +100,7 @@ export function FileUploadField({
           if (file) handleFile(file);
           e.target.value = "";
         }}
-        className="block w-full text-sm"
+        className="block w-full text-sm file:mr-3 file:cursor-pointer file:rounded-xl file:border-0 file:bg-[hsl(var(--primary)/0.1)] file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-primary"
       />
       <p className="mt-1 text-xs text-muted-foreground">{imageOnly ? "JPG, PNG or WEBP — up to 10MB." : "JPG, PNG, WEBP, or PDF — up to 10MB."}</p>
       {isUploading && <p className="mt-1 text-xs text-muted-foreground">Uploading…</p>}

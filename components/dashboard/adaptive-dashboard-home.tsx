@@ -90,7 +90,9 @@ function titleFor(config: AdaptiveDashboardConfig) {
   if (type.includes("photography")) return "Here’s what’s happening with your studio today.";
   if (type.includes("salon") || type.includes("beauty")) return "Here’s what’s happening with your beauty business today.";
   if (type.includes("real estate")) return "Here’s what’s happening with your property business today.";
-  return `Here’s what’s happening with your ${config.businessType.toLowerCase()} today.`;
+  const t = config.businessType.trim().toLowerCase();
+  if (!t || t === "other" || t === "general") return "Here’s what’s happening in your business today.";
+  return `Here’s what’s happening with your ${t} today.`;
 }
 
 function pluralize(noun: string) {

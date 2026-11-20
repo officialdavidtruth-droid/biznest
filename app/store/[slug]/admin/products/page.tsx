@@ -153,12 +153,12 @@ const TONES: Record<string, string> = {
 
 function Stat({ href, icon: Icon, tone, label, value, note }: { href: string; icon: typeof Package; tone: string; label: string; value: number; note: string }) {
   return (
-    <Link href={href} className="group flex items-center gap-4 rounded-2xl border bg-background p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--bn-admin-orange)_40%,transparent)] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--bn-admin-orange)_45%,transparent)] sm:p-5">
+    <Link href={href} className="group flex flex-col items-start gap-3 rounded-2xl border bg-background p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--bn-admin-orange)_40%,transparent)] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--bn-admin-orange)_45%,transparent)] sm:flex-row sm:items-center sm:gap-4 sm:p-5">
       <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${TONES[tone] ?? TONES.muted}`}><Icon className="h-6 w-6" /></span>
       <span className="min-w-0">
-        <span className="block truncate text-sm text-muted-foreground">{label}</span>
+        <span className="block text-sm text-muted-foreground sm:truncate">{label}</span>
         <span className="block text-3xl font-extrabold leading-tight tabular-nums">{value}</span>
-        <span className="block truncate text-xs text-muted-foreground">{note}</span>
+        <span className="block text-xs text-muted-foreground sm:truncate">{note}</span>
       </span>
     </Link>
   );

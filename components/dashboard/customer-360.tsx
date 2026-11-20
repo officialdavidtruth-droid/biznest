@@ -180,7 +180,7 @@ export function Customer360View({
       <div className={`${mobileDetail ? "hidden lg:grid" : "grid"} grid-cols-2 divide-x divide-y overflow-hidden rounded-2xl border bg-background shadow-sm lg:grid-cols-4 lg:divide-y-0`}>
         <SummaryTile icon={Users} label={`Total ${peopleLabel}`} value={customers.length} note="All time" />
         <SummaryTile icon={Wallet} label="Lifetime value" value={money(totalLifetimeValue)} note="Combined spend" />
-        <SummaryTile icon={ShoppingBag} label={isServiceOnly ? "Average booking" : "Average order"} value={money(avgOrderValue)} note="Per order" />
+        <SummaryTile icon={ShoppingBag} label={isServiceOnly ? "Average booking" : "Average order"} value={money(Math.round(avgOrderValue))} note="Per order" />
         <SummaryTile icon={Repeat} label="Repeat" value={repeatCount} note={`With 2+ ${isServiceOnly ? "bookings" : "orders"}`} />
       </div>
 
@@ -260,7 +260,7 @@ export function Customer360View({
               )}
             </div>
             <dl className="grid grid-cols-2 divide-x divide-y border-t sm:grid-cols-4 sm:divide-y-0">
-              {[["Lifetime value", money(selected.spent)], [isServiceOnly ? "Bookings" : "Orders", String(selected.orders)], [isServiceOnly ? "Average booking" : "Average order", money(selected.averageOrder)], ["Last purchase", formatDate(selected.lastPurchase)]].map(([label, value]) => (
+              {[["Lifetime value", money(selected.spent)], [isServiceOnly ? "Bookings" : "Orders", String(selected.orders)], [isServiceOnly ? "Average booking" : "Average order", money(Math.round(selected.averageOrder))], ["Last purchase", formatDate(selected.lastPurchase)]].map(([label, value]) => (
                 <div key={label} className="min-w-0 p-4"><dt className="text-[11px] text-muted-foreground">{label}</dt><dd className="mt-1 truncate text-base font-semibold">{value}</dd></div>
               ))}
             </dl>
