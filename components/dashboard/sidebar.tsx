@@ -112,7 +112,6 @@ export function DashboardSidebar({
                 <span>View Store</span><ExternalLink className="h-2.5 w-2.5" />
               </Link>
             </div>
-            <ChevronDown className="h-4 w-4 text-[var(--bn-admin-muted)]" />
           </div>
         </div>
       </div>
