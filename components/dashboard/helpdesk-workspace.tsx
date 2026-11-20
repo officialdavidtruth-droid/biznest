@@ -1,11 +1,8 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { CheckCircle2, Clock3, Inbox, LifeBuoy, MessageSquare, Timer } from "lucide-react";
-import { replyToStoreConversation } from "@/lib/actions/store-messages";
+import { CheckCircle2, Clock3, Inbox, LifeBuoy, Timer } from "lucide-react";
 import type { HelpdeskMetrics, HelpdeskThread } from "@/lib/actions/helpdesk";
 
 type Filter = "needs_reply" | "late" | "answered" | "all";
@@ -25,12 +22,8 @@ function waiting(hours: number | null) {
 }
 
 export function HelpdeskWorkspace({ slug, data }: { slug: string; data: { threads: HelpdeskThread[]; metrics: HelpdeskMetrics } }) {
-  const router = useRouter();
-  const [busy, start] = useTransition();
   const [filter, setFilter] = useState<Filter>(data.metrics.needsReply > 0 ? "needs_reply" : "all");
   const [q, setQ] = useState("");
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
   const m = data.metrics;
 
   const visible = useMemo(() => data.threads.filter((t) => {
@@ -40,15 +33,6 @@ export function HelpdeskWorkspace({ slug, data }: { slug: string; data: { thread
     const needle = q.trim().toLowerCase();
     return !needle || `${t.customerName} ${t.customerEmail ?? ""} ${t.orderRef ?? ""} ${t.lastMessage}`.toLowerCase().includes(needle);
   }), [data.threads, filter, q]);
-
-  const send = (id: string) => {
-    if (!draft.trim()) { toast.error("Write a reply first."); return; }
-    start(async () => {
-      const r = await replyToStoreConversation(slug, id, draft);
-      if (!r.success) toast.error(r.error);
-      else { toast.success("Reply sent"); setDraft(""); setOpenId(null); router.refresh(); }
-    });
-  };
 
   const cards: [string, string | number, typeof Inbox, string][] = [
     ["Needs reply", m.needsReply, Inbox, m.needsReply > 0 ? "text-amber-600" : "text-emerald-600"],
@@ -64,7 +48,7 @@ export function HelpdeskWorkspace({ slug, data }: { slug: string; data: { thread
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-primary">BizNest App</p>
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight"><LifeBuoy className="h-5 w-5 text-primary" /> Customer Support</h1>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Every customer conversation in one queue, with the ones waiting longest at the top.</p>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Which customer messages are waiting for you, how long they have waited, and how fast you reply. Replying happens in Messages.</p>
         </div>
         <Link href={`/store/${slug}/admin/messages`} className="rounded-xl border px-4 py-2.5 text-xs font-semibold">Open full inbox</Link>
       </div>
@@ -93,20 +77,9 @@ export function HelpdeskWorkspace({ slug, data }: { slug: string; data: { thread
                   {t.status === "needs_reply" && <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${(t.waitingHours ?? 0) >= 24 ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"}`}>{waiting(t.waitingHours)}</span>}
                   {t.status === "answered" && <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-700">Answered</span>}
                 </div>
-                {openId === t.id ? (
-                  <div className="mt-2 space-y-2">
-                    <textarea autoFocus rows={3} className="w-full rounded-xl border bg-background px-3 py-2 text-sm" placeholder={`Reply to ${t.customerName}`} value={draft} onChange={(e) => setDraft(e.target.value)} />
-                    <div className="flex gap-2">
-                      <button type="button" disabled={busy} onClick={() => send(t.id)} className="rounded-lg bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground disabled:opacity-50">{busy ? "Sending..." : "Send reply"}</button>
-                      <button type="button" onClick={() => { setOpenId(null); setDraft(""); }} className="rounded-lg border px-3 py-1.5 text-[11px] font-semibold">Cancel</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-2 flex gap-2">
-                    <button type="button" onClick={() => { setOpenId(t.id); setDraft(""); }} className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground"><MessageSquare className="h-3 w-3" /> Reply</button>
-                    <Link href={`/store/${slug}/admin/messages/${t.id}`} className="rounded-lg border px-3 py-1.5 text-[11px] font-semibold">Open thread</Link>
-                  </div>
-                )}
+                <div className="mt-2">
+                  <Link href={`/store/${slug}/admin/messages/${t.id}`} className="inline-flex rounded-lg bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground">{t.status === "needs_reply" ? "Reply" : "Open thread"}</Link>
+                </div>
               </li>
             ))}
           </ul>

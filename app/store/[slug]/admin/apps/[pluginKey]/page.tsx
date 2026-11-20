@@ -57,7 +57,7 @@ export default async function PluginPage({ params, searchParams }: { params: Pro
     if (!fullStore) notFound();
     try {
       const data = await getAdvancedAnalytics(store.id, rangeDays);
-      return <AdvancedAnalyticsWorkspace slug={slug} rangeDays={rangeDays} data={data} money={moneyFormatter(fullStore)} showAbandoned={supportsAbandonedCheckout(fullStore.business.category, fullStore.business)} />;
+      return <AdvancedAnalyticsWorkspace slug={slug} rangeDays={rangeDays} data={data} money={moneyFormatter(fullStore)} />;
     } catch (e) {
       return <PluginInstallGate slug={slug} title="Advanced Analytics" message={e instanceof Error ? e.message : "Analytics could not be loaded."} />;
     }

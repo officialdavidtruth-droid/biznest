@@ -106,7 +106,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
   {
     key: "advanced-analytics",
     name: "Advanced Analytics",
-    description: "Deeper business intelligence, KPI dashboards and operational reporting across BizNest.",
+    description: "Compare any period with the one before it (revenue, orders, average order, conversion, visitors) and see stock at risk. Charts, best sellers, traffic and profit stay on the main Analytics page.",
     category: "Analytics",
     icon: "BarChart3",
     price: 0, // set by the super admin (/supaadmin/apps)
