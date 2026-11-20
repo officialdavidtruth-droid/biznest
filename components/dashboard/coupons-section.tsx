@@ -46,7 +46,7 @@ export async function CouponsSection({ params }: { params: Promise<{ slug: strin
               </tr>
             ))}
             {coupons.length === 0 && (
-              <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">No coupons yet — create one above.</td></tr>
+              <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">No coupons yet. Create one above, like 10% off a first order, to bring in new buyers.</td></tr>
             )}
           </tbody>
         </table>

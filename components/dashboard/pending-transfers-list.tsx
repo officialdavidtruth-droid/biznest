@@ -28,14 +28,14 @@ export function PendingTransfersList({ slug, transfers }: { slug: string; transf
 
   return (
     <section className="mt-8">
-      <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Transfers waiting for you</h2>
+      <h2 className="mb-1 text-base font-semibold">Transfers waiting for you</h2>
       <p className="mb-3 max-w-xl text-sm text-muted-foreground">
         Invoices, quote deposits, bookings and reservation deposits paid by bank transfer. Confirm each one once it reaches your account.
         (Order payments are confirmed from the order itself.)
       </p>
-      <ul className="divide-y rounded-lg border bg-background">
+      <ul className="space-y-3">
         {transfers.map((t) => (
-          <li key={t.reference} className="flex flex-wrap items-center gap-4 p-4">
+          <li key={t.reference} className="flex flex-wrap items-center gap-3 rounded-2xl border bg-background p-4 shadow-sm">
             <div className="min-w-[10rem] flex-1">
               <p className="text-sm font-semibold">{t.purposeLabel} · {formatMoney(t.amount, t.currency)}</p>
               <p className="text-xs text-muted-foreground">
@@ -50,7 +50,7 @@ export function PendingTransfersList({ slug, transfers }: { slug: string; transf
               type="button"
               onClick={() => confirm(t.reference)}
               disabled={busy === t.reference}
-              className="rounded-md bg-[var(--bn-admin-orange)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 sm:w-auto"
             >
               {busy === t.reference ? "Confirming…" : "I've received this payment"}
             </button>

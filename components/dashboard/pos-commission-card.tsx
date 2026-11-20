@@ -25,17 +25,17 @@ export function PosCommissionCard({ slug, balance }: { slug: string; balance: Po
   }
 
   return (
-    <div className="rounded-lg border bg-background p-4">
-      <p className="text-xs uppercase text-muted-foreground">POS commission owed</p>
-      <p className="mt-1 text-2xl font-semibold">
+    <div className="rounded-2xl border bg-background p-4 shadow-sm">
+      <p className="text-xs text-muted-foreground">Fee owed on in-person sales</p>
+      <p className="mt-1 text-lg font-bold tabular-nums">
         {balance.currency} {formatNumber(balance.owed)}
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
-        Accrues from in-person sales since cash isn&apos;t split automatically like online orders.
+        Cash sales aren't split automatically like online orders, so you pay this fee yourself.
       </p>
 
       {balance.owed > 0 && !showForm && (
-        <button onClick={() => setShowForm(true)} className="mt-3 text-xs font-medium text-primary hover:underline">
+        <button onClick={() => setShowForm(true)} className="mt-3 rounded-xl border px-3 py-2 text-xs font-semibold text-primary hover:bg-muted">
           Record a settlement
         </button>
       )}
@@ -50,25 +50,25 @@ export function PosCommissionCard({ slug, balance }: { slug: string; balance: Po
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Amount settled"
-            className="w-full rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+            className="w-full rounded-xl border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
           />
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Note (e.g. bank transfer ref)"
-            className="w-full rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+            className="w-full rounded-xl border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
           />
           <div className="flex gap-2">
             <button
               onClick={handleSettle}
               disabled={submitting}
-              className="flex-1 rounded-md bg-primary py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
             >
               {submitting ? "Saving…" : "Confirm settlement"}
             </button>
             <button
               onClick={() => setShowForm(false)}
-              className="rounded-md border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+              className="rounded-xl border px-3 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted"
             >
               Cancel
             </button>
@@ -78,7 +78,7 @@ export function PosCommissionCard({ slug, balance }: { slug: string; balance: Po
 
       {balance.recentSettlements.length > 0 && (
         <div className="mt-3 space-y-1 border-t pt-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">Recent settlements</p>
+          <p className="text-xs font-semibold text-muted-foreground">Recent settlements</p>
           {balance.recentSettlements.map((s) => (
             <div key={s.id} className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{s.note || "Settlement"} · {s.settledByEmail}</span>

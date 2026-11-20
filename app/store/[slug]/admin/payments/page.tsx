@@ -54,57 +54,61 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
   const gross = Number(paidTotal._sum.total ?? 0);
   const commission = Number(paidTotal._sum.commission ?? 0);
 
+  const tile = "rounded-2xl border bg-background p-4 shadow-sm";
+  const sectionH = "mb-1 text-base font-semibold";
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Payments</h1>
-        <a href={`/${slug}/admin/receipts?type=payments`} className="text-sm font-medium text-primary hover:underline">
-          Print payment receipts →
+        <a href={`/store/${slug}/admin/receipts?type=payments`} className="rounded-full border bg-background px-4 py-2 text-xs font-semibold text-primary hover:bg-muted">
+          Print payment receipts
         </a>
       </div>
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border bg-background p-4">
-          <p className="text-xs uppercase text-muted-foreground">Gross sales</p>
-          <p className="mt-1 text-2xl font-semibold">{money(gross)}</p>
+      <div className="mb-3 grid grid-cols-2 gap-3">
+        <div className={`${tile} col-span-2`}>
+          <p className="text-xs text-muted-foreground">Total sales</p>
+          <p className="mt-1 text-3xl font-bold tabular-nums">{money(gross)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">From {paidCount} paid order{paidCount === 1 ? "" : "s"}</p>
         </div>
-        <div className="rounded-lg border bg-background p-4">
-          <p className="text-xs uppercase text-muted-foreground">Platform commission</p>
-          <p className="mt-1 text-2xl font-semibold">{money(commission)}</p>
-        </div>
-        <div className="rounded-lg border bg-background p-4">
-          <p className="text-xs uppercase text-muted-foreground">Paid orders</p>
-          <p className="mt-1 text-2xl font-semibold">{paidCount}</p>
+        <div className={tile}>
+          <p className="text-xs text-muted-foreground">BizNest fee</p>
+          <p className="mt-1 text-lg font-bold tabular-nums">{money(commission)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Taken from online sales, based on your plan</p>
         </div>
         <PosCommissionCard slug={slug} balance={posCommission} />
       </div>
 
-      <CustomerPaymentMessage storeName={store.name} />
-
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Payout account</h2>
-      <p className="mb-3 max-w-xl text-sm text-muted-foreground">
-        Customers pay at checkout by card, bank transfer or USSD. Once a payment is confirmed, the money is sent to the bank account you connect here.
-      </p>
-      <div className="max-w-xl">
-        {canEditPayments ? (
-          <ConnectPayoutForm
-            slug={slug}
-            provider={activeGateway}
-            connected={payout.connected}
-            needsReconnect={payout.needsReconnect}
-            details={payout.payoutDetails}
-          />
-        ) : (
-          <p className="rounded-lg border bg-background p-4 text-sm text-muted-foreground">Only the store owner can change the payout account.</p>
-        )}
-      </div>
+      <section className="mt-8">
+        <h2 className={sectionH}>Where your money goes</h2>
+        <p className="mb-3 max-w-xl text-sm text-muted-foreground">
+          Customers pay at checkout by card, bank transfer or USSD. Once a payment is confirmed, the money is sent to the bank account you connect here.
+        </p>
+        <div className="max-w-xl">
+          {canEditPayments ? (
+            <ConnectPayoutForm
+              slug={slug}
+              provider={activeGateway}
+              connected={payout.connected}
+              needsReconnect={payout.needsReconnect}
+              details={payout.payoutDetails}
+            />
+          ) : (
+            <p className="rounded-2xl border bg-background p-4 text-sm text-muted-foreground">Only the store owner can change the payout account.</p>
+          )}
+        </div>
+      </section>
 
       <PendingTransfersList slug={slug} transfers={pendingTransfers} />
 
+      <div className="mt-8">
+        <CustomerPaymentMessage storeName={store.name} />
+      </div>
+
       {ownGateway && (
         <section className="mt-8">
-          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Your own payment gateway (optional)</h2>
-          <p className="mb-3 max-w-xl text-sm text-muted-foreground">Add your own Paystack or Flutterwave keys to take card payments straight into your gateway account. While switched on, customers pay into your own gateway account instead of through BizNest, and BizNest does not pay you out.</p>
+          <h2 className={sectionH}>Your own payment gateway <span className="text-sm font-normal text-muted-foreground">(optional)</span></h2>
+          <p className="mb-3 max-w-xl text-sm text-muted-foreground">Add your own Paystack or Flutterwave keys to take card payments straight into your gateway account. While this is on, customers pay into your gateway account instead of through BizNest, and BizNest does not pay you out.</p>
           <OwnGatewayForm slug={slug} settings={ownGateway} />
         </section>
       )}

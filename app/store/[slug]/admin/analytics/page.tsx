@@ -167,7 +167,7 @@ export default async function AnalyticsPage({
         <div className="rounded-2xl border bg-background p-4 shadow-sm">
           <p className="mb-3 text-sm font-medium">Best products</p>
           {data.bestProducts.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No sales in this range yet.</p>
+            <p className="text-xs text-muted-foreground">No sales in this time range. Try 90 days, or share your store link to get your first sale.</p>
           ) : (
             <ul className="space-y-2">
               {data.bestProducts.map((p) => (
@@ -184,7 +184,7 @@ export default async function AnalyticsPage({
         <div className="rounded-2xl border bg-background p-4 shadow-sm">
           <p className="mb-3 text-sm font-medium">Best categories</p>
           {data.bestCategories.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No sales in this range yet.</p>
+            <p className="text-xs text-muted-foreground">No sales in this time range. Try 90 days, or share your store link to get your first sale.</p>
           ) : (
             <ul className="space-y-2">
               {data.bestCategories.map((c) => (
@@ -204,7 +204,7 @@ export default async function AnalyticsPage({
       <div className="mb-6 rounded-2xl border bg-background p-4 shadow-sm">
         <p className="mb-3 text-sm font-medium">Traffic sources</p>
         {data.trafficSources.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No visits recorded in this range yet.</p>
+          <p className="text-xs text-muted-foreground">No visitors yet. Share your store link on WhatsApp or Instagram and they'll show up here.</p>
         ) : (
           <div className="space-y-2">
             {(() => {

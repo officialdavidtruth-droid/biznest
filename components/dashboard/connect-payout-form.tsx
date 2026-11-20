@@ -104,7 +104,7 @@ export function ConnectPayoutForm({
 
   if (connected) {
     return (
-      <div className="rounded-lg border bg-background p-4">
+      <div className="rounded-2xl border bg-background p-4 shadow-sm sm:p-5">
         <div className="mb-2 flex items-center justify-between">
           <p className="font-medium">Bank account</p>
           <span className="rounded-full bg-[var(--bn-admin-surface-2)] px-2 py-0.5 text-xs text-[var(--bn-admin-orange)]">
@@ -131,7 +131,7 @@ export function ConnectPayoutForm({
   }
 
   return (
-    <div className="rounded-lg border bg-background p-4">
+    <div className="rounded-2xl border bg-background p-4 shadow-sm sm:p-5">
       <div className="mb-3 flex items-center justify-between">
         <p className="font-medium">Bank account</p>
         <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">Not connected</span>
@@ -150,10 +150,10 @@ export function ConnectPayoutForm({
               value={bankQuery}
               onChange={(e) => setBankQuery(e.target.value)}
               placeholder="Search your bank (e.g. OPay, GTBank)"
-              className="mb-2 w-full rounded-md border px-3 py-2 text-sm"
+              className="mb-2 w-full rounded-xl border bg-background px-3 py-2.5 text-sm"
             />
           )}
-          <select id="payout-bank" value={bankCode} onChange={(e) => setBankCode(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm">
+          <select id="payout-bank" value={bankCode} onChange={(e) => setBankCode(e.target.value)} className="w-full rounded-xl border bg-background px-3 py-2.5 text-sm">
             <option value="">Select your bank…</option>
             {banks
               .filter((b) => !bankQuery.trim() || b.name.toLowerCase().includes(bankQuery.trim().toLowerCase()) || b.code === bankCode)
@@ -171,10 +171,10 @@ export function ConnectPayoutForm({
             placeholder="10-digit account number"
             inputMode="numeric"
             autoComplete="off"
-            className="w-full rounded-md border px-3 py-2 text-sm"
+            className="w-full rounded-xl border bg-background px-3 py-2.5 text-sm"
           />
         </div>
-        <div aria-live="polite" className="min-h-[2.5rem] rounded-md bg-muted/50 px-3 py-2 text-sm">
+        <div aria-live="polite" className="min-h-[2.5rem] rounded-xl bg-muted/50 px-3 py-2.5 text-sm">
           {lookup.state === "idle" && <span className="text-muted-foreground">Your account name will appear here.</span>}
           {lookup.state === "checking" && <span className="text-muted-foreground">Checking with your bank…</span>}
           {lookup.state === "found" && <span><span className="text-muted-foreground">Account name: </span><span className="font-semibold">{lookup.name}</span></span>}
@@ -183,7 +183,7 @@ export function ConnectPayoutForm({
         <button
           onClick={handleConnect}
           disabled={saving || lookup.state !== "found"}
-          className="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+          className="w-full rounded-xl bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
         >
           {saving ? "Connecting…" : "Connect bank account"}
         </button>

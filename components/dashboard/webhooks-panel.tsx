@@ -138,7 +138,7 @@ export function WebhooksPanel({
       </div>
 
       <div className="space-y-2">
-        {endpoints.length === 0 && <p className="text-xs text-muted-foreground">No webhook endpoints yet.</p>}
+        {endpoints.length === 0 && <p className="text-xs text-muted-foreground">No webhooks yet. Add an endpoint to get notified when something happens in your store.</p>}
         {endpoints.map((endpoint) => (
           <div key={endpoint.id} className="rounded-md border p-3 text-sm">
             <div className="flex items-center justify-between gap-2">

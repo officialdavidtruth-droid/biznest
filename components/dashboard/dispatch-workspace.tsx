@@ -147,7 +147,7 @@ function RidersTab({ slug, data, riderBase }: { slug: string; data: DispatchData
             </li>
           );
         })}
-        {data.riders.length === 0 && <p className="text-sm text-muted-foreground">No riders yet.</p>}
+        {data.riders.length === 0 && <p className="rounded-2xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No riders yet. Add your delivery riders so you can assign orders to them.</p>}
       </ul>
     </div>
   );

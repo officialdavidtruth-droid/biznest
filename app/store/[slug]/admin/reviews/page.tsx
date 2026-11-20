@@ -215,7 +215,7 @@ export default async function ReviewsPage({
         ))}
         {filteredTotal === 0 && (
           <div className="rounded-lg border bg-background p-10 text-center text-muted-foreground">
-            {total === 0 ? "No reviews yet." : "No reviews match these filters."}
+            {total === 0 ? "No reviews yet. After a customer's order is delivered, they can leave one on your store." : "No reviews match these filters."}
           </div>
         )}
       </div>

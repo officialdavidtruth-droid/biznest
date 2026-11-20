@@ -74,7 +74,7 @@ export function BookingsTable({ storeSlug, bookings }: { storeSlug: string; book
               </tr>
             ))}
             {paged.length === 0 && (
-              <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">{bookings.length === 0 ? "No bookings yet." : "No bookings match your filters."}</td></tr>
+              <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">{bookings.length === 0 ? "No bookings yet. They appear here when customers book from your store." : "No bookings match your filters."}</td></tr>
             )}
           </tbody>
         </table>

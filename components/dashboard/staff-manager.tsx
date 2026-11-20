@@ -213,7 +213,7 @@ export function StaffManager({ slug, initialMembers, installedPluginPermissions,
       <div>
         <h2 className="mb-2 text-sm font-medium">Team ({members.length})</h2>
         {members.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No staff invited yet.</p>
+          <p className="rounded-2xl border border-dashed bg-background px-4 py-6 text-center text-sm text-muted-foreground">No team members yet. Invite someone above and choose what they can see and do.</p>
         ) : (
           <div className="divide-y divide-border rounded-lg border border-border">
             {members.map((m) => (

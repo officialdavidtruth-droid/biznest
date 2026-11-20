@@ -168,7 +168,7 @@ export function AdsWorkspace({ slug, campaigns, products, posts }: {
 
       <section>
         <h2 className="mb-2 text-sm font-semibold">Your ads</h2>
-        {live.length === 0 ? <p className="rounded-xl border p-8 text-center text-sm text-muted-foreground">No running ads yet.</p> : (
+        {live.length === 0 ? <p className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">No ads running. Create one above to put your products in front of more shoppers.</p> : (
           <ul className="space-y-3">{live.map((c) => <CampaignRow key={c.id} slug={slug} c={c} run={run} pending={pending} />)}</ul>
         )}
       </section>
