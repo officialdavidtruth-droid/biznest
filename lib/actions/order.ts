@@ -36,6 +36,7 @@ import { manualPayInfoFromStore, manualPayReady } from "@/lib/payments/manual-tr
 import { resolveStoreGateway } from "@/lib/payments/store-gateway";
 import { getTransferHolds } from "@/lib/payments/stock-holds";
 import { getOrderPayableNaira } from "@/lib/payments/order-payable";
+import { createTransferIntent } from "@/lib/payments/transfer-intent";
 import { payOrderFromWallet } from "@/lib/payments/pay-order-wallet";
 import { settlePrepaidQuoteOrder } from "@/lib/payments/settle-prepaid-order";
 import { revalidatePath } from "next/cache";
@@ -112,6 +113,35 @@ async function prepareManualTransferOrder(
     where: { id: order.id },
     data: { status: "PENDING_PAYMENT", paymentProvider: "CASH", checkoutUrl: payUrl },
   });
+  return { success: true, data: { authorizationUrl: payUrl } };
+}
+
+/**
+ * Bank transfer into the store's own dedicated account number. The order waits as PENDING_PAYMENT with a unique
+ * expected amount (a few kobo more than the total); when the transfer arrives, the webhook matches that amount to
+ * this order and pays it (see lib/payments/settle-store-transfer.ts). The customer lands on the pay-transfer page.
+ */
+async function prepareDedicatedTransferOrder(
+  order: { id: string; currency: string },
+  store: { id: string; slug: string; customDomain: string | null; customDomainStatus: string },
+  totalNaira: number
+): Promise<ActionResult<{ authorizationUrl: string }>> {
+  if (!isGatewayChargeable(order.currency)) return { success: false, error: "Bank transfer is only available for orders in naira." };
+  if (!(totalNaira > 0)) return { success: false, error: "Nothing is left to pay on this order." };
+  const reserved = await createTransferIntent({ storeId: store.id, orderId: order.id, payable: totalNaira });
+  if (!reserved.ok) return { success: false, error: reserved.error };
+  const expected = Number(reserved.intent.amount);
+  const provider = reserved.account.provider;
+  const payUrl = buildStoreUrl(store, `/orders/${order.id}/pay-transfer`);
+
+  const existing = await prisma.payment.findUnique({ where: { reference: order.id }, select: { id: true, status: true } });
+  if (existing?.status === "SUCCESSFUL") return { success: true, data: { authorizationUrl: buildStoreUrl(store, `/orders/${order.id}/confirmation`) } };
+  if (!existing) {
+    await createPendingPayment({ storeId: store.id, orderId: order.id, purpose: "ORDER", provider, reference: order.id, amount: expected, currency: order.currency, usesStoreGateway: false });
+  } else {
+    await prisma.payment.update({ where: { id: existing.id }, data: { provider, status: "PENDING", amount: expected, currency: order.currency, usesStoreGateway: false } });
+  }
+  await prisma.order.update({ where: { id: order.id }, data: { status: "PENDING_PAYMENT", paymentProvider: provider, checkoutUrl: payUrl } });
   return { success: true, data: { authorizationUrl: payUrl } };
 }
 
@@ -624,6 +654,10 @@ export async function startCheckout(
       return payOrderWithWalletResult(existing, store, session.user.id);
     }
 
+    if (data.paymentMethod === "transfer") {
+      return prepareDedicatedTransferOrder(existing, store, await getOrderPayableNaira(existing.id, existing.total));
+    }
+
     if (
       existing.status ===
         "PENDING_PAYMENT" &&
@@ -702,6 +736,7 @@ export async function startCheckout(
       const raced = await prisma.order.findUnique({ where: { idempotencyKey: data.idempotencyKey } });
       if (raced && raced.storeId === store.id && raced.buyerId === session.user.id) {
         if (data.paymentMethod === "wallet" && (raced.status === "PENDING_PAYMENT" || raced.status === "CANCELLED")) return payOrderWithWalletResult(raced, store, session.user.id);
+        if (data.paymentMethod === "transfer" && (raced.status === "PENDING_PAYMENT" || raced.status === "CANCELLED")) return prepareDedicatedTransferOrder(raced, store, await getOrderPayableNaira(raced.id, raced.total));
         if (raced.status === "PENDING_PAYMENT" && raced.checkoutUrl) return { success: true, data: { authorizationUrl: raced.checkoutUrl } };
         if (raced.status !== "PENDING_PAYMENT" && raced.status !== "CANCELLED") return { success: true, data: { authorizationUrl: `${APP_URL}/store/${store.slug}/orders/${raced.id}/confirmation` } };
         return chargeExistingOrder(raced, store, data.shippingAddress.fullName, session.user.email);
@@ -713,6 +748,8 @@ export async function startCheckout(
   const chargeResult: Awaited<ReturnType<typeof chargeExistingOrder>> =
     data.paymentMethod === "wallet"
       ? await payOrderWithWalletResult(order, store, session.user.id)
+      : data.paymentMethod === "transfer"
+      ? await prepareDedicatedTransferOrder(order, store, await getOrderPayableNaira(order.id, order.total))
       : await chargeExistingOrder(
           order,
           store,

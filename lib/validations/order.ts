@@ -26,7 +26,7 @@ export const checkoutSchema = z.object({
   // submissions could both create an order and both get charged.
   idempotencyKey: z.string().min(10).max(128),
   // "wallet" pays from the buyer's store wallet; omitted/"card" is the normal gateway or bank-transfer flow.
-  paymentMethod: z.enum(["card", "wallet"]).optional(),
+  paymentMethod: z.enum(["card", "wallet", "transfer"]).optional(),
 });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

@@ -9,12 +9,18 @@ const m = vi.hoisted(() => ({
   flwVerify: vi.fn(),
   koraVerify: vi.fn(),
   psVerify: vi.fn(),
+  intentFind: vi.fn(),
+  claim: vi.fn(),
+  match: vi.fn(),
+  settleOrder: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/observability/log", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
-  prisma: { storeVirtualAccount: { findFirst: (a: unknown) => (m.pending(a), m.account(a)), update: m.update }, payment: { create: m.create } },
+  prisma: { storeVirtualAccount: { findFirst: (a: unknown) => (m.pending(a), m.account(a)), update: m.update }, payment: { create: m.create }, storeTransferIntent: { findFirst: m.intentFind, updateMany: m.claim } },
 }));
+vi.mock("@/lib/payments/transfer-intent", () => ({ findMatchingIntent: m.match }));
+vi.mock("@/lib/payments/settle-order", () => ({ settleOrderPayment: m.settleOrder }));
 vi.mock("@/lib/payments/payout", () => ({ settleAndPayout: m.settle }));
 vi.mock("@/lib/payments/flutterwave", () => ({ verifyFlutterwaveTransaction: m.flwVerify }));
 vi.mock("@/lib/payments/korapay", () => ({ verifyKorapayTransaction: m.koraVerify }));
@@ -28,6 +34,10 @@ beforeEach(() => {
   m.account.mockResolvedValue({ id: "va1", storeId: "s1" });
   m.create.mockResolvedValue({});
   m.settle.mockResolvedValue(undefined);
+  m.intentFind.mockResolvedValue(null);
+  m.match.mockResolvedValue(null);
+  m.claim.mockResolvedValue({ count: 1 });
+  m.settleOrder.mockResolvedValue({ outcome: "paid" });
 });
 
 describe("settleStoreTransfer", () => {
@@ -49,6 +59,36 @@ describe("settleStoreTransfer", () => {
     m.account.mockResolvedValue({ id: "va1", storeId: "s1" });
     expect((await settleStoreTransfer({ provider: "PAYSTACK" as never, accountNumber: "1", gatewayReference: "x", verifiedAmountNaira: 0, rawPayload: {} })).ok).toBe(false);
     expect(m.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("transfer matched to a checkout order", () => {
+  const base = { provider: "FLUTTERWAVE" as never, accountReference: "VA-1", gatewayReference: "g1", verifiedAmountNaira: 5000.07, rawPayload: {} };
+  it("pays the waiting order and records no loose store transfer", async () => {
+    m.match.mockResolvedValue({ id: "i1", orderId: "o1" });
+    expect((await settleStoreTransfer(base)).ok).toBe(true);
+    expect(m.claim).toHaveBeenCalledWith({ where: { id: "i1", status: "OPEN" }, data: { status: "PAID", gatewayReference: "g1" } });
+    expect(m.settleOrder).toHaveBeenCalledWith(expect.objectContaining({ orderId: "o1", reference: "o1", verifiedAmountNaira: 5000.07 }));
+    expect(m.create).not.toHaveBeenCalled();
+  });
+  it("a webhook retry for an already-paid order does not pay the vendor twice", async () => {
+    m.intentFind.mockResolvedValue({ orderId: "o1" });
+    m.settleOrder.mockResolvedValue({ outcome: "already_paid" });
+    expect((await settleStoreTransfer(base)).ok).toBe(true);
+    expect(m.match).not.toHaveBeenCalled();
+    expect(m.create).not.toHaveBeenCalled();
+  });
+  it("falls back to a loose store transfer when the order can't take it, so the vendor is still paid", async () => {
+    m.match.mockResolvedValue({ id: "i1", orderId: "o1" });
+    m.settleOrder.mockResolvedValue({ outcome: "mismatch" });
+    expect((await settleStoreTransfer(base)).ok).toBe(true);
+    expect(m.create).toHaveBeenCalledTimes(1);
+  });
+  it("two racing webhooks cannot both claim the same order", async () => {
+    m.match.mockResolvedValue({ id: "i1", orderId: "o1" });
+    m.claim.mockResolvedValue({ count: 0 });
+    await settleStoreTransfer(base);
+    expect(m.settleOrder).not.toHaveBeenCalled();
   });
 });
 

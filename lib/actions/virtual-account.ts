@@ -81,3 +81,11 @@ export async function createStoreVirtualAccount(
   revalidatePath(`/store/${slug}/admin/payments`);
   return { success: true, data: { id: row.id, bankName: row.bankName, accountNumber: row.accountNumber.startsWith("PENDING:") ? "" : row.accountNumber, accountName: row.accountName, pending: row.status === "PENDING" } };
 }
+
+/** Whether this store can take checkout payments by bank transfer to its own account number. Public: returns a yes/no only. */
+export async function getCheckoutTransferOffer(slug: string): Promise<boolean> {
+  const store = await prisma.store.findUnique({ where: { slug }, select: { id: true } });
+  if (!store) return false;
+  const n = await prisma.storeVirtualAccount.count({ where: { storeId: store.id, status: "ACTIVE", NOT: { accountNumber: { startsWith: "PENDING:" } } } });
+  return n > 0;
+}

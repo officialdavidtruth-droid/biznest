@@ -8,12 +8,13 @@ import { useCart } from "@/lib/cart-context";
 import { submitCheckout } from "@/lib/checkout/client";
 import { listActiveDeliveryZones } from "@/lib/actions/delivery-zone";
 import { getCheckoutWalletBalance } from "@/lib/actions/customer-wallet";
+import { getCheckoutTransferOffer } from "@/lib/actions/virtual-account";
 import { DeliveryZoneOptions } from "@/components/checkout/delivery-zone-options";
 import { toast } from "sonner";
 import { openKorapayInline } from "@/lib/checkout/korapay-inline";
 import { fieldStyle, DEFAULT_PAGE_SKIN, LAYOUT_CLASSES, PAD, GAP, RADIUS_PX, BTN_RADIUS, surfaceStyle, summaryStyle } from "@/lib/storefront/page-skin";
 import { PageHeading } from "@/components/storefront/page-heading";
-import { ShieldCheck, Lock, Truck, ChevronLeft, CreditCard, Wallet } from "lucide-react";
+import { ShieldCheck, Lock, Truck, ChevronLeft, CreditCard, Wallet, Landmark } from "lucide-react";
 import { formatNumber } from "@/lib/i18n/locale";
 import { grossUpForGatewayFee, payoutTransferFee, type FeeConfig } from "@/lib/payments/customer-fee";
 
@@ -85,7 +86,9 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
   // Spendable store-wallet balance (null = signed out / no wallet). The server
   // re-checks everything at payment time; this only decides what to offer.
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
-  const [payWith, setPayWith] = useState<"card" | "wallet">("card");
+  const [payWith, setPayWith] = useState<"card" | "wallet" | "transfer">("card");
+  const [transferAvailable, setTransferAvailable] = useState(false);
+  useEffect(() => { getCheckoutTransferOffer(slug).then(setTransferAvailable).catch(() => setTransferAvailable(false)); }, [slug]);
   useEffect(() => {
     getCheckoutWalletBalance(slug).then((w) => setWalletBalance(w ? w.balance : null)).catch(() => setWalletBalance(null));
   }, [slug]);
@@ -97,8 +100,10 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
   const walletOffered = walletBalance !== null && currency === "NGN";
   const walletCovers = walletOffered && walletBalance >= total;
   const usingWallet = payWith === "wallet" && walletCovers;
+  const transferOffered = transferAvailable && currency === "NGN";
+  const usingTransfer = payWith === "transfer" && transferOffered;
   // The customer covers the gateway's processing fee so the seller receives the full price. Paying from the wallet has none.
-  const gatewayFee = feeConfig && currency === "NGN" && !usingWallet
+  const gatewayFee = feeConfig && currency === "NGN" && !usingWallet && !usingTransfer
     ? grossUpForGatewayFee(feeConfig.gateway, total, feeConfig.schedule, feeConfig.vatPercent, feeConfig.enabled, payoutTransferFee(total, feeConfig.transfer))
     : { totalNaira: total, feeNaira: 0 };
 
@@ -118,7 +123,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
       fulfillment: zones.length > 0 ? fulfillment : undefined,
       shippingAddress: form,
       idempotencyKey,
-      paymentMethod: usingWallet ? "wallet" : "card",
+      paymentMethod: usingWallet ? "wallet" : usingTransfer ? "transfer" : "card",
     });
     setIsSubmitting(false);
 
@@ -293,7 +298,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
               </form>
             </div>
 
-            {walletOffered && (
+            {(walletOffered || transferOffered) && (
               <div style={panel} className={`mt-5 ${PADC}`}>
                 <div className="mb-4 flex items-center gap-2">
                   <Wallet className="h-4 w-4" style={{ color: ACCENT }} />
@@ -301,8 +306,9 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Payment method">
                   {([
-                    ["card", "Card or bank transfer", "Pay securely with your card or bank", CreditCard],
-                    ["wallet", "Store wallet", walletCovers ? `Balance ${currency} ${formatNumber(walletBalance ?? 0)}` : `Balance ${currency} ${formatNumber(walletBalance ?? 0)} (not enough)`, Wallet],
+                    ["card", transferOffered ? "Card or USSD" : "Card or bank transfer", "Pay securely with your card or bank", CreditCard],
+                    ...(transferOffered ? [["transfer", "Bank transfer", "Pay into the store's own account number", Landmark]] as const : []),
+                    ...(walletOffered ? [["wallet", "Store wallet", walletCovers ? `Balance ${currency} ${formatNumber(walletBalance ?? 0)}` : `Balance ${currency} ${formatNumber(walletBalance ?? 0)} (not enough)`, Wallet]] as const : []),
                   ] as const).map(([mode, label, hint, Icon]) => {
                     const disabled = mode === "wallet" && !walletCovers;
                     const on = payWith === mode && !disabled;

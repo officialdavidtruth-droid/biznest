@@ -770,6 +770,7 @@ enum DomainStatus {
 
 model Store {
   virtualAccounts StoreVirtualAccount[]
+  transferIntents StoreTransferIntent[]
   // Customer chat setup: { autoReply: boolean, humanHandoff: boolean, faqs: [{ id, topic, question, answer, enabled }] }. Null = niche defaults.
   messagingConfig Json?
   timezone      String      @default("Africa/Lagos")
@@ -6356,4 +6357,22 @@ model StoreVirtualAccount {
 
   @@unique([provider, accountNumber])
   @@index([storeId])
+}
+
+/// A checkout order waiting for a bank transfer to a store's dedicated account. The expected amount carries a few
+/// kobo that no other open order of the same store has, so an incoming transfer can be matched to its order.
+model StoreTransferIntent {
+  id               String   @id @default(cuid())
+  storeId          String
+  store            Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderId          String   @unique
+  virtualAccountId String
+  amount           Decimal  @db.Decimal(14, 2)
+  status           String   @default("OPEN")
+  // The gateway's id for the transfer that paid this order (makes webhook retries safe).
+  gatewayReference String?
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+
+  @@index([storeId, status, amount])
 }

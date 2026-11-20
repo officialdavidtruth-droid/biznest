@@ -24,7 +24,7 @@ export async function submitCheckout(input: {
   fulfillment?: "delivery" | "pickup";
   shippingAddress: CheckoutAddress;
   idempotencyKey: string;
-  paymentMethod?: "card" | "wallet";
+  paymentMethod?: "card" | "wallet" | "transfer";
 }) {
   return startCheckout(input.slug, {
     items: input.items.map((item) => ({ productId: item.productId, variantId: item.variantId ?? undefined, quantity: item.quantity })),
