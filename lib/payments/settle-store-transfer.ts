@@ -83,7 +83,7 @@ async function settleMatchedOrder(storeId: string, provider: PaymentProvider, ga
       if (claim.count === 0) return false;
       orderId = intent.orderId;
     }
-    if (provider === "CASH") return false;
+    if (provider !== "PAYSTACK" && provider !== "FLUTTERWAVE" && provider !== "KORAPAY") return false;
     const result = await settleOrderPayment({ orderId, reference: orderId, provider, verifiedAmountNaira: amount, verifiedCurrency: "NGN", payload: rawPayload });
     return result.outcome === "paid" || result.outcome === "already_paid";
   } catch (err) {
