@@ -228,6 +228,17 @@ export function ProductForm({
 
   const wordCount = detailedDescription.trim() ? detailedDescription.trim().split(/\s+/).length : 0;
 
+  // The save buttons sit at the top of a long form, so a rule broken further down
+  // used to fail silently. Say so and bring the first problem into view.
+  function onInvalid(errs: Record<string, { message?: unknown } | undefined>) {
+    const first = Object.values(errs).find((e) => typeof e?.message === "string");
+    toast.error(first ? String(first.message) : "Some details need fixing. Check the highlighted fields.");
+    window.setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(".text-destructive:not(span.text-destructive)") ?? document.querySelector<HTMLElement>("[aria-invalid='true']");
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
+  }
+
   async function submit(values: ProductInput, publish: boolean) {
     // A custom detail named like one of the fields above would silently overwrite it
     // (e.g. a custom "taxable" turning the toggle into text), so stop and say so.
@@ -320,7 +331,7 @@ export function ProductForm({
           <button
             type="button"
             disabled={isSubmitting !== null}
-            onClick={handleSubmit((v) => submit(v, false))}
+            onClick={handleSubmit((v) => submit(v, false), onInvalid)}
             className="flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-60"
           >
             <Save className="h-3.5 w-3.5" /> {isSubmitting === "draft" ? "Saving…" : product ? "Save" : "Save as Draft"}
@@ -328,7 +339,7 @@ export function ProductForm({
           <button
             type="button"
             disabled={isSubmitting !== null}
-            onClick={handleSubmit((v) => submit(v, true))}
+            onClick={handleSubmit((v) => submit(v, true), onInvalid)}
             className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-60"
           >
             <CheckSquare className="h-3.5 w-3.5" /> {isSubmitting === "publish" ? "Publishing…" : "Save & Publish"}
