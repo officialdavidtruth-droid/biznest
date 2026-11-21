@@ -8,8 +8,19 @@ import { isGrandeurStore, usesRestaurantSkin } from "@/lib/store-pages";
 import { getReserveInfo } from "@/lib/actions/table-reservations";
 import { RestaurantReservations } from "@/components/storefront/restaurant-reservations";
 
-export default async function ReservationsPage({ params }: { params: Promise<{ slug: string }> }) {
+import { getFlavoriaData } from "@/lib/storefront/flavoria-data";
+import { FlavoriaReservations } from "@/components/storefront/flavoria-pages";
+
+export default async function ReservationsPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ date?: string; party?: string }> }) {
   const { slug } = await params;
+  const q = (await searchParams) || {};
+  const flav = await getFlavoriaData(slug);
+  if (flav) {
+    const info = await getReserveInfo(slug);
+    if (!info) notFound();
+    const img = flav.items.find((i) => i.image)?.image || flav.store.bannerUrl || null;
+    return <FlavoriaReservations store={flav.store} slug={slug} info={info} image={img} initialDate={q.date} initialParty={Number(q.party) || undefined} />;
+  }
   const store = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
   if (!store || store.status !== "ACTIVE") notFound();
   if (!isGrandeurStore({ businessCategory: store.business?.category, storeBusinessType: store.businessType, templateName: store.template?.name })) notFound();

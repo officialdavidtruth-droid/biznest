@@ -157,3 +157,116 @@ export function FlavoriaContact({ store, slug, image }: { store: any; slug: stri
     </FlavoriaShell>
   );
 }
+
+/* ---------------- Reservation ---------------- */
+import { CalendarDays, Gift, Ticket, Users } from "lucide-react";
+import { useEffect } from "react";
+import { createTableReservation, getReservationSlots } from "@/lib/actions/table-reservations";
+import { timeLabel } from "@/lib/table-reservations";
+
+const OCCASIONS = ["", "Birthday", "Anniversary", "Date night", "Business meal", "Family gathering", "Other"];
+type ResvInfo = { open: boolean; today: string; maxDate: string; cfg: { maxParty: number; durationMins: number } };
+
+export function FlavoriaReservations({ store, slug, info, image, initialDate, initialParty }: { store: any; slug: string; info: ResvInfo; image: string | null; initialDate?: string; initialParty?: number }) {
+  const startDate = initialDate && initialDate >= info.today && initialDate <= info.maxDate ? initialDate : info.today;
+  const [date, setDate] = useState(startDate);
+  const [party, setParty] = useState(Math.min(Math.max(initialParty || 2, 1), info.cfg.maxParty));
+  const [slots, setSlots] = useState<{ time: string; available: boolean }[] | null>(null);
+  const [slotError, setSlotError] = useState("");
+  const [time, setTime] = useState("");
+  const [occasion, setOccasion] = useState("");
+  const [notes, setNotes] = useState("");
+  const [guestName, setGuestName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [done, setDone] = useState<null | { code: string; when: string }>(null);
+  const [busy, start] = useTransition();
+  useEffect(() => {
+    if (!info.open) return;
+    let live = true;
+    setSlots(null); setTime(""); setSlotError("");
+    getReservationSlots(slug, date, party).then((r) => {
+      if (!live) return;
+      if (r.success) setSlots(r.data.slots); else { setSlots([]); setSlotError(r.error); }
+    });
+    return () => { live = false; };
+  }, [slug, date, party, info.open]);
+  const submit = (e: FormEvent) => {
+    e.preventDefault(); setError("");
+    if (!time) return setError("Choose a time first.");
+    start(async () => {
+      const text = [occasion && `Occasion: ${occasion}`, notes].filter(Boolean).join(". ");
+      const r = await createTableReservation(slug, { date, time, partySize: party, guestName, phone, email, notes: text });
+      if (!r.success) return setError(r.error);
+      setDone({ code: r.data.code, when: `${new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })} at ${timeLabel(time)}` });
+    });
+  };
+  const free = (slots || []).filter((s) => s.available);
+  return (
+    <FlavoriaShell store={store} slug={slug} active="Reservation">
+      <PageHero label="Reservation" title="Reserve a Table" text={`Book your table in advance and enjoy an exceptional dining experience at ${store.name}.`} image={image} />
+      <div className="fv-wrap fv-resv">
+        <section className="fv-form">
+          <h2>Book your table</h2>
+          {!info.open ? <p>Online reservations aren&apos;t available right now. Please contact the restaurant directly to book a table.</p> : done ? (
+            <div className="fv-done">
+              <h3>Table reserved</h3>
+              <p>{party} {party === 1 ? "guest" : "guests"} · {done.when}</p>
+              <div className="code">{done.code}</div>
+              <p>Show this code when you arrive. To change or cancel, contact {store.name} and quote your code.</p>
+            </div>
+          ) : (
+            <form onSubmit={submit} className="fv-rform">
+              <label>Date<input type="date" value={date} min={info.today} max={info.maxDate} onChange={(e) => e.target.value && setDate(e.target.value)} required /></label>
+              <label>Time
+                <select value={time} onChange={(e) => setTime(e.target.value)} required disabled={!free.length}>
+                  <option value="">{slots === null ? "Loading…" : free.length ? "Choose a time" : "No tables free"}</option>
+                  {free.map((s) => <option key={s.time} value={s.time}>{timeLabel(s.time)}</option>)}
+                </select>
+              </label>
+              <label>Number of guests
+                <select value={party} onChange={(e) => setParty(Number(e.target.value))}>{Array.from({ length: info.cfg.maxParty }, (_, n) => n + 1).map((n) => <option key={n} value={n}>{n} {n === 1 ? "Guest" : "Guests"}</option>)}</select>
+              </label>
+              <label>Occasion (optional)
+                <select value={occasion} onChange={(e) => setOccasion(e.target.value)}>{OCCASIONS.map((o) => <option key={o} value={o}>{o || "None"}</option>)}</select>
+              </label>
+              <label>Your name<input value={guestName} onChange={(e) => setGuestName(e.target.value)} autoComplete="name" required /></label>
+              <label>Phone number<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" autoComplete="tel" required /></label>
+              <label className="wide">Email (optional)<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></label>
+              <label className="wide">Special request (optional)
+                <textarea value={notes} maxLength={200} onChange={(e) => setNotes(e.target.value)} placeholder="Eg. Window seat, vegan meal, high chair, etc." />
+                <span>{notes.length}/200</span>
+              </label>
+              {slotError && <p className="bad wide">{slotError}</p>}
+              {error && <p className="bad wide" role="alert">{error}</p>}
+              <button className="fv-btn lg wide" disabled={busy || !time}>{busy ? "Reserving…" : "Reserve table"}</button>
+            </form>
+          )}
+        </section>
+        <aside className="fv-resv-side">
+          <div className="fv-resv-photo" style={bgImg(image)} />
+          <div className="fv-why">
+            <h3>Why reserve with {store.name}?</h3>
+            <ul>
+              <li><CalendarDays size={20} /> Pick the date and time that suit you</li>
+              <li><Users size={20} /> A table for your group, up to {info.cfg.maxParty} guests</li>
+              <li><Gift size={20} /> Tell us the occasion so we can plan for it</li>
+              <li><Ticket size={20} /> Get a reservation code to show on arrival</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+      <div className="fv-wrap">
+        <section className="fv-special">
+          <div>
+            <h2>Planning a <em>Special Occasion?</em></h2>
+            <p>Birthday, anniversary, or a private dinner? Tell {store.name} and they&apos;ll help make it memorable.</p>
+            <div><Link className="fv-btn light" href={href(slug, "/contact")}>Contact us <ArrowRight size={14} /></Link></div>
+          </div>
+          <i style={bgImg(image)} />
+        </section>
+      </div>
+    </FlavoriaShell>
+  );
+}

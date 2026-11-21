@@ -103,3 +103,16 @@
 .fv-info-card.col{flex-direction:column;align-items:flex-start;gap:8px}.fv-info-card.col small{color:var(--mut)}
 @media(max-width:1000px){.fv-phero .fv-wrap{grid-template-columns:1fr}.fv-phero-img{min-height:200px;order:-1}.fv-contact{grid-template-columns:1fr}.fv-gal{grid-template-columns:repeat(2,1fr)}.fv-special{grid-template-columns:1fr}.fv-special i{order:-1}}
 @media(max-width:520px){.fv-gal{gap:8px}.fv-special>div{padding:22px}.fv-form{padding:18px}}
+.fv-resv{display:grid;grid-template-columns:1.25fr 1fr;gap:24px;padding-top:34px;padding-bottom:24px;align-items:start}
+.fv-rform{display:grid;grid-template-columns:1fr 1fr;gap:14px}.fv-rform .wide{grid-column:1/-1}
+.fv-rform select,.fv-rform input,.fv-rform textarea{border:1px solid var(--line);border-radius:8px;padding:12px 14px;font:inherit;font-size:14px;font-weight:400;background:#fff;width:100%;box-sizing:border-box}
+.fv-rform label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;position:relative}
+.fv-rform textarea{min-height:100px;resize:vertical}.fv-rform label span{position:absolute;right:12px;bottom:8px;font-size:11px;color:var(--mut);font-weight:400}
+.fv-rform .bad{color:#b91c1c;margin:0}
+.fv-done{text-align:center;padding:20px 0}.fv-done .code{display:inline-block;margin:10px 0;padding:12px 24px;border-radius:10px;background:#fff6ec;border:1px dashed var(--ac);font:700 22px "Playfair Display",Georgia,serif;letter-spacing:.1em;color:var(--ac)}
+.fv-resv-side{display:flex;flex-direction:column;gap:16px}
+.fv-resv-photo{aspect-ratio:16/10;border-radius:18px;background:#f3ece2 center/cover}
+.fv-why{background:#fdf1e6;border-radius:18px;padding:22px 24px}.fv-why h3{font:700 20px "Playfair Display",Georgia,serif;margin:0 0 14px}
+.fv-why ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;font-size:14px}.fv-why li{display:flex;gap:12px;align-items:center}.fv-why svg{color:var(--ac);flex:none}
+@media(max-width:1000px){.fv-resv{grid-template-columns:1fr}}
+@media(max-width:520px){.fv-rform{grid-template-columns:1fr}}
