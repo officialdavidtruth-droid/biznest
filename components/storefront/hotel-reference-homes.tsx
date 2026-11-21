@@ -9,6 +9,9 @@ import { storeHref as href } from "@/lib/utils/store-href";
 import { formatMoney } from "@/lib/utils/format-money";
 import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
 import { FooterSocial } from "@/components/storefront/footer-social";
+import { ScrollRow } from "@/components/storefront/scroll-row";
+import { PlayVideo } from "@/components/storefront/play-video";
+import { resolveHeroMedia } from "@/lib/storefront/hero-media";
 import { FooterLinks, LegalLinks } from "@/components/storefront/store-menu";
 import type { HotelContent, HotelRoom } from "@/lib/hotel-content";
 
@@ -112,7 +115,7 @@ function Aspire({ store, slug, content }: P) {
 
 /* ───────────────────────── LARITA ───────────────────────── */
 function Larita({ store, slug, content }: P) {
-  const rs = rooms(content); const room = rs[0]; const hero = ph(store.bannerUrl, 4);
+  const rs = rooms(content); const hero = ph(resolveHeroMedia(store.bannerUrl).type === "image" ? store.bannerUrl : null, 4);
   const am = content.amenities.filter(a => content.hasDining || !/restaurant|dining|bar\b|kitchen/i.test(a.title + " " + a.category)).slice(0, 6);
   const AM = [Wifi, Car, Utensils, Sparkles, Dumbbell, Waves];
   return <div className="rh-larita">
@@ -139,7 +142,7 @@ function Larita({ store, slug, content }: P) {
 .rh-larita .col{background:#f5f1ed;padding:70px 5%;text-align:center}.rh-larita .col h2{margin-bottom:30px}
 .rh-larita .slide{display:grid;grid-template-columns:1fr 1fr;background:#fff;text-align:left;max-width:1180px;margin:0 auto}
 .rh-larita .slide .t{padding:46px}.rh-larita .slide .t b.pr{font:400 38px Georgia,serif}.rh-larita .slide .t h3{font:400 26px Georgia,serif;margin:6px 0 10px}.rh-larita .slide .t p{font-size:13px;color:#77716d;line-height:1.7}
-.rh-larita .slide img{width:100%;height:100%;min-height:320px;object-fit:cover}
+.bn-scrollrow{position:relative;max-width:1180px;margin:0 auto}.bn-scrollrow-track{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}.bn-scrollrow-track::-webkit-scrollbar{display:none}.bn-scrollrow-track>*{flex:0 0 100%;scroll-snap-align:start}.bn-scrollrow-btn{position:absolute;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#181716;font-size:24px;line-height:1;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.2)}.bn-scrollrow-btn.prev{left:10px}.bn-scrollrow-btn.next{right:10px}.rh-larita .slide img{width:100%;height:100%;min-height:320px;object-fit:cover}
 .rh-larita .fac{padding:80px 5%;text-align:center}.rh-larita .fg{display:grid;grid-template-columns:repeat(3,1fr);gap:34px 40px;text-align:left;max-width:1180px;margin:34px auto 0}
 .rh-larita .fg div{display:flex;gap:14px}.rh-larita .fg svg{color:#b58a69;flex:none}.rh-larita .fg h5{font:400 17px Georgia,serif;margin:0 0 6px}.rh-larita .fg p{font-size:12.5px;color:#77716d;margin:0;line-height:1.6}
 .rh-larita .vid{position:relative;min-height:380px;background:linear-gradient(rgba(20,15,12,.6),rgba(20,15,12,.6)),url(VID) center/cover;color:#fff;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
@@ -156,11 +159,11 @@ function Larita({ store, slug, content }: P) {
     <section className="wel"><div className="imgs"><img src={ph(content.gallery[0]?.image, 2)} alt="" /><img src={ph(content.gallery[1]?.image, 3)} alt="" /></div>
       <div><small className="e">Welcome to {first(store.name)}</small><h2>{content.skin?.headline || "Luxury hotel in the heart of the city."}</h2><p>{content.home.body || content.home.subtitle}</p><Link className="btn" href={href(slug, "/about")}>Read more →</Link></div></section>
 
-    {room && <section className="col"><small className="e">Exquisite and luxurious</small><h2>Room and suite collection</h2>
-      <div className="slide"><div className="t"><span style={{ fontSize: 13 }}>From:</span> <b className="pr">{money(room.price)}</b><small>/NIGHT</small><h3>{room.name}</h3><p>{room.description}</p><p>{room.area} · {room.bed} · {room.guests} guests</p><Link className="btn" href={href(slug, "/book")}>Book now</Link> <Link className="btn ghost" href={href(slug, `/rooms/${room.slug}`)}>View room →</Link></div><img src={ph(room.image, 4)} alt={room.name} /></div></section>}
+    {rs.length > 0 && <section className="col"><small className="e">Exquisite and luxurious</small><h2>Room and suite collection</h2>
+      <ScrollRow label="Rooms and suites">{rs.slice(0, 8).map((r) => <div className="slide" key={r.slug}><div className="t"><span style={{ fontSize: 13 }}>From:</span> <b className="pr">{money(r.price)}</b><small>/NIGHT</small><h3>{r.name}</h3><p>{r.description}</p><p>{r.area} · {r.bed} · {r.guests} guests</p><Link className="btn" href={href(slug, "/book")}>Book now</Link> <Link className="btn ghost" href={href(slug, `/rooms/${r.slug}`)}>View room →</Link></div><img src={ph(r.image, 4)} alt={r.name} /></div>)}</ScrollRow></section>}
     <section className="fac"><small className="e">Modern and comfortable</small><h2>Facilities and amenities</h2>
       <div className="fg">{(am.length ? am.map(a => [a.title, a.description]) : [["High Speed Wifi", "Seamless internet access throughout the hotel."], ["Parking Space", "Secure parking for all guests."], ...(content.hasDining ? [["Restaurant & Bar", "Gourmet dishes and cocktails."]] : [["Room Service", "Round-the-clock in-room assistance."]]), ["Spa Center", "Relaxing and rejuvenating treatments."], ["Fitness Center", "Modern gym equipment."], ["Swimming Pool", "Our pristine outdoor pool."]]).map(([t, d], i) => { const I = AM[i % 6]; return <div key={t}><I size={30} strokeWidth={1.2} /><div><h5>{t}</h5><p>{d}</p></div></div>; })}</div></section>
-    <section className="vid"><small className="e" style={{ color: "#fff" }}>Hotel video</small><h2 style={{ margin: 0 }}>Explore {store.name}</h2><b><Play fill="#fff" /></b></section>
+    <PlayVideo media={resolveHeroMedia(store.bannerUrl)} className="vid" icon={<Play fill="#fff" />}><small className="e" style={{ color: "#fff" }}>Hotel video</small><h2 style={{ margin: 0 }}>Explore {store.name}</h2></PlayVideo>
     <RefFooter layout="larita" store={store} slug={slug} content={content} />
   </div>;
 }
