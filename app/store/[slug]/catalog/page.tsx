@@ -22,14 +22,14 @@ export default async function CatalogPage({ params, searchParams }: { params: Pr
   if (!rawStore || rawStore.status !== "ACTIVE") notFound();
   const store = { ...rawStore, sellsProducts: rawStore.business?.sellsProducts ?? true };
   const items = [
-    ...store.products.map(p => ({ id:p.id, kind:"product" as const, name:p.name, price:Number(p.price), currency:p.currency, image:p.images[0] ?? null, categoryName:p.category?.name ?? undefined, hasVariants:p.hasVariants })),
-    ...store.services.map(s => ({ id:s.id, kind:"service" as const, name:s.name, price:Number(s.price), currency:s.currency, image:s.images[0] ?? null, categoryName:s.category?.name ?? undefined })),
+    ...store.products.map(p => ({ id:p.id, kind:"product" as const, name:p.name, price:Number(p.price), currency:p.currency, description:p.description ?? null, image:p.images[0] ?? null, categoryName:p.category?.name ?? undefined, hasVariants:p.hasVariants })),
+    ...store.services.map(s => ({ id:s.id, kind:"service" as const, name:s.name, price:Number(s.price), currency:s.currency, description:s.description ?? null, image:s.images[0] ?? null, categoryName:s.category?.name ?? undefined })),
   ];
   if (store.template?.name === "Veloura — Superior Luxury Hotel" || isHotelBusiness(store.business?.category)) {
     return <ThelusoHotel store={{...store,address:[store.business?.city,store.business?.state].filter(Boolean).join(", ")||null,phone:store.contactPhone??store.business?.phone??null,email:store.contactEmail??store.business?.email??null}} slug={slug} content={await getHotelContent(slug)} />;
   }
   if (usesRestaurantSkin({ businessCategory: store.business?.category, businessSubcategory: store.business?.businessSubcategory, storeBusinessType: store.businessType, templateName: store.template?.name })) {
-    return <RestaurantMenu store={store} slug={slug} query={query?.q} items={items.map(i=>({...i,description:null,categoryName:i.categoryName??null})) as any} />;
+    return <RestaurantMenu store={store} slug={slug} query={query?.q} items={items.map(i=>({...i,categoryName:i.categoryName??null})) as any} />;
   }
   if (usesGrandeurSkin({ businessCategory: store.business?.category, storeBusinessType: store.businessType, templateName: store.template?.name })) return <GrandeurMenu store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);

@@ -66,9 +66,9 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     prisma.product.findMany({where:{storeId:store.id,isPublished:true,OR:[{categoryId:{in:ids}},{categoryLinks:{some:{categoryId:{in:ids}}}}]},include:{category:true}}),
     prisma.service.findMany({where:{storeId:store.id,categoryId:{in:ids},isPublished:true},include:{category:true}}),
   ]);
-  const items = [...products.map(p=>({id:p.id,kind:"product" as const,name:p.name,price:Number(p.price),currency:p.currency,image:p.images[0]??null,categoryName:p.category?.name??null,hasVariants:p.hasVariants})), ...services.map(s=>({id:s.id,kind:"service" as const,name:s.name,price:Number(s.price),currency:s.currency,image:s.images[0]??null,categoryName:s.category?.name??null}))];
+  const items = [...products.map(p=>({id:p.id,kind:"product" as const,name:p.name,price:Number(p.price),currency:p.currency,description:p.description??null,image:p.images[0]??null,categoryName:p.category?.name??null,hasVariants:p.hasVariants})), ...services.map(s=>({id:s.id,kind:"service" as const,name:s.name,price:Number(s.price),currency:s.currency,description:s.description??null,image:s.images[0]??null,categoryName:s.category?.name??null}))];
   if (usesRestaurantSkin({ businessCategory: store.business?.category, businessSubcategory: store.business?.businessSubcategory, storeBusinessType: store.businessType, templateName: store.template?.name })) {
-    return <RestaurantMenu store={store} slug={slug} categoryId={category.id} heading={category.name} items={items.map(i=>({...i,description:null})) as any} />;
+    return <RestaurantMenu store={store} slug={slug} categoryId={category.id} heading={category.name} items={items as any} />;
   }
   if (usesGrandeurSkin({ businessCategory: store.business?.category, storeBusinessType: store.businessType, templateName: store.template?.name })) {
     const { GrandeurMenu } = await import("@/components/storefront/grandeur-restaurant");

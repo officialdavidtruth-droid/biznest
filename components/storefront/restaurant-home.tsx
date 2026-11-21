@@ -18,8 +18,8 @@ export function Dish({ item, slug }: { item: RestaurantItem; slug: string }) {
     <article className="rs-dish">
       <Link href={url} className="rs-dish-img" style={bg(item.image)} aria-label={item.name} />
       <div className="rs-dish-body">
-        {item.categoryName && <small>{item.categoryName}</small>}
         <h3><Link href={url}>{item.name}</Link></h3>
+        {item.description && <p>{item.description}</p>}
         <strong>{formatMoney(Math.round(item.price), item.currency)}</strong>
       </div>
       {item.hasVariants ? (
