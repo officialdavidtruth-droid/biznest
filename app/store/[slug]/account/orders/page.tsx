@@ -6,15 +6,18 @@ import { prisma } from "@/lib/prisma";
 import { OrdersListContent } from "../../orders/orders-list-content";
 import { VelouraAccountHero } from "@/components/storefront/veloura-account-shell";
 import { getHotelContent } from "@/lib/hotel-content";
+import { usesRestaurantSkin } from "@/lib/store-pages";
+import { RestaurantOrdersPage } from "./restaurant";
 
 export default async function AccountOrdersPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const [store, record, hotel] = await Promise.all([
     getStoreBranding(slug),
-    prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } }),
+    prisma.store.findUnique({ where: { slug }, select: { businessType: true, template: { select: { name: true } }, business: { select: { category: true, businessSubcategory: true } } } }),
     getHotelContent(slug),
   ]);
   if (!store) notFound();
+  if (record && usesRestaurantSkin({ businessCategory: record.business?.category ?? null, businessSubcategory: record.business?.businessSubcategory ?? null, storeBusinessType: record.businessType, templateName: record.template?.name ?? null } as any)) return <RestaurantOrdersPage slug={slug} />;
   const copy = getAccountCopy(record?.template?.name, store.businessCategory);
   const hero = hotel.rooms.find((r: any) => r.featured)?.image || hotel.rooms[0]?.image || null;
 

@@ -144,3 +144,36 @@ body:has(.rs-side){padding-left:var(--rs-w);background:var(--rs-bg);color:var(--
 .rs-done{text-align:center;padding:40px 20px}.rs-done .code{font:800 34px Inter,sans-serif;letter-spacing:.14em;margin:8px 0}
 @media(max-width:900px){.rs-resv{grid-template-columns:1fr}.rs-banner-top{padding:20px}.rs-banner-img{width:38%;margin:-20px -20px -20px 0}.rs-listhead{flex-direction:column;align-items:flex-start}.rs-act span{display:none}.rs-form{grid-template-columns:1fr}}
 @media(max-width:520px){.rs-tiles{grid-template-columns:1fr 1fr;gap:12px}.rs-tile{min-height:210px}.rs-tile i{min-height:120px}}
+
+/* ---- Orders ---- */
+.rs-sec{font-size:20px;font-weight:800;margin:26px 0 12px;color:var(--rs-ink)}
+.rs-tabs button{font:inherit;cursor:pointer}
+.rs-order{background:#fff;border:1px solid var(--rs-line);border-radius:20px;padding:18px 20px;margin-bottom:14px}
+.rs-order header,.rs-order footer{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.rs-order header small{display:block;color:#8a7a68;font-size:13px;margin-top:2px}
+.rs-pill{padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;background:#FFF1E8;color:var(--rs-accent-dk)}
+.rs-pill.completed{background:#E8F7EE;color:#15803D}.rs-pill.cancelled{background:#F1F1F1;color:#666}
+.rs-order-items{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
+.rs-oi{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px}
+.rs-oi i{width:48px;height:48px;border-radius:12px;background:#F6EBDD center/cover}
+.rs-oi small{display:block;color:#8a7a68;font-weight:500}
+.rs-steps{display:flex;list-style:none;margin:16px 0;padding:0}
+.rs-steps li{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#8a7a68;position:relative;text-align:center}
+.rs-steps li:not(:last-child)::after{content:"";position:absolute;top:13px;left:50%;width:100%;height:2px;background:var(--rs-line)}
+.rs-steps li.done:not(:last-child)::after{background:var(--rs-accent)}
+.rs-steps li i{position:relative;z-index:1;width:28px;height:28px;border-radius:50%;background:#fff;border:2px solid var(--rs-line);display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:700}
+.rs-steps li.done i,.rs-steps li.now i{background:var(--rs-accent);border-color:var(--rs-accent);color:#fff}
+.rs-steps li.now,.rs-steps li.done{color:var(--rs-ink);font-weight:600}
+.rs-order footer strong{font-size:18px}
+.rs-order footer>div{display:flex;gap:8px;flex-wrap:wrap}
+.rs-btn{display:inline-flex;align-items:center;gap:4px;padding:10px 18px;border-radius:999px;background:var(--rs-accent);color:#fff;font-weight:700;font-size:14px;border:1.5px solid var(--rs-accent);cursor:pointer;text-decoration:none}
+.rs-btn.ghost{background:#fff;color:var(--rs-accent-dk)}
+.rs-await{display:block;padding:14px 18px;border-radius:16px;background:#FFF7E0;border:1px solid #F3DC9A;margin-bottom:12px;text-decoration:none;color:var(--rs-ink)}
+.rs-await span{display:block;font-size:13px;color:#8a6a10}
+@media(max-width:640px){.rs-order{padding:14px}.rs-steps li{font-size:11px}.rs-order footer{flex-direction:column;align-items:stretch}.rs-order footer>div{justify-content:stretch}.rs-order footer .rs-btn{flex:1;justify-content:center}}
+
+/* Full-width layout: the store body is a flex column, so auto margins made every page shrink to its content (a narrow, phone-like column on desktop). */
+body:has(.rs-side){max-width:none!important}
+.rs-home{width:100%;box-sizing:border-box;margin-left:auto;margin-right:auto;align-self:stretch}
+.rs-top,.rs-foot{width:100%;box-sizing:border-box;align-self:stretch}
+.rs-home>*{min-width:0}
