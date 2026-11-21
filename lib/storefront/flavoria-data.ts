@@ -6,7 +6,7 @@ import type { RestaurantItem } from "@/components/storefront/restaurant-home";
 export async function getFlavoriaData(slug: string): Promise<{ store: any; items: RestaurantItem[] } | null> {
   const store = await prisma.store.findUnique({
     where: { slug },
-    include: { template: true, business: true, products: { where: { isPublished: true }, take: 200, include: { category: true } }, services: { where: { isPublished: true }, take: 100, include: { category: true } } },
+    include: { template: true, business: true, reviews: { select: { rating: true }, take: 500 }, products: { where: { isPublished: true }, take: 200, include: { category: true } }, services: { where: { isPublished: true }, take: 100, include: { category: true } } },
   });
   if (!store || store.status !== "ACTIVE") return null;
   if (!usesFlavoriaHome({ businessCategory: store.business?.category, businessSubcategory: store.business?.businessSubcategory, storeBusinessType: store.businessType, templateName: store.template?.name } as any)) return null;

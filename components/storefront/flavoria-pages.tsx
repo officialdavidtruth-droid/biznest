@@ -270,3 +270,44 @@ export function FlavoriaReservations({ store, slug, info, image, initialDate, in
     </FlavoriaShell>
   );
 }
+
+/* ---------------- About ---------------- */
+export function FlavoriaAbout({ store, slug, items, story, title }: { store: any; slug: string; items: RestaurantItem[]; story: string; title?: string }) {
+  const withImg = items.filter((i) => i.image);
+  const hero = store.bannerUrl || withImg[0]?.image || null;
+  const storyImg = store.storyImage || withImg[1]?.image || withImg[0]?.image || null;
+  const ratings: number[] = (store.reviews || []).map((r: any) => Number(r.rating)).filter((n: number) => n > 0);
+  const avg = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+  const stats: [string, string][] = [];
+  if (items.length) stats.push([String(items.length), items.length === 1 ? "Dish on the menu" : "Dishes on the menu"]);
+  if (ratings.length) stats.push([avg.toFixed(1), "Average rating"], [String(ratings.length), ratings.length === 1 ? "Guest review" : "Guest reviews"]);
+  const paras = story.split(/\n{2,}|\r\n\r\n/).map((x) => x.trim()).filter(Boolean);
+  return (
+    <FlavoriaShell store={store} slug={slug} active="About us">
+      <PageHero label={`About ${store.name}`} title={title || "About Us"} accent={0} text={store.business?.category ? `${store.business.category}${store.business?.city ? ` in ${store.business.city}` : ""}` : undefined} image={hero} />
+      {paras.length > 0 && (
+        <div className="fv-wrap fv-story">
+          <div className="fv-story-img" style={bgImg(storyImg)} />
+          <div>
+            <small>Our story</small>
+            <h2>The {store.name} Story</h2>
+            {paras.map((t, n) => <p key={n}>{t}</p>)}
+          </div>
+        </div>
+      )}
+      {stats.length > 0 && (
+        <div className="fv-wrap"><div className="fv-stats">{stats.map(([n, l]) => <div key={l}><b>{n}</b><span>{l}</span></div>)}</div></div>
+      )}
+      <div className="fv-wrap">
+        <section className="fv-special">
+          <div>
+            <h2>Dine With Us Today</h2>
+            <p>Great food, warm service, and a place you&apos;ll love to return to.</p>
+            <div><Link className="fv-btn light" href={href(slug, "/reservations")}>Book a table <ArrowRight size={14} /></Link></div>
+          </div>
+          <i style={bgImg(withImg[0]?.image || hero)} />
+        </section>
+      </div>
+    </FlavoriaShell>
+  );
+}

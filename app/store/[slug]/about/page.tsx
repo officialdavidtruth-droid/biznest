@@ -7,8 +7,19 @@ import { getGrandeurRestaurantData } from "@/lib/grandeur-restaurant";
 import { renderBuilderSubpage } from "@/lib/storefront/builder-subpage";
 import { renderUniversalSectionPage } from "@/components/storefront/universal-section-page-route";
 
+import { getFlavoriaData } from "@/lib/storefront/flavoria-data";
+import { getOwnerPage } from "@/lib/storefront/owner-pages";
+import { FlavoriaAbout } from "@/components/storefront/flavoria-pages";
+
 export default async function AboutPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const flav = await getFlavoriaData(slug);
+  if (flav) {
+    // The owner's own About text (Customize > Pages) wins; otherwise the business description from the dashboard.
+    const owner = await getOwnerPage(flav.store.id, "about");
+    const story = owner?.body || flav.store.business?.description || "";
+    return <FlavoriaAbout store={flav.store} slug={slug} items={flav.items} story={story} title={owner?.title && owner.title.toLowerCase() !== "about" ? owner.title : undefined} />;
+  }
   // The owner's own About page (Customize > Pages), or a published visual builder, wins over every template's default page.
   const customised = await renderBuilderSubpage(slug, "about", { onlyIfCustomised: true });
   if (customised) return customised;

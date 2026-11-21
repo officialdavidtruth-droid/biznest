@@ -116,3 +116,10 @@
 .fv-why ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;font-size:14px}.fv-why li{display:flex;gap:12px;align-items:center}.fv-why svg{color:var(--ac);flex:none}
 @media(max-width:1000px){.fv-resv{grid-template-columns:1fr}}
 @media(max-width:520px){.fv-rform{grid-template-columns:1fr}}
+.fv-story{display:grid;grid-template-columns:1.1fr 1fr;gap:48px;align-items:center;padding-top:44px;padding-bottom:36px}
+.fv-story-img{aspect-ratio:4/3;border-radius:20px;background:#efe6d8 center/cover}
+.fv-story small{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ac)}
+.fv-story h2{font-size:clamp(28px,3.4vw,40px);margin:8px 0 16px}.fv-story p{color:#4a463c;line-height:1.75;font-size:15px;margin:0 0 14px;white-space:pre-line}
+.fv-stats{display:flex;justify-content:space-around;gap:20px;background:var(--gr);color:#fff;border-radius:16px;padding:26px 20px;margin:20px 0 10px;flex-wrap:wrap}
+.fv-stats div{text-align:center}.fv-stats b{display:block;font:700 30px "Playfair Display",Georgia,serif}.fv-stats span{font-size:13px;opacity:.85}
+@media(max-width:900px){.fv-story{grid-template-columns:1fr;gap:24px}}
