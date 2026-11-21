@@ -80,9 +80,9 @@ export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
  const arrangement=getTemplateArrangement(store.sectionOverrides);
  const arranged=(node:ReactNode)=><SectionArranger arrangement={arrangement}>{node}</SectionArranger>;
  if(usesRestaurantSkin({businessCategory:store.business?.category,businessSubcategory:store.business?.businessSubcategory,storeBusinessType:store.businessType,templateName})){
-   const ev=await getGrandeurEvents(slug).catch(()=>({events:[] as any[]}));
+   const ev:any=await getGrandeurEvents(slug).catch(()=>({events:[]}));
    const today=Date.now()-86400000;
-   const upcoming=(ev.events||[]).filter((e:any)=>{const t=Date.parse(e.date);return !Number.isNaN(t)&&t>=today;}).sort((a:any,b:any)=>Date.parse(a.date)-Date.parse(b.date)).map((e:any)=>({title:e.title,slug:e.slug,date:e.date,image:e.image}));
+   const upcoming:{title:string;slug:string;date:string;image?:string}[]=((ev.events||[]) as any[]).filter((e:any)=>{const t=Date.parse(e.date);return !Number.isNaN(t)&&t>=today;}).sort((a:any,b:any)=>Date.parse(a.date)-Date.parse(b.date)).map((e:any)=>({title:e.title,slug:e.slug,date:e.date,image:e.image}));
    return arranged(<RestaurantHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={avgRating} events={upcoming}/>);
  }
  if(home.kind==="screenshot") return arranged(<SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={avgRating} completedOrders={completedOrders} social={social} mode={home.mode} {...home.palette}/>);
