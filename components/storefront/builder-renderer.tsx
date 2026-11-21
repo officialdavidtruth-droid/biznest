@@ -33,7 +33,7 @@ type CatalogItem = {
 type Review = { id: string; rating: number; comment: string | null; author: { name: string | null } | null };
 
 type BuilderStore = {
-  name: string; slug: string; logoUrl: string | null; bannerUrl?: string | null; contactEmail: string | null; contactPhone: string | null; whatsappNumber?: string | null; socialLinks?: Record<string, string | null | undefined> | null;
+  name: string; slug: string; logoUrl: string | null; bannerUrl?: string | null; contactEmail: string | null; contactPhone: string | null; whatsappNumber?: string | null; socialLinks?: any;
   business: { description: string | null; category?: string | null; businessSubcategory?: string | null; sellsProducts?: boolean; offersServices?: boolean; city?: string | null; state?: string | null; country?: string | null };
 };
 
