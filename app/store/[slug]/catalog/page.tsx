@@ -13,11 +13,15 @@ import { fontStack } from "@/lib/builder-safe";
 import { TemplateShell } from "@/components/storefront/template-shell";
 import { usesTemplateChromeFor } from "@/lib/storefront/template-chrome";
 import { usesGrandeurSkin, usesRestaurantSkin } from "@/lib/store-pages";
+import { getFlavoriaData } from "@/lib/storefront/flavoria-data";
+import { FlavoriaMenu } from "@/components/storefront/flavoria-pages";
 import { RestaurantMenu } from "@/components/storefront/restaurant-menu";
 
 export default async function CatalogPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ category?: string; q?: string }> }) {
   const { slug } = await params;
   const query = await searchParams;
+  const flav = await getFlavoriaData(slug);
+  if (flav) return <FlavoriaMenu store={flav.store} slug={slug} items={flav.items} />;
   const rawStore = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true, products: { where: { isPublished: true }, take: 100, include: { category: true } }, services: { where: { isPublished: true }, take: 100, include: { category: true } } } });
   if (!rawStore || rawStore.status !== "ACTIVE") notFound();
   const store = { ...rawStore, sellsProducts: rawStore.business?.sellsProducts ?? true };
