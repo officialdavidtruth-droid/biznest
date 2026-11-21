@@ -38,10 +38,13 @@ export function usesGrandeurSkin(i: StoreIdentity): boolean {
   return isGrandeurStore(i);
 }
 
-/** Restaurants drawn by the Builder wear one shared look (sidebar, top bar, footer) on every page. Hotels and the signature-screenshot templates keep their own. */
+/**
+ * The TasteHouse look (sidebar, top bar, footer, menu grid, reservations, orders) belongs to the TasteHouse template only.
+ * It follows the store's chosen template, never its business type: switch to any other template and the store wears that template instead.
+ */
 export function usesRestaurantSkin(i: StoreIdentity): boolean {
-  if (!isGrandeurStore(i) || isHotelStore(i)) return false;
-  return resolveHomeRenderer(i.templateName, { businessCategory: i.businessCategory, storeBusinessType: i.storeBusinessType }).kind === "builder";
+  if (isHotelStore(i)) return false;
+  return getTemplateDefinition(i.templateName)?.id === "tastehouse-food";
 }
 
 export function getStoreKind(i: StoreIdentity): StoreKind {
