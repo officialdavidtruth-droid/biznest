@@ -6,11 +6,11 @@ import { formatMoney } from "@/lib/utils/format-money";
 import { useCart } from "@/lib/cart-context";
 import { RestaurantHeader, RestaurantFooter } from "@/components/storefront/restaurant-chrome";
 
-type Item = { id: string; kind: "product" | "service"; name: string; description: string | null; price: number; currency: string; image: string | null; categoryName: string | null; hasVariants?: boolean };
+export type RestaurantItem = { id: string; kind: "product" | "service"; name: string; description: string | null; price: number; currency: string; image: string | null; categoryName: string | null; hasVariants?: boolean };
 type Ev = { title: string; slug: string; date: string; image?: string };
 const bg = (u?: string | null) => (u ? { backgroundImage: `url(${u})` } : {});
 
-function Dish({ item, slug }: { item: Item; slug: string }) {
+export function Dish({ item, slug }: { item: RestaurantItem; slug: string }) {
   const { items, storeSlug, addItem } = useCart();
   const inCart = storeSlug === slug ? items.find((x) => x.productId === item.id) : null;
   const url = href(slug, `/${item.kind}/${item.id}`);
@@ -34,7 +34,7 @@ function Dish({ item, slug }: { item: Item; slug: string }) {
 }
 
 /** Restaurant home: every block is filled from the store's own menu, reviews and events. Nothing here is a placeholder. */
-export function RestaurantHome({ store, slug, items, reviews = [], avgRating, events = [] }: { store: any; slug: string; items: Item[]; reviews?: any[]; avgRating: number | null; events?: Ev[] }) {
+export function RestaurantHome({ store, slug, items, reviews = [], avgRating, events = [] }: { store: any; slug: string; items: RestaurantItem[]; reviews?: any[]; avgRating: number | null; events?: Ev[] }) {
   const ho = (store.heroOverrides || {}) as { headline?: string; subtitle?: string; ctaLabel?: string };
   const hero = store.bannerUrl || items.find((i) => i.image)?.image || null;
   const groups = new Map<string, { name: string; count: number; image: string | null }>();

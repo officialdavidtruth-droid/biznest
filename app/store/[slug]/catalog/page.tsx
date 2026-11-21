@@ -12,7 +12,8 @@ import { buildSystemSlots } from "@/components/storefront/system-slots";
 import { fontStack } from "@/lib/builder-safe";
 import { TemplateShell } from "@/components/storefront/template-shell";
 import { usesTemplateChromeFor } from "@/lib/storefront/template-chrome";
-import { usesGrandeurSkin } from "@/lib/store-pages";
+import { usesGrandeurSkin, usesRestaurantSkin } from "@/lib/store-pages";
+import { RestaurantMenu } from "@/components/storefront/restaurant-menu";
 
 export default async function CatalogPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ category?: string; q?: string }> }) {
   const { slug } = await params;
@@ -26,6 +27,9 @@ export default async function CatalogPage({ params, searchParams }: { params: Pr
   ];
   if (store.template?.name === "Veloura — Superior Luxury Hotel" || isHotelBusiness(store.business?.category)) {
     return <ThelusoHotel store={{...store,address:[store.business?.city,store.business?.state].filter(Boolean).join(", ")||null,phone:store.contactPhone??store.business?.phone??null,email:store.contactEmail??store.business?.email??null}} slug={slug} content={await getHotelContent(slug)} />;
+  }
+  if (usesRestaurantSkin({ businessCategory: store.business?.category, businessSubcategory: store.business?.businessSubcategory, storeBusinessType: store.businessType, templateName: store.template?.name })) {
+    return <RestaurantMenu store={store} slug={slug} query={query?.q} items={items.map(i=>({...i,description:null,categoryName:i.categoryName??null})) as any} />;
   }
   if (usesGrandeurSkin({ businessCategory: store.business?.category, storeBusinessType: store.businessType, templateName: store.template?.name })) return <GrandeurMenu store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);

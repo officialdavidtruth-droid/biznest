@@ -6,7 +6,8 @@ import type { Metadata } from "next";
 import { CatalogExperience } from "@/components/storefront/catalog-experience";
 import { TemplateShell } from "@/components/storefront/template-shell";
 import { usesTemplateChromeFor } from "@/lib/storefront/template-chrome";
-import { usesGrandeurSkin } from "@/lib/store-pages";
+import { usesGrandeurSkin, usesRestaurantSkin } from "@/lib/store-pages";
+import { RestaurantMenu } from "@/components/storefront/restaurant-menu";
 import { catalogDesign, catalogStoreInfo } from "@/lib/storefront/catalog-props";
 import { NO_INDEX, absoluteUrl, cleanDescription, storeUrl } from "@/lib/seo";
 import { resolveStoreTheme } from "@/lib/template-themes";
@@ -66,6 +67,9 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     prisma.service.findMany({where:{storeId:store.id,categoryId:{in:ids},isPublished:true},include:{category:true}}),
   ]);
   const items = [...products.map(p=>({id:p.id,kind:"product" as const,name:p.name,price:Number(p.price),currency:p.currency,image:p.images[0]??null,categoryName:p.category?.name??null,hasVariants:p.hasVariants})), ...services.map(s=>({id:s.id,kind:"service" as const,name:s.name,price:Number(s.price),currency:s.currency,image:s.images[0]??null,categoryName:s.category?.name??null}))];
+  if (usesRestaurantSkin({ businessCategory: store.business?.category, businessSubcategory: store.business?.businessSubcategory, storeBusinessType: store.businessType, templateName: store.template?.name })) {
+    return <RestaurantMenu store={store} slug={slug} categoryId={category.id} heading={category.name} items={items.map(i=>({...i,description:null})) as any} />;
+  }
   if (usesGrandeurSkin({ businessCategory: store.business?.category, storeBusinessType: store.businessType, templateName: store.template?.name })) {
     const { GrandeurMenu } = await import("@/components/storefront/grandeur-restaurant");
     return <GrandeurMenu store={{...store,sellsProducts:store.business?.sellsProducts??true} as any} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,rentalUnit:null,isBookable:false})) as any}/>;
