@@ -47,6 +47,11 @@ export function usesRestaurantSkin(i: StoreIdentity): boolean {
   return getTemplateDefinition(i.templateName)?.id === "tastehouse-food";
 }
 
+/** The Flavoria-style landing page belongs to the Ember template. */
+export function usesFlavoriaHome(i: StoreIdentity): boolean {
+  return getTemplateDefinition(i.templateName)?.name === "Ember — Restaurant";
+}
+
 export function getStoreKind(i: StoreIdentity): StoreKind {
   if (isHotelStore(i)) return "hotel";
   if (isGrandeurStore(i)) return "restaurant";

@@ -4,7 +4,8 @@ import { getPublicTravelPackages } from "@/lib/travel-public";
 import { prisma } from "@/lib/prisma";
 import { recordStoreVisit } from "@/lib/actions/analytics";
 import { defaultBuilderConfig } from "@/lib/builder-config";
-import { usesRestaurantSkin } from "@/lib/store-pages";
+import { usesFlavoriaHome, usesRestaurantSkin } from "@/lib/store-pages";
+import { FlavoriaHome } from "@/components/storefront/flavoria-home";
 import { getGrandeurEvents } from "@/lib/grandeur-content";
 import { RestaurantHome } from "@/components/storefront/restaurant-home";
 import { BuilderStorefront } from "@/components/storefront/builder-renderer";
@@ -79,6 +80,12 @@ export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
 
  const arrangement=getTemplateArrangement(store.sectionOverrides);
  const arranged=(node:ReactNode)=><SectionArranger arrangement={arrangement}>{node}</SectionArranger>;
+ if(usesFlavoriaHome({businessCategory:store.business?.category,businessSubcategory:store.business?.businessSubcategory,storeBusinessType:store.businessType,templateName})){
+   const ev:any=await getGrandeurEvents(slug).catch(()=>({events:[]}));
+   const today=Date.now()-86400000;
+   const upcoming:{title:string;slug:string;date:string;image?:string}[]=((ev.events||[]) as any[]).filter((e:any)=>{const t=Date.parse(e.date);return !Number.isNaN(t)&&t>=today;}).sort((a:any,b:any)=>Date.parse(a.date)-Date.parse(b.date)).map((e:any)=>({title:e.title,slug:e.slug,date:e.date,image:e.image}));
+   return arranged(<FlavoriaHome store={store} slug={slug} items={catalogItems as any} events={upcoming}/>);
+ }
  if(usesRestaurantSkin({businessCategory:store.business?.category,businessSubcategory:store.business?.businessSubcategory,storeBusinessType:store.businessType,templateName})){
    const ev:any=await getGrandeurEvents(slug).catch(()=>({events:[]}));
    const today=Date.now()-86400000;
