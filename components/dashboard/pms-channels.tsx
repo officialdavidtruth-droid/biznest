@@ -213,6 +213,7 @@ export function PmsChannels({
                       : <span className="text-white">Waiting for first sync</span>}
                   </p>
                   {ok && c.lastSyncMessage && <p className="mt-1 text-xs text-amber-400">{c.lastSyncMessage}</p>}
+                  {c.isActive && !c.live?.pushUrl && <p className="mt-1 text-xs text-amber-400">Calendar link only: this channel may take hours to see a booking made here, so the same room could be sold twice. Turn on Live sync below to close that gap.</p>}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {c.importUrl && <button disabled={pending || !c.isActive} className={btn} onClick={() => run(() => syncChannelNow(slug, c.id), "Synced")}><RefreshCw className="h-3.5 w-3.5" /> Sync now</button>}

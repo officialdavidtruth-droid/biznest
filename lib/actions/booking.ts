@@ -19,6 +19,7 @@ import { generateUniqueBookingReference } from "@/lib/booking-reference";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { busyUnitIds, getBusyIntervals } from "@/lib/stay-availability";
 import { notifyUnitChanged, refreshChannelsForService } from "@/lib/channels/push";
+import { ensureStayRoomsLinked } from "@/lib/pms-online-sync";
 import { readTripConfig, tripTotal, TRIP_MAX_TRAVELERS } from "@/lib/trip-booking";
 
 // Shared by createBooking/createStayBooking: what to tell the shopper when
@@ -576,6 +577,10 @@ export async function getAvailableUnitCount(
   const checkOut = localDateStartUtc(checkOutISO, timezone);
   if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime()) || checkOut <= checkIn) return 0;
 
+  // What the shopper sees must match what the booking will check: linked rooms and fresh OTA calendars.
+  await ensureStayRoomsLinked(service.storeId);
+  await refreshChannelsForService(serviceId, { maxAgeMs: 2 * 60_000, waitMs: 3_000 });
+
   const units = await prisma.serviceUnit.findMany({ where: { serviceId, status: { not: "OUT_OF_SERVICE" } }, select: { id: true } });
   if (units.length === 0) return 0;
 
@@ -806,7 +811,9 @@ export async function createStayBooking(
   // again" -- so we retry a couple of times before giving up.
   const MAX_ATTEMPTS = 3;
   // Pull any OTA calendar that is a few minutes old so the availability check sees fresh channel sales.
-  await refreshChannelsForService(serviceId);
+  // Pull any OTA calendar older than 2 minutes, after making sure every room is linked to the front desk.
+  await ensureStayRoomsLinked(service.storeId);
+  await refreshChannelsForService(serviceId, { maxAgeMs: 2 * 60_000 });
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const booking = await prisma.$transaction(async (tx) => {

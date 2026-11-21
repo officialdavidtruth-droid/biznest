@@ -217,9 +217,9 @@ export async function refreshRoomChannels(roomIds: string | string[], maxAgeMs: 
   }
 }
 
-export async function refreshChannelsForService(serviceId: string): Promise<void> {
+export async function refreshChannelsForService(serviceId: string, opts: { maxAgeMs?: number; waitMs?: number } = {}): Promise<void> {
   const rooms = await prisma.propertyRoom.findMany({ where: { serviceUnit: { serviceId } }, select: { id: true } });
-  await refreshRoomChannels(rooms.map((r) => r.id));
+  await refreshRoomChannels(rooms.map((r) => r.id), opts.maxAgeMs ?? FRESH_MAX_AGE_MS, opts.waitMs ?? 6_000);
 }
 
 export { alertOwner as alertChannelOwner };

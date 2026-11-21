@@ -23,8 +23,11 @@ function mapStatus(status: string, createdAt: Date): ResStatus {
  * Mirrored reservations carry `bookingId`; availability checks ignore them because the booking
  * itself already blocks the room. Safe to run on every PMS load.
  */
-export async function syncOnlineStaysIntoPms(storeId: string): Promise<void> {
-  // ---- 1. rooms
+/**
+ * Makes sure every online room unit has its PMS room (linking an unlinked room of the same name, else creating one),
+ * because only linked rooms take part in availability. Cheap when everything is already linked. Returns the rooms.
+ */
+export async function linkOnlineUnitsToPmsRooms(storeId: string) {
   const [units, rooms] = await Promise.all([
     prisma.serviceUnit.findMany({ where: { storeId }, select: { id: true, label: true, service: { select: { name: true } } } }),
     prisma.propertyRoom.findMany({ where: { storeId }, select: { id: true, name: true, serviceUnitId: true } }),
@@ -43,6 +46,20 @@ export async function syncOnlineStaysIntoPms(storeId: string): Promise<void> {
       names.add(name.trim().toLowerCase());
     } catch { /* name clash or race: skip, it is retried on the next load */ }
   }
+  return rooms;
+}
+
+/** Storefront side: link rooms before counting availability, but only for hotels that actually use the PMS. */
+export async function ensureStayRoomsLinked(storeId: string): Promise<void> {
+  try {
+    if ((await prisma.propertyRoom.count({ where: { storeId } })) === 0) return;
+    const unlinked = await prisma.serviceUnit.count({ where: { storeId, propertyRoom: null } });
+    if (unlinked > 0) await linkOnlineUnitsToPmsRooms(storeId);
+  } catch { /* availability must never fail because linking did; the PMS retries on its next load */ }
+}
+
+export async function syncOnlineStaysIntoPms(storeId: string): Promise<void> {
+  const rooms = await linkOnlineUnitsToPmsRooms(storeId);
   const roomByUnit = new Map(rooms.filter((r) => r.serviceUnitId).map((r) => [r.serviceUnitId as string, r.id]));
   if (roomByUnit.size === 0) return;
 
