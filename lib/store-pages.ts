@@ -1,6 +1,7 @@
 import { getCanonicalBusinessType, isRestaurantBusiness } from "@/lib/business-identity";
 import { isHotelStore, resolveStorefrontRenderer } from "@/lib/storefront-routing";
 import { getTemplateDefinition } from "@/lib/template-registry";
+import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
 import { usesTailoring } from "@/lib/tailoring-eligibility";
 
 /**
@@ -35,6 +36,12 @@ export function usesGrandeurSkin(i: StoreIdentity): boolean {
   const def = getTemplateDefinition(i.templateName);
   if (def) return def.renderer === "grandeur";
   return isGrandeurStore(i);
+}
+
+/** Restaurants drawn by the Builder wear one shared look (sidebar, top bar, footer) on every page. Hotels and the signature-screenshot templates keep their own. */
+export function usesRestaurantSkin(i: StoreIdentity): boolean {
+  if (!isGrandeurStore(i) || isHotelStore(i)) return false;
+  return resolveHomeRenderer(i.templateName, { businessCategory: i.businessCategory, storeBusinessType: i.storeBusinessType }).kind === "builder";
 }
 
 export function getStoreKind(i: StoreIdentity): StoreKind {

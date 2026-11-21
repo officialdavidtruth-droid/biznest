@@ -1,6 +1,8 @@
 "use client";
 
 import { starFill, starEmpty } from "@/lib/utils/stars";
+import { useRestaurantSkin } from "@/components/storefront/restaurant-skin";
+import { RestaurantHeader, RestaurantFooter } from "@/components/storefront/restaurant-chrome";
 import { nicheHeroPhoto, nicheSamplePhoto } from "@/lib/niche-imagery";
 import { readableAccentText } from "@/lib/utils/readable-accent";
 import { MenuLinks, useFooterMenu, LegalLinks, type FallbackLink } from "@/components/storefront/store-menu";
@@ -416,7 +418,7 @@ function letterOn(bg: string): string {
   return y > 160 ? "#111" : "#fff";
 }
 
-export function BuilderHeader({ store, d, experience, visible }: { store: BuilderStore; d: DesignT; experience: ReturnType<typeof getBusinessExperience>; visible: SectionT[] }) {
+function BuilderHeaderBase({ store, d, experience, visible }: { store: BuilderStore; d: DesignT; experience: ReturnType<typeof getBusinessExperience>; visible: SectionT[] }) {
   const style = d.headerStyle ?? "classic";
   const mark = store.logoUrl
     ? <img src={store.logoUrl} alt="" style={{ width: 36, height: 36, borderRadius: Math.min(d.radius, 12), objectFit: "cover" }} />
@@ -534,7 +536,7 @@ export function BuilderHeader({ store, d, experience, visible }: { store: Builde
   );
 }
 
-export function BuilderFooter({ store, d, visible, storeLinks }: { store: BuilderStore; d: DesignT; visible: SectionT[]; storeLinks?: { label: string; href: string }[] }) {
+function BuilderFooterBase({ store, d, visible, storeLinks }: { store: BuilderStore; d: DesignT; visible: SectionT[]; storeLinks?: { label: string; href: string }[] }) {
   const style = d.footerStyle ?? "columns";
   const year = new Date().getFullYear();
   const desc = store.business?.description || "Built with BizNest.";
@@ -660,4 +662,13 @@ export function ItemCard({ item, store, d, radius, actionLabel }: { item: Catalo
       </div>
     </Link>
   );
+}
+
+export function BuilderHeader(props: Parameters<typeof BuilderHeaderBase>[0]) {
+  const skin = useRestaurantSkin();
+  return skin ? <RestaurantHeader store={props.store} slug={props.store.slug} /> : <BuilderHeaderBase {...props} />;
+}
+export function BuilderFooter(props: Parameters<typeof BuilderFooterBase>[0]) {
+  const skin = useRestaurantSkin();
+  return skin ? <RestaurantFooter store={props.store} slug={props.store.slug} /> : <BuilderFooterBase {...props} />;
 }

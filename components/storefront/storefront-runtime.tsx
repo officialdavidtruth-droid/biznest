@@ -4,6 +4,9 @@ import { getPublicTravelPackages } from "@/lib/travel-public";
 import { prisma } from "@/lib/prisma";
 import { recordStoreVisit } from "@/lib/actions/analytics";
 import { defaultBuilderConfig } from "@/lib/builder-config";
+import { usesRestaurantSkin } from "@/lib/store-pages";
+import { getGrandeurEvents } from "@/lib/grandeur-content";
+import { RestaurantHome } from "@/components/storefront/restaurant-home";
 import { BuilderStorefront } from "@/components/storefront/builder-renderer";
 import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
 import { getHotelContent } from "@/lib/hotel-content";
@@ -76,6 +79,12 @@ export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
 
  const arrangement=getTemplateArrangement(store.sectionOverrides);
  const arranged=(node:ReactNode)=><SectionArranger arrangement={arrangement}>{node}</SectionArranger>;
+ if(usesRestaurantSkin({businessCategory:store.business?.category,businessSubcategory:store.business?.businessSubcategory,storeBusinessType:store.businessType,templateName})){
+   const ev=await getGrandeurEvents(slug).catch(()=>({events:[] as any[]}));
+   const today=Date.now()-86400000;
+   const upcoming=(ev.events||[]).filter((e:any)=>{const t=Date.parse(e.date);return !Number.isNaN(t)&&t>=today;}).sort((a:any,b:any)=>Date.parse(a.date)-Date.parse(b.date)).map((e:any)=>({title:e.title,slug:e.slug,date:e.date,image:e.image}));
+   return arranged(<RestaurantHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={avgRating} events={upcoming}/>);
+ }
  if(home.kind==="screenshot") return arranged(<SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={avgRating} completedOrders={completedOrders} social={social} mode={home.mode} {...home.palette}/>);
  if(home.kind==="hotel") return arranged(<ThelusoHotel store={store} slug={slug} content={await getHotelContent(slug)}/>);
 

@@ -7,7 +7,8 @@ import { StoreMenuProvider } from "@/components/storefront/store-menu";
 import { StoreCategoriesProvider } from "@/components/storefront/store-categories";
 import { isStaleMenu, resolveMenuRows, buildAutoHeaderMenu, buildAutoFooterMenu } from "@/lib/storefront-menu";
 import { getBusinessTerminology } from "@/lib/business-terminology";
-import { getStoreKind, isStorePageAvailable } from "@/lib/store-pages";
+import { RestaurantSkinProvider } from "@/components/storefront/restaurant-skin";
+import { getStoreKind, isStorePageAvailable, usesRestaurantSkin } from "@/lib/store-pages";
 import { hasPageContent } from "@/lib/storefront/page-blocks";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { PromoPopup } from "@/components/storefront/promo-popup";
@@ -256,6 +257,7 @@ export default async function StoreLayout({
   const hasOwnHeaderMenu = !!exists?.menuItems.some((m) => m.location === "header");
   const isHotel = !!exists && getStoreKind({ businessCategory: exists.business?.category ?? null, businessSubcategory: exists.business?.businessSubcategory ?? null, storeBusinessType: exists.businessType, templateName: exists.template?.name ?? null } as any) === "hotel";
   const isRestaurant = !!exists && getStoreKind({ businessCategory: exists.business?.category ?? null, businessSubcategory: exists.business?.businessSubcategory ?? null, storeBusinessType: exists.businessType, templateName: exists.template?.name ?? null } as any) === "restaurant";
+  const restaurantSkin = !!exists && !isAdminRoute && usesRestaurantSkin({ businessCategory: exists.business?.category ?? null, businessSubcategory: exists.business?.businessSubcategory ?? null, storeBusinessType: exists.businessType, templateName: exists.template?.name ?? null } as any);
   const headerMenu = menuFor("header") ?? (exists && !hasOwnHeaderMenu && !isHotel ? buildAutoHeaderMenu(slug, exists.categories, { about: writtenPages.has("about"), blog: writtenPages.has("blog"), restaurant: isRestaurant }, (() => { const t = getBusinessTerminology(exists.business?.category, exists.business?.businessSubcategory); return t.catalog === "Products" ? "Shop" : t.catalog; })()) : null);
   const hasOwnFooterMenu = !!exists?.menuItems.some((m) => m.location === "footer");
   const footerMenu = menuFor("footer") ?? (exists && !hasOwnFooterMenu && !isHotel ? buildAutoFooterMenu(slug, { about: writtenPages.has("about"), blog: writtenPages.has("blog"), policies: writtenPages.has("policies") }, (() => { const t = getBusinessTerminology(exists.business?.category, exists.business?.businessSubcategory); return t.catalog === "Products" ? "Shop" : t.catalog; })()) : null);
@@ -272,7 +274,7 @@ export default async function StoreLayout({
         rel="stylesheet"
       />
       <StoreCategoriesProvider categories={(exists?.categories ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug, parentId: c.parentId, description: c.description, imageUrl: c.imageUrl, count: c._count.products + c._count.services }))}>
-        <StoreMenuProvider menu={headerMenu} footerMenu={footerMenu} hasPolicies={writtenPages.has("policies")}>{children}</StoreMenuProvider>
+        <StoreMenuProvider menu={headerMenu} footerMenu={footerMenu} hasPolicies={writtenPages.has("policies")}><RestaurantSkinProvider on={restaurantSkin}>{children}</RestaurantSkinProvider></StoreMenuProvider>
       </StoreCategoriesProvider>
       {!!exists && showBizNestBranding({ slug, subscriptionRenewsAt: exists.subscriptionRenewsAt }) && !isAdminRoute && exists.status === "ACTIVE" && <PoweredByBizNest slug={slug} />}
       {installable && exists && (
