@@ -15,7 +15,9 @@ const bg = (u?: string | null) => (u ? { backgroundImage: `url(${u})` } : {});
  */
 export function RestaurantMenu({ store, slug, items, categoryId, heading, query }: { store: any; slug: string; items: RestaurantItem[]; categoryId?: string; heading?: string; query?: string }) {
   const all = useStoreCategories();
-  const top = all.filter((c) => !c.parentId);
+  let top = all.filter((c) => !c.parentId);
+  // One umbrella category (e.g. "Menu") holding the real sections: show the sections themselves.
+  if (top.length === 1 && all.some((c) => c.parentId === top[0].id)) top = all.filter((c) => c.parentId === top[0].id);
   const kids = (id: string) => all.filter((c) => c.parentId === id);
   const link = (c: { id: string; slug?: string | null }) => href(slug, `/category/${c.slug || c.id}`);
   const q = (query || "").trim().toLowerCase();
