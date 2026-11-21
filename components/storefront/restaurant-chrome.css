@@ -177,3 +177,7 @@ body:has(.rs-side){max-width:none!important}
 .rs-home{width:100%;box-sizing:border-box;margin-left:auto;margin-right:auto;align-self:stretch}
 .rs-top,.rs-foot{width:100%;box-sizing:border-box;align-self:stretch}
 .rs-home>*{min-width:0}
+
+/* Phone: keep Cart and Account on screen (the search box used to push them off the right edge). */
+@media(max-width:900px){.rs-top-brand{flex:none;max-width:none}.rs-top-brand b{display:none}.rs-search{flex:1 1 0;min-width:0}.rs-actions{margin-left:0;gap:6px;flex:none}}
+@media(max-width:520px){.rs-actions .rs-act:first-child{display:none}}
