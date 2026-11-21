@@ -164,7 +164,7 @@ export function isStaleMenu(totalRows: number, keptRows: number, resolvedTopLeve
 export function buildAutoHeaderMenu(
   slug: string,
   categories: { id: string; name: string; slug?: string | null; parentId?: string | null; _count?: { products: number; services: number } }[],
-  have: { about: boolean; blog: boolean },
+  have: { about: boolean; blog: boolean; restaurant?: boolean },
   catalogLabel = "Shop",
   maxCategories = 5,
 ): ResolvedMenuItem[] {
@@ -178,7 +178,13 @@ export function buildAutoHeaderMenu(
     out.push(link(`auto-${c.id}`, c.name, catHref(c), kids));
   }
   if (top.length === 0) out.push(link("auto-catalog", catalogLabel, storePath(slug, "/catalog")));
+  // Restaurant template: these pages always exist, and the template's own nav shows them, so the auto menu must too.
+  if (have.restaurant) out.push(link("auto-reservations", "Reservations", storePath(slug, "/reservations")));
   if (have.about) out.push(link("auto-about", "About", storePath(slug, "/about")));
+  if (have.restaurant) {
+    out.push(link("auto-gallery", "Gallery", storePath(slug, "/gallery")));
+    out.push(link("auto-events", "Events", storePath(slug, "/events")));
+  }
   if (have.blog) out.push(link("auto-blog", "Blog", storePath(slug, "/blog")));
   out.push(link("auto-contact", "Contact", storePath(slug, "/contact")));
   return out;
